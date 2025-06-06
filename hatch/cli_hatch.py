@@ -75,7 +75,6 @@ def main():
     pkg_subparsers = subparsers.add_parser("package", help="Package management commands").add_subparsers(
         dest="pkg_command", help="Package command to execute"
     )
-    
     # Add package command
     pkg_add_parser = pkg_subparsers.add_parser("add", help="Add a package to the current environment")
     pkg_add_parser.add_argument("package_path_or_name", help="Path to package directory or name of the package")
@@ -83,6 +82,9 @@ def main():
     pkg_add_parser.add_argument("--version", "-v", default=None, help="Version of the package (optional)")
     pkg_add_parser.add_argument("--force-download", "-f", action="store_true", help="Force download even if package is in cache")
     pkg_add_parser.add_argument("--refresh-registry", "-r", action="store_true", help="Force refresh of registry data")
+    pkg_add_parser.add_argument("--skip-python-deps", action="store_true", help="Skip installation of Python dependencies")
+    pkg_add_parser.add_argument("--upgrade-python-deps", action="store_true", help="Upgrade existing Python dependencies")
+    pkg_add_parser.add_argument("--python-interpreter", default=None, help="Specify which Python interpreter to use")
     
     # Remove package command
     pkg_remove_parser = pkg_subparsers.add_parser("remove", help="Remove a package from the current environment")
@@ -171,11 +173,12 @@ def main():
         else:
             parser.print_help()
             return 1
-    
     elif args.command == "package":
         if args.pkg_command == "add":
             if env_manager.add_package_to_environment(args.package_path_or_name, args.env, args.version, 
-                                                      args.force_download, args.refresh_registry):
+                                                      args.force_download, args.refresh_registry,
+                                                      args.skip_python_deps, args.upgrade_python_deps,
+                                                      args.python_interpreter):
                 print(f"Successfully added package: {args.package_path_or_name}")
                 return 0
             else:

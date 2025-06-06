@@ -10,7 +10,7 @@ import tempfile
 import requests
 import zipfile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict, Any
 
 
 class PackageLoaderError(Exception):
@@ -261,3 +261,85 @@ class HatchPackageLoader:
         except Exception as e:
             self.logger.error(f"Failed to clear cache: {e}")
             return False
+    
+    def get_remote_package_metadata(self, package_url: str, package_name: str, version: str) -> Dict[str, Any]:
+        """Download and extract metadata from a remote package without installing it.
+        
+        This method downloads a package and extracts only its metadata, which is useful
+        for checking Python dependencies before full installation.
+        
+        Args:
+            package_url (str): URL to download the package from.
+            package_name (str): Name of the package.
+            version (str): Version of the package.
+            
+        Returns:
+            Dict[str, Any]: Package metadata from hatch_metadata.json.
+            
+        Raises:
+            PackageLoaderError: If download or metadata extraction fails.
+        """
+        import json
+        
+        # Check if package is already cached and get metadata from there
+        cached_path = self._get_package_path(package_name, version)
+        if cached_path:
+            try:
+                with open(cached_path / "hatch_metadata.json", 'r') as f:
+                    return json.load(f)
+            except Exception as e:
+                self.logger.warning(f"Failed to read cached metadata: {e}")
+                # Continue to download fresh copy
+        
+        # Download package to get metadata
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_dir_path = Path(temp_dir)
+            temp_file = temp_dir_path / f"{package_name}-{version}.zip"
+            
+            try:
+                # Download the package
+                self.logger.info(f"Downloading package metadata from {package_url}")
+                response = requests.get(package_url, stream=True, timeout=30)
+                response.raise_for_status()
+                
+                with open(temp_file, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                
+                # Extract just enough to get metadata
+                extract_dir = temp_dir_path / f"{package_name}-{version}"
+                extract_dir.mkdir(parents=True, exist_ok=True)
+                
+                with zipfile.ZipFile(temp_file, 'r') as zip_ref:
+                    # Only extract hatch_metadata.json
+                    for file_info in zip_ref.filelist:
+                        if file_info.filename.endswith('hatch_metadata.json'):
+                            zip_ref.extract(file_info, extract_dir)
+                            break
+                    else:
+                        # If not found in root, extract all and find it
+                        zip_ref.extractall(extract_dir)
+                
+                # Find and read the metadata file
+                metadata_file = None
+                for metadata_path in extract_dir.rglob("hatch_metadata.json"):
+                    metadata_file = metadata_path
+                    break
+                
+                if not metadata_file:
+                    raise PackageLoaderError(f"No hatch_metadata.json found in package {package_name}")
+                
+                with open(metadata_file, 'r') as f:
+                    metadata = json.load(f)
+                    
+                self.logger.info(f"Successfully extracted metadata for {package_name} v{version}")
+                return metadata
+                
+            except requests.RequestException as e:
+                raise PackageLoaderError(f"Failed to download package for metadata: {e}")
+            except zipfile.BadZipFile:
+                raise PackageLoaderError("Downloaded file is not a valid zip archive")
+            except json.JSONDecodeError as e:
+                raise PackageLoaderError(f"Invalid metadata JSON: {e}")
+            except Exception as e:
+                raise PackageLoaderError(f"Error extracting package metadata: {e}")

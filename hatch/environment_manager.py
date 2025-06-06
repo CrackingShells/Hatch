@@ -13,6 +13,7 @@ from hatch_validator import HatchPackageValidator
 from .registry_retriever import RegistryRetriever
 from .package_loader import HatchPackageLoader, PackageLoaderError
 from .registry_explorer import find_package, find_package_version, get_package_release_url
+from .python_dependency_manager import PythonDependencyManager, PythonDependencyError
 
 
 class HatchEnvironmentError(Exception):
@@ -65,9 +66,9 @@ class HatchEnvironmentManager:
         # Load environments into cache
         self._environments = self._load_environments()
         self._current_env_name = self._load_current_env_name()
-        
-        # Initialize dependencies
+          # Initialize dependencies
         self.package_loader = HatchPackageLoader(cache_dir=cache_dir)
+        self.python_dependency_manager = PythonDependencyManager(self.environments_dir)
 
         # Get dependency resolver from imported module
         self.retriever = RegistryRetriever(cache_ttl=cache_ttl,
@@ -191,17 +192,15 @@ class HatchEnvironmentManager:
             result.append(env_info)
         
         return result
-    
     def create_environment(self, name: str, description: str = "") -> bool:
-        """
-        Create a new environment.
+        """Create a new environment.
         
         Args:
-            name: Name of the environment
-            description: Description of the environment
+            name (str): Name of the environment.
+            description (str): Description of the environment.
             
         Returns:
-            bool: True if created successfully, False if environment already exists
+            bool: True if created successfully, False if environment already exists.
         """
         # Allow alphanumeric characters and underscores
         if not name or not all(c.isalnum() or c == '_' for c in name):
@@ -220,6 +219,14 @@ class HatchEnvironmentManager:
             "created_at": datetime.datetime.now().isoformat(),
             "packages": []
         }
+        
+        # Create virtual environment for Python dependencies
+        try:
+            self.python_dependency_manager.create_virtual_environment(name)
+            self.logger.info(f"Created Python virtual environment for: {name}")
+        except PythonDependencyError as e:
+            self.logger.warning(f"Failed to create virtual environment for {name}: {e}")
+            # Continue with environment creation even if venv creation fails
         
         self._save_environments()
         self.logger.info(f"Created environment: {name}")
@@ -273,7 +280,10 @@ class HatchEnvironmentManager:
                                   env_name: Optional[str] = None, 
                                   version_constraint: Optional[str] = None,
                                   force_download: bool = False,
-                                  refresh_registry: bool = False) -> bool:
+                                  refresh_registry: bool = False,
+                                  skip_python_deps: bool = False,
+                                  upgrade_python_deps: bool = False,
+                                  python_interpreter: Optional[str] = None) -> bool:        
         """Add a package to an environment.
         
         This complex method handles the process of adding either a local or remote package 
@@ -293,10 +303,13 @@ class HatchEnvironmentManager:
                 bypass the package cache and download directly from the source. Defaults to False.
             refresh_registry (bool, optional): Force refresh of registry data. When True, 
                 fetch the latest registry data before resolving dependencies. Defaults to False.
+            skip_python_deps (bool, optional): Skip installation of Python dependencies. Defaults to False.
+            upgrade_python_deps (bool, optional): Upgrade existing Python dependencies. Defaults to False.
+            python_interpreter (str, optional): Specify which Python interpreter to use. Defaults to None.
             
         Returns:
             bool: True if successful, False otherwise.
-        """        
+        """
         
         # Refresh registry if requested or if force_download is specified
         if refresh_registry or force_download:
@@ -446,9 +459,52 @@ class HatchEnvironmentManager:
                 self._add_package_to_env_data(env_name, dep["name"], package_version, "remote", "registry")
             except PackageLoaderError as e:
                 self.logger.error(f"Failed to install remote package {dep['name']}: {e}")
+                return False        # Get package metadata before installation to check Python dependencies
+        if is_local_package:
+            # For local packages, metadata is already available
+            with open(package_path / "hatch_metadata.json", 'r') as f:
+                package_metadata = json.load(f)
+            package_name = package_metadata.get("name", Path(package_path).name)
+            package_version = package_metadata.get("version", "0.0.0")
+        else:
+            # For remote packages, we need to download and extract metadata first
+            package_registry_data = find_package(self.registry_data, package_path_or_name)
+            if not package_registry_data:
+                self.logger.error(f"Package {package_path_or_name} not found in registry")
                 return False
 
-        # Install the main package and add it to environment data
+            package_url, package_version = get_package_release_url(package_registry_data, version_constraint)
+            if not package_url:
+                self.logger.error(f"Could not find release URL for package {package_path_or_name} with version constraint {version_constraint}")
+                return False
+            
+            # Download and extract package to get metadata (but don't install yet)
+            try:
+                package_metadata = self.package_loader.get_remote_package_metadata(
+                    package_url, package_path_or_name, package_version)
+            except PackageLoaderError as e:
+                self.logger.error(f"Failed to get metadata for package {package_path_or_name}: {e}")
+                return False
+
+        # Install Python dependencies for the main package (if not skipped)
+        # This happens BEFORE installing the main Hatch package to ensure dependencies are available
+        if not skip_python_deps:
+            try:
+                # Install Python dependencies using the metadata we just obtained
+                if not self.python_dependency_manager.install_python_dependencies(
+                    package_metadata, env_name, upgrade_python_deps, python_interpreter):
+                    self.logger.error(f"Failed to install Python dependencies for {package_path_or_name}")
+                    return False
+            except PythonDependencyError as e:
+                self.logger.error(f"Python dependency installation failed for {package_path_or_name}: {e}")
+                return False
+            except Exception as e:
+                self.logger.error(f"Unexpected error during Python dependency installation for {package_path_or_name}: {e}")
+                return False
+        else:
+            self.logger.info(f"Skipping Python dependency installation for {package_path_or_name} as requested")
+
+        # Now install the main package and add it to environment data
         try:
             if is_local_package:
                 # Install the local package
@@ -457,22 +513,9 @@ class HatchEnvironmentManager:
                     self.get_environment_path(env_name),
                     Path(package_path).name
                 )
-                # Read metadata to get name and version
-                with open(package_path / "hatch_metadata.json", 'r') as f:
-                    package_metadata = json.load(f)
-                package_name = package_metadata.get("name", Path(package_path).name)
-                package_version = package_metadata.get("version", "0.0.0")
                 self._add_package_to_env_data(env_name, package_name, package_version, "local", "local")
-            else:                # Remote package
-                package_registry_data = find_package(self.registry_data, package_path_or_name)
-                if not package_registry_data:
-                    self.logger.error(f"Package {package_path_or_name} not found in registry")
-                    return False
-
-                package_url, package_version = get_package_release_url(package_registry_data, version_constraint)
-                if not package_url:
-                    self.logger.error(f"Could not find release URL for package {package_path_or_name} with version constraint {version_constraint}")
-                    return False
+            else:
+                # Install the remote package (we already have the URL and version)
                 self.package_loader.install_remote_package(
                     package_url,
                     package_path_or_name,
