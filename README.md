@@ -1,146 +1,175 @@
 # Hatch
 
-Hatch is the official package manager for the Hatch! ecosystem. It provides powerful tools for managing MCP server packages, environments, and interacting with the Hatch registry. Its primary objective is to service **[Hatchling](https://github.com/CrackingShells/Hatchling)** (interactive CLI-based chat application integrating local Large Language Models with MCP for tool calling), but can of course be included in other projects.
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Version](https://img.shields.io/badge/version-0.4.0-green.svg)](https://github.com/CrackingShells/Hatch/releases)
 
-## Project Update Summary
+> **Note**: Hatch is in active development. Features and APIs may change between versions.
 
-**May 27, 2025**: Version 0.2.1 release of the Hatch package manager ecosystem! 🎉
+## What
 
-- **Integration with Hatchling** for MCP servers package management while chatting with LLMs
-- **Environment isolation system** for managing different sets of MCP server packages
-- **Registry integration** for discovering and installing packages
-- **Package template generation** for creating new Hatch MCP server packages
+Hatch is the official package manager for the Hatch! ecosystem, providing powerful tools for managing MCP (Model Context Protocol) server packages and isolated environments. It enables seamless integration of AI tools with Large Language Models through structured package management.
 
-## Features
+## Why
 
-- **Environment Management**: Create isolated environments for different sets of MCP servers
-- **Package Installation**: Install packages from the registry or local directories
-- **Dependency Resolution**: Automatically resolve and manage package dependencies
-- **Template Generation**: Create new Hatch MCP server package templates with a single command
-- **Package Validation**: Ensure packages conform to the Hatch schema standards
+The growing ecosystem of AI tools and MCP servers needs proper organization, dependency management, and isolation. Hatch solves this by providing:
 
-## Installation
+- **Environment isolation** for different sets of MCP server packages
+- **Dependency resolution** across multiple package types (Python, Hatch, system, Docker)
+- **Registry integration** for discovering and sharing packages
+- **Template generation** for rapid MCP server development
+- **Cross-platform support** with Python environment integration
+
+## How
+
+Get started in 5 minutes:
 
 ```bash
-# From source
+# Install from source
 git clone https://github.com/CrackingShells/Hatch.git
-cd Hatch
-pip install -e .
+cd Hatch && pip install -e .
+
+# Create your first environment
+hatch env create my-project --description "My AI tools"
+hatch env use my-project
+
+# Create and install a package
+hatch create my-tool --description "My awesome MCP tool"
+hatch package add ./my-tool
 ```
 
-## Usage
 
-Hatch provides both a command-line interface and a Python API for integration into other tools like Hatchling.
+**Need help?** Check our [documentation](docs/articles/table_of_contents.md) or [create an issue](https://github.com/CrackingShells/Hatch/issues).
 
-### Command Line Interface
+---
 
-The table below summarizes the available commands with their arguments:
+## Documentation
 
-| Command | Description | Arguments | Example |
-|---------|-------------|----------|---------|
-| `create` | Create a new package template | `name` - Package name<br>`--dir, -d` - Target directory<br>`--description, -D` - Package description | `hatch create my-package --description "My awesome MCP server package"` |
-| `validate` | Validate a package against schema | `package_dir` - Path to package directory | `hatch validate ./my-package` |
-| `env list` | List all available environments | None | `hatch env list` |
-| `env create` | Create a new environment | `name` - Environment name<br>`--description, -D` - Environment description | `hatch env create my-env --description "Environment for biology tools"` |
-| `env use` | Set the current active environment | `name` - Environment name | `hatch env use my-env` |
-| `env remove` | Remove an environment | `name` - Environment name | `hatch env remove my-env` |
-| `env current` | Show the current environment | None | `hatch env current` |
-| `package add` | Add a package to an environment | `package_path_or_name` - Path or name of package<br>`--env, -e` - Environment name<br>`--version, -v` - Package version | `hatch package add ./my-package --env my-env` <br> `hatch package add awesome-package --env my-env` |
-| `package list` | List packages in an environment | `--env, -e` - Environment name | `hatch package list --env my-env` |
-| `package remove` | Remove a package from an environment | `package_name` - Name of package to remove<br>`--env, -e` - Environment name | `hatch package remove awesome-package --env my-env` |
+📚 **[Complete Documentation](docs/articles/table_of_contents.md)**
 
-### Python API
+### Getting Started
+- [Quick Start Guide](docs/guides/quick_start.md) - Get up and running in 5 minutes
+- [Installation Guide](docs/guides/installation.md) - Detailed installation instructions
+- [Basic Concepts](docs/guides/basic_concepts.md) - Understanding environments and packages
 
-```python
-from hatch import HatchEnvironmentManager, create_package_template
+### User Guides
+- [Environment Managemen](docs/guides/environment_management.md) - Managing isolated environments
+- [Creating Packages](docs/guides/creating_packages.md) - Building MCP server packages
+- [CLI Reference](docs/guides/cli_reference.md) - Complete command documentation
 
-# Create a new package template
-create_package_template("my-package", target_dir="./packages", description="My awesome package")
+### Developer Resources
+- [Architecture Overview](docs/guides/architecture.md) - Understanding Hatch's design
+- [Contributing Guide](docs/guides/contributing.md) - How to contribute
+- [API Reference](docs/api/environment_manager.md) - Python API documentation
 
-# Manage environments
-env_manager = HatchEnvironmentManager()
-env_manager.create_environment("my-env", description="My testing environment")
-env_manager.add_package("my-package", env_name="my-env")
-packages = env_manager.list_packages("my-env")
-```
+---
 
-## Creating Packages
+## Key Features
 
-Hatch makes it easy to create new MCP server packages:
+- **🏗️ Environment Management**: Isolated workspaces for different MCP server collections
+- **📦 Package Management**: Install from registry, local directories, or create from templates
+- **🔗 Dependency Resolution**: Automatic resolution across Python, Hatch, system, and Docker dependencies
+- **🐍 Python Integration**: Conda/mamba support for Python environment isolation
+- **🎯 Template Generation**: Rapid MCP server package creation with best practices
+- **✅ Package Validation**: Schema compliance and quality assurance
+- **🔄 Registry Integration**: Discover and share packages through the Hatch registry
 
+## Quick Examples
+
+### Environment Management
 ```bash
-hatch create my-package --description "My MCP server package"
+# Create and use an environment
+hatch env create data-science --description "Data analysis tools"
+hatch env use data-science
+
+# List environments with status
+hatch env list
 ```
 
-This creates a template with the following structure:
+### Python Integration
+Powered by dependency to `miniforge3`
+```bash
+# By default python environments are added to Hatch environments
+hatch env create ml-project
 
+# You can control the python version 
+hatch env create ml-project --python-version 3.12
+
+# You can also opt-out of the python initialization with:
+hatch env create ml-project --no-python
 ```
-my-package/
-├── __init__.py
-├── server.py
-├── hatch_metadata.json
-└── README.md
+
+### Package Operations
+```bash
+# Create a new MCP server package
+hatch create my-tool --description "My awesome tool"
+
+# Install packages
+hatch package add awesome-tool         # From registry
+hatch package add ./my-tool            # From local directory
+hatch package add tool --version 1.2.0 # Specific version
+
+# Manage packages
+hatch package list
+hatch package remove old-tool
 ```
 
-Edit the `server.py` file to define your MCP tools:
+## Architecture
 
-```python
-import logging
-from hatchling import HatchMCP
+- **Environment Manager**: Central coordinator for environment and package operations
+- **Package Loader**: Handles downloading, caching, and local package installation
+- **Registry Retriever**: Manages access to the Hatch package registry with caching
+- **Dependency Orchestrator**: Coordinates complex dependency installation workflows
+- **Python Environment Manager**: Integrates with conda/mamba for Python isolation
+- **Installer System**: Pluggable architecture supporting multiple dependency types
 
-# Initialize MCP server with metadata
-hatch_mcp = HatchMCP("my-package",
-                 origin_citation="Your Name, 'Original Software', Year",
-                 mcp_citation="Your Name, 'MCP Implementation', Year")
-
-@hatch_mcp.tool()
-def my_tool(param1: str, param2: int) -> str:
-    """Description of what your tool does.
-    
-    Args:
-        param1 (str): First parameter description.
-        param2 (int): Second parameter description.
-        
-    Returns:
-        str: Description of the return value.
-    """
-    hatch_mcp.logger.info(f"Tool called with {param1} and {param2}")
-    return f"Processed {param1} with value {param2}"
-
-if __name__ == "__main__":
-    hatch_mcp.run()
-```
+For detailed architecture information, see the [Architecture Guide](docs/guides/architecture.md).
 
 ## Dependencies
 
-Hatch depends on the following Python packages:
+### To be installed manually
+- [miniforge](https://conda-forge.org/download/)
 
-- jsonschema 4.0.0 or higher
-- requests 2.25.0 or higher
-- packaging 20.0 or higher
-- [Hatch-Validator](https://github.com/CrackingShells/Hatch-Validator)
+### Installed automatically
+**Core Requirements:**
+- Python 3.12+
+- [jsonschema](https://pypi.org/project/jsonschema/) ≥4.0.0
+- [requests](https://pypi.org/project/requests/) ≥2.25.0
+- [packaging](https://pypi.org/project/packaging/) ≥20.0
+- [docker](https://pypi.org/project/docker/) ≥7.1.0
 
-## Development
+**External Dependencies:**
+- [Hatch-Validator](https://github.com/CrackingShells/Hatch-Validator) - Package validation and schema compliance
 
-### Project Structure
 
-- `hatch/`: Core package source code
-  - `cli_hatch.py`: CLI implementation
-  - `environment_manager.py`: Environment management functionality
-  - `package_loader.py`: Package loading and installation
-  - `registry_retriever.py`: Registry interaction
-  - `registry_explorer.py`: Package search and discovery
-  - `template_generator.py`: Package template generation
+## Ecosystem
 
-## Related Repositories
+Hatch is part of the comprehensive Hatch! ecosystem:
 
-Hatch is part of the larger Hatch! ecosystem which includes:
+| Component | Purpose | Repository |
+|-----------|---------|------------|
+| **[Hatchling](https://github.com/CrackingShells/Hatchling)** | Interactive CLI chat app with LLM + MCP integration | Primary user interface |
+| **[Hatch-Registry](https://github.com/CrackingShells/Hatch-Registry)** | Package registry and discovery service | Package distribution |
+| **[Hatch-Schemas](https://github.com/CrackingShells/Hatch-Schemas)** | JSON schemas for package metadata | Validation standards |
+| **[Hatch-Validator](https://github.com/CrackingShells/Hatch-Validator)** | Package validation and compliance tools | Quality assurance |
 
-- **[Hatchling](https://github.com/CrackingShells/Hatchling)**: Interactive CLI-based chat application integrating local Large Language Models with MCP for tool calling
-- **[Hatch-Schemas](https://github.com/CrackingShells/Hatch-Schemas)**: JSON schemas for package metadata and validation
-- **[Hatch-Validator](https://github.com/CrackingShells/Hatch-Validator)**: Validation tools for Hatch packages
-- **[Hatch-Registry](https://github.com/CrackingShells/Hatch-Registry)**: Package registry for Hatch packages
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](docs/guides/contributing.md) for:
+
+- Development setup instructions
+- Code style guidelines
+- Testing requirements
+- Pull request process
+
+**Quick contribution setup:**
+```bash
+git clone https://github.com/CrackingShells/Hatch.git
+cd Hatch
+pip install -e .
+python -m pytest tests/
+```
 
 ## License
 
-This project is licensed under the [GNU Affero General Public License v3](./LICENSE)
+This project is licensed under the [GNU Affero General Public License v3](./LICENSE) - see the LICENSE file for details.

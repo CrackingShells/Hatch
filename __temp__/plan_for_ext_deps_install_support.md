@@ -192,26 +192,27 @@ Design a robust, extensible installer interface and registry, and implement inst
 
 ## Overview
 **Objective:**  
-Modularize and modernize the installation orchestration, refactor environment management, enable safe parallelization, and implement robust progress reporting using the observer pattern.
+Modularize and modernize the installation orchestration, refactor environment management, enable safe parallelization, implement robust progress reporting using the observer pattern, and centralize user consent management.
 
 **Key constraints:**  
 - Maintain clear separation of concerns between environment management and installation orchestration.
 - Ensure thread/process safety for parallel installs.
 - Provide real-time, extensible progress reporting for UI/CLI.
+- Centralize user consent at the orchestrator level to provide consistent UX across all dependency types.
 
 ---
 
 ## Phase 3.1: Refactor Environment Management and Delegate Installation
 
 **Goal:**  
-Move all installation orchestration logic out of `environment_manager.py` into a dedicated orchestrator class.
+Move all installation orchestration logic out of `environment_manager.py` into a dedicated orchestrator class, and implement centralized user consent management.
 
 ### Actions
 
 1. **Action 3.1.1:** Identify and extract all installation-related logic from `environment_manager.py`.
    - **Preconditions:** Installer registry and concrete installers are implemented.
    - **Details:**  
-     - Move all code that resolves dependencies, selects installers, and performs installation to a new orchestrator class (e.g., `DependencyInstallerOrchestrator`).
+     - Move all code that resolves dependencies, checks that adding the pending_install package is not introducing a circular dependency in the environment, selects installers, and performs installation to a new orchestrator class (e.g., `DependencyInstallerOrchestrator`).
      - Keep only environment lifecycle and state management in `environment_manager.py`.
    - **Context**:
      - Files:  
@@ -229,25 +230,47 @@ Move all installation orchestration logic out of `environment_manager.py` into a
      - **Development tests:** Integration tests for environment creation, deletion, and package installation.
      - **Verification method:** Code review for separation of concerns.
 
-2. **Action 3.1.2:** Update all environment-related APIs to use the orchestrator for installation.
-   - **Preconditions:** Orchestrator class is implemented.
+2. **Action 3.1.2:** Implement centralized user consent management in the orchestrator.
+   - **Preconditions:** Orchestrator class is created and dependency aggregation is working.
+   - **Details:**  
+     - Aggregate all dependencies to be installed (across all types: hatch, python, system, docker).
+     - Present a comprehensive summary to the user showing all pending installations.
+     - Request a single yes/no confirmation before proceeding with any installations.
+     - Support `--yes` flag or config option for automation scenarios (CI/CD).
+     - Ensure all installers assume consent has been granted and do not prompt independently.
+   - **Context**:
+     - Files:  
+       - `hatch/installers/dependency_installation_orchestrator.py`
+       - CLI/UX layer files
+     - Symbols:  
+       - `DependencyInstallerOrchestrator.request_user_consent()`
+       - `DependencyInstallerOrchestrator.aggregate_install_plan()`
+   - **Postconditions:** All dependency installations are gated by a single, clear user consent prompt.
+   - **Validation:**
+     - **Development tests:** Mock user input scenarios (yes/no/automation).
+     - **Verification method:** No installer proceeds without orchestrator-level approval.
+
+3. **Action 3.1.3:** Update all environment-related APIs to use the orchestrator for installation.
+   - **Preconditions:** Orchestrator class is implemented with consent management.
    - **Details:**  
      - Refactor methods like `add_package_to_environment` to call the orchestrator.
      - Ensure backward compatibility for public APIs.
+     - Pass automation flags and configuration through to orchestrator.
    - **Context**:
      - Files:  
        - `hatch/environment_manager.py`  
-       - `hatch/installers/dependency_installation_orchestrator.py` (or similar)
+       - `hatch/installers/dependency_installation_orchestrator.py`
      - Symbols:  
        - `HatchEnvironmentManager.add_package_to_environment`  
        - `DependencyInstallerOrchestrator.install_dependencies`
-   - **Postconditions:** All install flows go through the orchestrator.
+   - **Postconditions:** All install flows go through the orchestrator with centralized consent.
    - **Validation:**
      - **Development tests:** Regression and integration tests for all environment operations.
 
 ### Phase Completion Criteria
 - `environment_manager.py` contains only environment lifecycle/state logic.
-- All installation is delegated to the orchestrator.
+- All installation is delegated to the orchestrator with centralized user consent.
+- No individual installer prompts for user consent.
 - All tests for environment and install flows pass.
 
 ---
