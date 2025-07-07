@@ -3,21 +3,19 @@
 This module provides the core functionality for managing isolated environments
 for Hatch packages.
 """
+import sys
 import json
 import logging
 import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any, Tuple
 
-from hatch_validator.package.package_service import PackageService
 from hatch_validator.registry.registry_service import RegistryService, RegistryError
-from hatch_validator.utils.hatch_dependency_graph import HatchDependencyGraphBuilder
-from hatch_validator.utils.dependency_graph import DependencyGraph
-from hatch_validator.utils.version_utils import VersionConstraintValidator, VersionConstraintError
-from hatch_validator.core.validation_context import ValidationContext
-from .registry_retriever import RegistryRetriever
-from .package_loader import HatchPackageLoader
-
+from hatch.registry_retriever import RegistryRetriever
+from hatch.package_loader import HatchPackageLoader
+from hatch.installers.dependency_installation_orchestrator import DependencyInstallerOrchestrator
+from hatch.installers.installation_context import InstallationContext
+from hatch.python_environment_manager import PythonEnvironmentManager, PythonEnvironmentError
 
 class HatchEnvironmentError(Exception):
     """Exception raised for environment-related errors."""
@@ -29,9 +27,9 @@ class HatchEnvironmentManager:
     
     This class handles:
     1. Creating and managing isolated environments
-    2. Adding packages to environments
-    3. Resolving and managing dependencies using a DependencyResolver
-    4. Installing packages with the HatchPackageLoader
+    2. Environment lifecycle and state management  
+    3. Delegating package installation to the DependencyInstallerOrchestrator
+    4. Managing environment metadata and persistence
     """
     def __init__(self, 
                  environments_dir: Optional[Path] = None,
@@ -70,8 +68,11 @@ class HatchEnvironmentManager:
         self._environments = self._load_environments()
         self._current_env_name = self._load_current_env_name()
         
+        # Initialize Python environment manager
+        self.python_env_manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
+        
         # Initialize dependencies
-        self.package_loader = HatchPackageLoader(cache_dir=cache_dir)        # Get dependency resolver from imported module
+        self.package_loader = HatchPackageLoader(cache_dir=cache_dir)
         self.retriever = RegistryRetriever(cache_ttl=cache_ttl,
                                       local_cache_dir=cache_dir,
                                       simulation_mode=simulation_mode,
@@ -80,7 +81,16 @@ class HatchEnvironmentManager:
         
         # Initialize services for dependency management
         self.registry_service = RegistryService(self.registry_data)
-        self.dependency_graph_builder = None  # Will be initialized when needed
+        
+        self.dependency_orchestrator = DependencyInstallerOrchestrator(
+            package_loader=self.package_loader,
+            registry_service=self.registry_service,
+            registry_data=self.registry_data
+        )
+        
+        # Configure Python executable for current environment
+        if self._current_env_name:
+            self._configure_python_executable(self._current_env_name)
 
     def _initialize_environments_file(self):
         """Create the initial environments file with default environment."""
@@ -89,7 +99,10 @@ class HatchEnvironmentManager:
                 "name": "default",
                 "description": "Default environment",
                 "created_at": datetime.datetime.now().isoformat(),
-                "packages": []
+                "packages": [],
+                "python_environment": False,  # Legacy field
+                "python_version": None,  # Legacy field
+                "python_env": None  # Enhanced metadata structure
             }
         }
         
@@ -175,11 +188,47 @@ class HatchEnvironmentManager:
             # Update cache
             self._current_env_name = env_name
             
+            # Configure Python executable for dependency installation
+            self._configure_python_executable(env_name)
+            
             self.logger.info(f"Current environment set to: {env_name}")
             return True
         except Exception as e:
             self.logger.error(f"Failed to set current environment: {e}")
             return False
+    
+    def _configure_python_executable(self, env_name: str) -> None:
+        """Configure the Python executable for the current environment.
+        
+        This method sets the Python executable in the dependency orchestrator's
+        InstallationContext so that python_installer.py uses the correct interpreter.
+        
+        Args:
+            env_name: Name of the environment to configure Python for
+        """
+        # Get Python executable from Python environment manager
+        python_executable = self.python_env_manager.get_python_executable(env_name)
+        
+        if python_executable:
+            # Configure the dependency orchestrator with the Python executable
+            python_env_vars = self.python_env_manager.get_environment_activation_info(env_name)
+            self.dependency_orchestrator.set_python_env_vars(python_env_vars)
+        else:
+            # Use system Python as fallback
+            system_python = sys.executable
+            python_env_vars = {"PYTHON": system_python}
+            self.dependency_orchestrator.set_python_env_vars(python_env_vars)
+    
+    def get_current_python_executable(self) -> Optional[str]:
+        """Get the Python executable for the current environment.
+        
+        Returns:
+            str: Path to Python executable, None if no current environment or no Python env
+        """
+        if not self._current_env_name:
+            return None
+        
+        return self.python_env_manager.get_python_executable(self._current_env_name)
     
     def list_environments(self) -> List[Dict]:
         """
@@ -196,13 +245,21 @@ class HatchEnvironmentManager:
         
         return result
     
-    def create_environment(self, name: str, description: str = "") -> bool:
+    def create_environment(self, name: str, description: str = "", 
+                          python_version: Optional[str] = None, 
+                          create_python_env: bool = True,
+                          no_hatch_mcp_server: bool = False,
+                          hatch_mcp_server_tag: Optional[str] = None) -> bool:
         """
         Create a new environment.
         
         Args:
             name: Name of the environment
             description: Description of the environment
+            python_version: Python version for the environment (e.g., "3.11", "3.12")
+            create_python_env: Whether to create a Python environment using conda/mamba
+            no_hatch_mcp_server: Whether to skip installing hatch_mcp_server in the environment
+            hatch_mcp_server_tag: Git tag/branch reference for hatch_mcp_server installation
             
         Returns:
             bool: True if created successfully, False if environment already exists
@@ -217,18 +274,167 @@ class HatchEnvironmentManager:
             self.logger.warning(f"Environment already exists: {name}")
             return False
         
-        # Create new environment
-        self._environments[name] = {
+        # Create Python environment if requested and conda/mamba is available
+        python_env_info = None
+        if create_python_env and self.python_env_manager.is_available():
+            try:
+                python_env_created = self.python_env_manager.create_python_environment(
+                    name, python_version=python_version
+                )
+                if python_env_created:
+                    self.logger.info(f"Created Python environment for {name}")
+                    
+                    # Get detailed Python environment information
+                    python_info = self.python_env_manager.get_environment_info(name)
+                    if python_info:
+                        python_env_info = {
+                            "enabled": True,
+                            "conda_env_name": python_info.get("conda_env_name"),
+                            "python_executable": python_info.get("python_executable"),
+                            "created_at": datetime.datetime.now().isoformat(),
+                            "version": python_info.get("python_version"),
+                            "requested_version": python_version,
+                            "manager": python_info.get("manager", "conda")
+                        }
+                    else:
+                        # Fallback if detailed info is not available
+                        python_env_info = {
+                            "enabled": True,
+                            "conda_env_name": f"hatch_{name}",
+                            "python_executable": None,
+                            "created_at": datetime.datetime.now().isoformat(),
+                            "version": None,
+                            "requested_version": python_version,
+                            "manager": "conda"
+                        }
+                else:
+                    self.logger.warning(f"Failed to create Python environment for {name}")
+            except PythonEnvironmentError as e:
+                self.logger.error(f"Failed to create Python environment: {e}")
+                # Continue with Hatch environment creation even if Python env creation fails
+        elif create_python_env:
+            self.logger.warning("Python environment creation requested but conda/mamba not available")
+        
+        # Create new Hatch environment with enhanced metadata
+        env_data = {
             "name": name,
             "description": description,
             "created_at": datetime.datetime.now().isoformat(),
-            "packages": []
+            "packages": [],
+            "python_environment": python_env_info is not None,  # Legacy field for backward compatibility
+            "python_version": python_version,  # Legacy field for backward compatibility
+            "python_env": python_env_info  # Enhanced metadata structure
         }
+        
+        self._environments[name] = env_data
         
         self._save_environments()
         self.logger.info(f"Created environment: {name}")
+        
+        # Install hatch_mcp_server by default unless opted out
+        if not no_hatch_mcp_server and python_env_info is not None:
+            try:
+                self._install_hatch_mcp_server(name, hatch_mcp_server_tag)
+            except Exception as e:
+                self.logger.warning(f"Failed to install hatch_mcp_server in environment {name}: {e}")
+                # Don't fail environment creation if MCP server installation fails
+        
         return True
     
+    def _install_hatch_mcp_server(self, env_name: str, tag: Optional[str] = None) -> None:
+        """Install hatch_mcp_server package in the specified environment.
+        
+        Args:
+            env_name (str): Name of the environment to install MCP server in.
+            tag (str, optional): Git tag/branch reference for the installation. Defaults to None (uses default branch).
+            
+        Raises:
+            HatchEnvironmentError: If installation fails.
+        """
+        try:
+            # Construct the package URL with optional tag
+            if tag:
+                package_git_url = f"git+https://github.com/CrackingShells/Hatch-MCP-Server.git@{tag}"
+            else:
+                package_git_url = "git+https://github.com/CrackingShells/Hatch-MCP-Server.git"
+            
+            # Create dependency structure following the schema
+            mcp_dep = {
+                "name": f"hatch_mcp_server @ {package_git_url}",
+                "version_constraint": "*",
+                "package_manager": "pip",
+                "type": "python",
+                "uri": package_git_url
+            }
+            
+            # Get environment path
+            env_path = self.get_environment_path(env_name)
+            
+            # Create installation context
+            context = InstallationContext(
+                environment_path=env_path,
+                environment_name=env_name,
+                temp_dir=env_path / ".tmp",
+                cache_dir=self.package_loader.cache_dir if hasattr(self.package_loader, 'cache_dir') else None,
+                parallel_enabled=False,
+                force_reinstall=False,
+                simulation_mode=False,
+                extra_config={
+                    "package_loader": self.package_loader,
+                    "registry_service": self.registry_service,
+                    "registry_data": self.registry_data
+                }
+            )
+            
+            # Configure Python environment variables if available
+            python_executable = self.python_env_manager.get_python_executable(env_name)
+            if python_executable:
+                python_env_vars = {"PYTHON": python_executable}
+                self.dependency_orchestrator.set_python_env_vars(python_env_vars)
+                context.set_config("python_env_vars", python_env_vars)
+            
+            # Install using the orchestrator
+            self.logger.info(f"Installing hatch_mcp_server in environment {env_name}")
+            self.logger.info(f"Using python executable: {python_executable}")
+            installed_package = self.dependency_orchestrator.install_single_dep(mcp_dep, context)
+            
+            self._save_environments()
+            self.logger.info(f"Successfully installed hatch_mcp_server in environment {env_name}")
+            
+        except Exception as e:
+            self.logger.error(f"Failed to install hatch_mcp_server: {e}")
+            raise HatchEnvironmentError(f"Failed to install hatch_mcp_server: {e}") from e
+
+    def install_mcp_server(self, env_name: Optional[str] = None, tag: Optional[str] = None) -> bool:
+        """Install hatch_mcp_server package in an existing environment.
+        
+        Args:
+            env_name (str, optional): Name of the environment. Uses current environment if None.
+            tag (str, optional): Git tag/branch reference for the installation. Defaults to None (uses default branch).
+            
+        Returns:
+            bool: True if installation succeeded, False otherwise.
+        """
+        if env_name is None:
+            env_name = self._current_env_name
+            
+        if not self.environment_exists(env_name):
+            self.logger.error(f"Environment does not exist: {env_name}")
+            return False
+            
+        # Check if environment has Python support
+        env_data = self._environments[env_name]
+        if not env_data.get("python_env"):
+            self.logger.error(f"Environment {env_name} does not have Python support")
+            return False
+            
+        try:
+            self._install_hatch_mcp_server(env_name, tag)
+            return True
+        except Exception as e:
+            self.logger.error(f"Failed to install MCP server in environment {env_name}: {e}")
+            return False
+
     def remove_environment(self, name: str) -> bool:
         """
         Remove an environment.
@@ -252,6 +458,15 @@ class HatchEnvironmentManager:
         # If removing current environment, switch to default
         if name == self._current_env_name:
             self.set_current_environment("default")
+        
+        # Remove Python environment if it exists
+        env_data = self._environments[name]
+        if env_data.get("python_environment", False):
+            try:
+                self.python_env_manager.remove_python_environment(name)
+                self.logger.info(f"Removed Python environment for {name}")
+            except PythonEnvironmentError as e:
+                self.logger.warning(f"Failed to remove Python environment: {e}")
         
         # Remove environment
         del self._environments[name]
@@ -277,19 +492,13 @@ class HatchEnvironmentManager:
                                   env_name: Optional[str] = None, 
                                   version_constraint: Optional[str] = None,
                                   force_download: bool = False,
-                                  refresh_registry: bool = False) -> bool:
+                                  refresh_registry: bool = False,
+                                  auto_approve: bool = False) -> bool:
         """Add a package to an environment.
         
-        This complex method handles the process of adding either a local or remote package 
-        to an environment, including dependency resolution and installation. It performs 
-        the following steps:
-        1. Determines if the package is local or remote
-        2. Gets package metadata
-        3. Builds a dependency graph for the package and returns ordered dependencies
-        4. Compare against existing packages in the environment and retrieve missing dependencies
-        5. Installs the package and its dependencies
+        This method delegates all installation orchestration to the DependencyInstallerOrchestrator
+        while maintaining responsibility for environment lifecycle and state management.
 
-        
         Args:
             package_path_or_name (str): Path to local package or name of remote package.
             env_name (str, optional): Environment to add to. Defaults to current environment.
@@ -298,120 +507,60 @@ class HatchEnvironmentManager:
                 bypass the package cache and download directly from the source. Defaults to False.
             refresh_registry (bool, optional): Force refresh of registry data. When True, 
                 fetch the latest registry data before resolving dependencies. Defaults to False.
+            auto_approve (bool, optional): Skip user consent prompt for automation scenarios. Defaults to False.
             
         Returns:
             bool: True if successful, False otherwise.
         """        
+        env_name = env_name or self._current_env_name
         
-        # 1. Determine if the package is local or remote
-        root_pkg_type = "remote"
-        root_pkg_location = ""
-        path = Path(package_path_or_name)
-        if path.exists() and path.is_dir():
-            root_pkg_type = "local"
-            root_pkg_location = str(path.resolve())
-            # 2. Get package metadata for local package
-            metadata_path = path / "hatch_metadata.json"
-            with open(metadata_path, 'r') as f:
-                package_metadata = json.load(f)
-
-        else:
-            # Assume it's a remote package
-            if not self.registry_service.package_exists(package_path_or_name):
-                self.logger.error(f"Package {package_path_or_name} does not exist in registry")
-                return False
-
-            # 2. Get package metadata for remote package
-            try:
-                compatible_version = self.registry_service.find_compatible_version(package_path_or_name, version_constraint)
-            except VersionConstraintError as e:
-                self.logger.error(f"Version constraint error: {e}")
-                return False
-            
-            root_pkg_location = self.registry_service.get_package_uri(package_path_or_name, compatible_version)
-            path = self.package_loader.download_package(root_pkg_location,
-                                                 package_path_or_name,
-                                                 compatible_version,
-                                                 force_download=force_download)
-            metadata_path = path / "hatch_metadata.json"
-            with open(metadata_path, 'r') as f:
-                package_metadata = json.load(f)
-            
-        # 3. Build dependency graph for the package
-        self.package_service = PackageService(package_metadata)
-        self.dependency_graph_builder = HatchDependencyGraphBuilder(self.package_service, self.registry_service)
-        context = ValidationContext(package_dir= path,
-                                    registry_data= self.registry_data,
-                                    allow_local_dependencies= True)
+        if not self.environment_exists(env_name):
+            self.logger.error(f"Environment {env_name} does not exist")
+            return False
+        
+        # Refresh registry if requested
+        if refresh_registry:
+            self.refresh_registry(force_refresh=True)
         
         try:
-            dependencies = self.dependency_graph_builder.get_install_ready_dependencies(context)
+            # Get currently installed packages for filtering
+            existing_packages = {}
+            for pkg in self._environments[env_name].get("packages", []):
+                existing_packages[pkg["name"]] = pkg["version"]
+            
+            # Delegate installation to orchestrator
+            success, installed_packages = self.dependency_orchestrator.install_dependencies(
+                package_path_or_name=package_path_or_name,
+                env_path=self.get_environment_path(env_name),
+                env_name=env_name,
+                existing_packages=existing_packages,
+                version_constraint=version_constraint,
+                force_download=force_download,
+                auto_approve=auto_approve
+            )
+            
+            if success:
+                # Update environment metadata with installed Hatch packages
+                for pkg_info in installed_packages:
+                    if pkg_info["type"] == "hatch":
+                        self._add_package_to_env_data(
+                            env_name=env_name,
+                            package_name=pkg_info["name"],
+                            package_version=pkg_info["version"],
+                            package_type=pkg_info["type"],
+                            source=pkg_info["source"]
+                        )
+                
+                self.logger.info(f"Successfully installed {len(installed_packages)} packages to environment {env_name}")
+                return True
+            else:
+                self.logger.info("Package installation was cancelled or failed")
+                return False
+                
         except Exception as e:
-            self.logger.error(f"Error building dependency graph: {e}")
+            self.logger.error(f"Failed to add package to environment: {e}")
             return False
 
-        # 4. Compare against existing packages in the environment and retrieve missing dependencies
-        env_name = env_name or self._current_env_name
-        missing_dependencies = self._filter_for_missing_dependencies(dependencies, env_name)
-
-        # 5. Install the package and its dependencies
-        self.package_loader.install_local_package(path, self.get_environment_path(env_name) / env_name, self.package_service.get_field("name"))
-        self._add_package_to_env_data(env_name, 
-                                     self.package_service.get_field("name"), 
-                                     self.package_service.get_field("version"), 
-                                     root_pkg_type,
-                                     root_pkg_location)
-        for dep in missing_dependencies:
-            location = missing_dependencies[dep].get("uri")
-            if location[:7] == "file://":
-                # Local dependency
-                dep_path = Path(location[7:])                
-                # Install local package
-                self.package_loader.install_local_package(dep_path, self.get_environment_path(env_name), dep["name"])
-                self._add_package_to_env_data(env_name, 
-                                             dep["name"], 
-                                             dep["resolved_version"], 
-                                             "local",
-                                             location[7:])
-            else:
-                # Remote dependency
-                self.package_loader.install_remote_package(location, dep["name"], dep["resolved_version"], self.get_environment_path(env_name))
-                self._add_package_to_env_data(env_name, 
-                                             dep["name"], 
-                                             dep["resolved_version"], 
-                                             "remote",
-                                             location)
-
-        return True
-
-    def _filter_for_missing_dependencies(self, dependencies: List[Dict], env_name: str) -> List[Dict]:
-        """Determine which dependencies are not installed in the environment."""
-        if not self.environment_exists(env_name):
-            raise HatchEnvironmentError(f"Environment {env_name} does not exist")
-        
-        # Get currently installed packages
-        installed_packages = {}
-        for pkg in self._environments[env_name].get("packages", []):
-            installed_packages[pkg["name"]] = pkg["version"]
-        
-        # Find missing dependencies
-        missing_deps = []
-        for dep in dependencies:
-            dep_name = dep.get("name")
-            if dep_name not in installed_packages:
-                missing_deps.append(dep)
-                continue
-            
-            # Check version constraints
-            constraint = dep.get("version_constraint")
-            if constraint:
-                is_compatible, _ = VersionConstraintValidator.is_version_compatible(
-                    installed_packages[dep_name], constraint)
-                if not is_compatible:
-                    missing_deps.append(dep)
-        
-        return missing_deps
-    
     def _add_package_to_env_data(self, env_name: str, package_name: str, 
                                package_version: str, package_type: str, 
                                source: str) -> None:
@@ -575,13 +724,7 @@ class HatchEnvironmentManager:
         
         This method forces a refresh of the registry data to ensure the environment manager
         has the most recent package information available. After refreshing, it updates the
-        associated validators and resolvers to use the new registry data.
-        
-        The refresh process follows these steps:
-        1. Fetch the latest registry data from the configured source
-        2. Update the internal registry_data cache
-        3. Recreate the package validator with the new data
-        4. Update the dependency resolver reference
+        orchestrator and associated services to use the new registry data.
         
         Args:
             force_refresh (bool, optional): Force refresh the registry even if cache is valid.
@@ -596,7 +739,272 @@ class HatchEnvironmentManager:
             self.registry_data = self.retriever.get_registry(force_refresh=force_refresh)
             # Update registry service with new registry data
             self.registry_service = RegistryService(self.registry_data)
+            
+            # Update orchestrator with new registry data
+            self.dependency_orchestrator.registry_service = self.registry_service
+            self.dependency_orchestrator.registry_data = self.registry_data
+            
             self.logger.info("Registry data refreshed successfully")
         except Exception as e:
             self.logger.error(f"Failed to refresh registry data: {e}")
             raise
+    
+    def is_python_environment_available(self) -> bool:
+        """Check if Python environment management is available.
+        
+        Returns:
+            bool: True if conda/mamba is available, False otherwise.
+        """
+        return self.python_env_manager.is_available()
+    
+    def get_python_environment_info(self, env_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Get comprehensive Python environment information for an environment.
+        
+        Args:
+            env_name (str, optional): Environment name. Defaults to current environment.
+            
+        Returns:
+            dict: Comprehensive Python environment info, None if no Python environment exists.
+            
+        Raises:
+            HatchEnvironmentError: If no environment name provided and no current environment set.
+        """
+        if env_name is None:
+            env_name = self.get_current_environment()
+            if not env_name:
+                raise HatchEnvironmentError("No environment name provided and no current environment set")
+        
+        if env_name not in self._environments:
+            return None
+            
+        env_data = self._environments[env_name]
+        
+        # Check if Python environment exists
+        if not env_data.get("python_environment", False):
+            return None
+        
+        # Start with enhanced metadata from Hatch environment
+        python_env_data = env_data.get("python_env", {})
+        
+        # Get real-time information from Python environment manager
+        live_info = self.python_env_manager.get_environment_info(env_name)
+        
+        # Combine metadata with live information
+        result = {
+            # Basic identification
+            "environment_name": env_name,
+            "enabled": python_env_data.get("enabled", True),
+            
+            # Conda/mamba information
+            "conda_env_name": python_env_data.get("conda_env_name") or (live_info.get("conda_env_name") if live_info else None),
+            "manager": python_env_data.get("manager", "conda"),
+            
+            # Python executable and version
+            "python_executable": live_info.get("python_executable") if live_info else python_env_data.get("python_executable"),
+            "python_version": live_info.get("python_version") if live_info else python_env_data.get("version"),
+            "requested_version": python_env_data.get("requested_version"),
+            
+            # Paths and timestamps
+            "environment_path": live_info.get("environment_path") if live_info else None,
+            "created_at": python_env_data.get("created_at"),
+            
+            # Package information
+            "package_count": live_info.get("package_count", 0) if live_info else 0,
+            "packages": live_info.get("packages", []) if live_info else [],
+            
+            # Status information
+            "exists": live_info is not None,
+            "accessible": live_info.get("python_executable") is not None if live_info else False
+        }
+        
+        return result
+    
+    def list_python_environments(self) -> List[str]:
+        """List all environments that have Python environments.
+        
+        Returns:
+            list: List of environment names with Python environments.
+        """
+        return self.python_env_manager.list_environments()
+    
+    def create_python_environment_only(self, env_name: Optional[str] = None, python_version: Optional[str] = None, 
+                                      force: bool = False) -> bool:
+        """Create only a Python environment without creating a Hatch environment.
+        
+        Useful for adding Python environments to existing Hatch environments.
+        
+        Args:
+            env_name (str, optional): Environment name. Defaults to current environment.
+            python_version (str, optional): Python version (e.g., "3.11"). Defaults to None.
+            force (bool, optional): Whether to recreate if exists. Defaults to False.
+            
+        Returns:
+            bool: True if successful, False otherwise.
+            
+        Raises:
+            HatchEnvironmentError: If no environment name provided and no current environment set.
+        """
+        if env_name is None:
+            env_name = self.get_current_environment()
+            if not env_name:
+                raise HatchEnvironmentError("No environment name provided and no current environment set")
+        
+        if env_name not in self._environments:
+            self.logger.error(f"Hatch environment {env_name} must exist first")
+            return False
+        
+        try:
+            success = self.python_env_manager.create_python_environment(
+                env_name, python_version=python_version, force=force
+            )
+            
+            if success:
+                # Get detailed Python environment information
+                python_info = self.python_env_manager.get_environment_info(env_name)
+                if python_info:
+                    python_env_info = {
+                        "enabled": True,
+                        "conda_env_name": python_info.get("conda_env_name"),
+                        "python_executable": python_info.get("python_executable"),
+                        "created_at": datetime.datetime.now().isoformat(),
+                        "version": python_info.get("python_version"),
+                        "requested_version": python_version,
+                        "manager": python_info.get("manager", "conda")
+                    }
+                else:
+                    # Fallback if detailed info is not available
+                    python_env_info = {
+                        "enabled": True,
+                        "conda_env_name": f"hatch-{env_name}",
+                        "python_executable": None,
+                        "created_at": datetime.datetime.now().isoformat(),
+                        "version": None,
+                        "requested_version": python_version,
+                        "manager": "conda"
+                    }
+                
+                # Update environment metadata with enhanced structure
+                self._environments[env_name]["python_environment"] = True  # Legacy field
+                self._environments[env_name]["python_env"] = python_env_info  # Enhanced structure
+                if python_version:
+                    self._environments[env_name]["python_version"] = python_version  # Legacy field
+                self._save_environments()
+                
+                # Reconfigure Python executable if this is the current environment
+                if env_name == self._current_env_name:
+                    self._configure_python_executable(env_name)
+            
+            return success
+        except PythonEnvironmentError as e:
+            self.logger.error(f"Failed to create Python environment: {e}")
+            return False
+    
+    def remove_python_environment_only(self, env_name: Optional[str] = None) -> bool:
+        """Remove only the Python environment, keeping the Hatch environment.
+        
+        Args:
+            env_name (str, optional): Environment name. Defaults to current environment.
+            
+        Returns:
+            bool: True if successful, False otherwise.
+            
+        Raises:
+            HatchEnvironmentError: If no environment name provided and no current environment set.
+        """
+        if env_name is None:
+            env_name = self.get_current_environment()
+            if not env_name:
+                raise HatchEnvironmentError("No environment name provided and no current environment set")
+        
+        if env_name not in self._environments:
+            self.logger.warning(f"Hatch environment {env_name} does not exist")
+            return False
+        
+        try:
+            success = self.python_env_manager.remove_python_environment(env_name)
+            
+            if success:
+                # Update environment metadata - remove Python environment info
+                self._environments[env_name]["python_environment"] = False  # Legacy field
+                self._environments[env_name]["python_env"] = None  # Enhanced structure
+                self._environments[env_name].pop("python_version", None)  # Legacy field cleanup
+                self._save_environments()
+                
+                # Reconfigure Python executable if this is the current environment
+                if env_name == self._current_env_name:
+                    self._configure_python_executable(env_name)
+            
+            return success
+        except PythonEnvironmentError as e:
+            self.logger.error(f"Failed to remove Python environment: {e}")
+            return False
+    
+    def get_python_environment_diagnostics(self, env_name: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Get detailed diagnostics for a Python environment.
+        
+        Args:
+            env_name (str, optional): Environment name. Defaults to current environment.
+            
+        Returns:
+            dict: Diagnostics information or None if environment doesn't exist.
+            
+        Raises:
+            HatchEnvironmentError: If no environment name provided and no current environment set.
+        """
+        if env_name is None:
+            env_name = self.get_current_environment()
+            if not env_name:
+                raise HatchEnvironmentError("No environment name provided and no current environment set")
+        
+        if env_name not in self._environments:
+            return None
+            
+        try:
+            return self.python_env_manager.get_environment_diagnostics(env_name)
+        except PythonEnvironmentError as e:
+            self.logger.error(f"Failed to get diagnostics for {env_name}: {e}")
+            return None
+    
+    def get_python_manager_diagnostics(self) -> Dict[str, Any]:
+        """Get general diagnostics for the Python environment manager.
+        
+        Returns:
+            dict: General diagnostics information.
+        """
+        try:
+            return self.python_env_manager.get_manager_diagnostics()
+        except Exception as e:
+            self.logger.error(f"Failed to get manager diagnostics: {e}")
+            return {"error": str(e)}
+    
+    def launch_python_shell(self, env_name: Optional[str] = None, cmd: Optional[str] = None) -> bool:
+        """Launch a Python shell or execute a command in the environment.
+        
+        Args:
+            env_name (str, optional): Environment name. Defaults to current environment.
+            cmd (str, optional): Command to execute. If None, launches interactive shell. Defaults to None.
+            
+        Returns:
+            bool: True if successful, False otherwise.
+            
+        Raises:
+            HatchEnvironmentError: If no environment name provided and no current environment set.
+        """
+        if env_name is None:
+            env_name = self.get_current_environment()
+            if not env_name:
+                raise HatchEnvironmentError("No environment name provided and no current environment set")
+        
+        if env_name not in self._environments:
+            self.logger.error(f"Environment {env_name} does not exist")
+            return False
+            
+        if not self._environments[env_name].get("python_environment", False):
+            self.logger.error(f"No Python environment configured for {env_name}")
+            return False
+            
+        try:
+            return self.python_env_manager.launch_shell(env_name, cmd)
+        except PythonEnvironmentError as e:
+            self.logger.error(f"Failed to launch shell for {env_name}: {e}")
+            return False

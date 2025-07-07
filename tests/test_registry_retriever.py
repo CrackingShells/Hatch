@@ -99,12 +99,19 @@ class RegistryRetrieverTests(unittest.TestCase):
         # Verify the cache file was created
         self.assertTrue(retriever.registry_cache_path.exists(), "Cache file was not created")
         
-        # Modify the cache timestamp to test cache invalidation
-        registry_cache_path = retriever.registry_cache_path
-        yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
-        yesterday_timestamp = yesterday.timestamp()
-        os.utime(registry_cache_path, (yesterday_timestamp, yesterday_timestamp))
-          # Check if cache is outdated - should be since we modified the timestamp
+        # Modify the persistent timestamp to test cache invalidation
+        # We need to manipulate the persistent timestamp file, not just the cache file mtime
+        timestamp_file = retriever._last_fetch_time_path
+        if timestamp_file.exists():
+            # Write an old timestamp to the persistent timestamp file
+            yesterday = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=1)
+            old_timestamp_str = yesterday.isoformat().replace('+00:00', 'Z')
+            with open(timestamp_file, 'w', encoding='utf-8') as f:
+                f.write(old_timestamp_str)
+            # Reload the timestamp from file
+            retriever._load_last_fetch_time()
+        
+        # Check if cache is outdated - should be since we modified the persistent timestamp
         self.assertTrue(retriever.is_cache_outdated())
         
         # Force refresh and verify new data is loaded (should fetch from online)
@@ -133,7 +140,8 @@ class RegistryRetrieverTests(unittest.TestCase):
         # Get registry again with force refresh (should fetch from online)
         registry2 = retriever.get_registry(force_refresh=True)
         self.assertIn("repositories", registry2)
-          # Test error handling with an existing cache
+        
+        # Test error handling with an existing cache
         # First ensure we have a valid cache file
         self.assertTrue(retriever.registry_cache_path.exists(), "Cache file should exist after previous calls")
         
@@ -154,7 +162,86 @@ class RegistryRetrieverTests(unittest.TestCase):
             bad_retriever.get_registry(force_refresh=True)
         except Exception:
             pass  # Expected to fail, that's OK
-
+    
+    def test_persistent_timestamp_across_cli_invocations(self):
+        """Test that persistent timestamp works across separate CLI invocations."""
+        # First "CLI invocation" - create retriever and fetch registry
+        retriever1 = RegistryRetriever(
+            cache_ttl=300,  # 5 minutes TTL
+            local_cache_dir=self.cache_dir,
+            simulation_mode=False
+        )
+        
+        # Get registry (should fetch from online)
+        registry1 = retriever1.get_registry()
+        self.assertIsNotNone(registry1)
+        
+        # Verify timestamp file was created
+        self.assertTrue(retriever1._last_fetch_time_path.exists(), "Timestamp file should be created")
+        
+        # Get the timestamp from the first fetch
+        first_fetch_time = retriever1._last_fetch_time
+        self.assertGreater(first_fetch_time, 0, "First fetch time should be set")
+        
+        # Second "CLI invocation" - create new retriever with same cache directory
+        retriever2 = RegistryRetriever(
+            cache_ttl=300,  # 5 minutes TTL  
+            local_cache_dir=self.cache_dir,
+            simulation_mode=False
+        )
+        
+        # Verify the timestamp was loaded from disk
+        self.assertGreater(retriever2._last_fetch_time, 0, "Timestamp should be loaded from disk")
+        
+        # Get registry (should use cache since timestamp is recent)
+        registry2 = retriever2.get_registry()
+        self.assertIsNotNone(registry2)
+        
+        # Verify cache was used and not a new fetch (timestamp should be same or very close)
+        time_diff = abs(retriever2._last_fetch_time - first_fetch_time)
+        self.assertLess(time_diff, 2.0, "Should use cached registry, not fetch new one")
+    
+    def test_persistent_timestamp_edge_cases(self):
+        """Test edge cases for persistent timestamp handling."""
+        retriever = RegistryRetriever(
+            cache_ttl=300,  # 5 minutes TTL
+            local_cache_dir=self.cache_dir,
+            simulation_mode=False
+        )
+        
+        # Test 1: Corrupt timestamp file
+        timestamp_file = retriever._last_fetch_time_path
+        timestamp_file.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Write corrupt data to timestamp file
+        with open(timestamp_file, 'w', encoding='utf-8') as f:
+            f.write("invalid_timestamp_data")
+        
+        # Should handle gracefully and treat as no timestamp
+        retriever._load_last_fetch_time()
+        self.assertEqual(retriever._last_fetch_time, 0, "Corrupt timestamp should be treated as no timestamp")
+        
+        # Test 2: Future timestamp (clock skew scenario)
+        future_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
+        future_timestamp_str = future_time.isoformat().replace('+00:00', 'Z')
+        with open(timestamp_file, 'w', encoding='utf-8') as f:
+            f.write(future_timestamp_str)
+        
+        retriever._load_last_fetch_time()
+        # Should handle future timestamps gracefully (treat as valid but check TTL normally)
+        self.assertGreater(retriever._last_fetch_time, 0, "Future timestamp should be loaded")
+        
+        # Test 3: Empty timestamp file
+        with open(timestamp_file, 'w', encoding='utf-8') as f:
+            f.write("")
+        
+        retriever._load_last_fetch_time()
+        self.assertEqual(retriever._last_fetch_time, 0, "Empty timestamp file should be treated as no timestamp")
+        
+        # Test 4: Missing timestamp file
+        timestamp_file.unlink()
+        retriever._load_last_fetch_time()
+        self.assertEqual(retriever._last_fetch_time, 0, "Missing timestamp file should be treated as no timestamp")
 
 if __name__ == "__main__":
     unittest.main()

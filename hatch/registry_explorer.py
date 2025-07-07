@@ -3,7 +3,6 @@
 This module provides functions to search and extract information from
 a Hatch registry data structure (see hatch_all_pkg_metadata_schema.json).
 """
-import re
 from typing import Any, Dict, List, Optional, Tuple
 from packaging.version import Version, InvalidVersion
 from packaging.specifiers import SpecifierSet, InvalidSpecifier

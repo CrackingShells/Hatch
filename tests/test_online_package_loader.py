@@ -32,6 +32,8 @@ class OnlinePackageLoaderTests(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.cache_dir = Path(self.temp_dir) / "cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.env_dir = Path(self.temp_dir) / "envs"
+        self.env_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize registry retriever in online mode
         self.retriever = RegistryRetriever(
@@ -47,14 +49,11 @@ class OnlinePackageLoaderTests(unittest.TestCase):
         
         # Initialize environment manager
         self.env_manager = HatchEnvironmentManager(
+            environments_dir=self.env_dir,
             cache_dir=self.cache_dir,
             simulation_mode=False
         )
-        
-        # Target directory for installation tests
-        self.target_dir = Path(self.temp_dir) / "target"
-        self.target_dir.mkdir(parents=True)
-        
+
     def tearDown(self):
         """Clean up test environment after each test."""
         # Remove temporary directory
@@ -67,7 +66,11 @@ class OnlinePackageLoaderTests(unittest.TestCase):
         version = "==1.0.1"
         
         # Add package to environment using the environment manager
-        result = self.env_manager.add_package_to_environment(package_name, version_constraint=version)
+        result = self.env_manager.add_package_to_environment(
+            package_name,
+            version_constraint=version,
+            auto_approve=True  # Automatically approve installation in tests
+            )
         self.assertTrue(result, f"Failed to add package {package_name}@{version} to environment")
         
         # Verify package is in environment
@@ -97,15 +100,16 @@ class OnlinePackageLoaderTests(unittest.TestCase):
     #                 logger.info(f"Successfully downloaded {package_name}@{version}")
     #         except Exception as e:
     #             logger.warning(f"Couldn't download {package_name}@{version}: {e}")
+    
     def test_install_and_caching(self):
         """Test installing and caching a package."""
         package_name = "base_pkg_1"
-        version = "==1.0.1"
+        version = "1.0.1"
+        version_constraint = f"=={version}"
         
         # Find package in registry
         package_data = find_package(self.registry_data, package_name)
-        if not package_data:
-            self.skipTest(f"Package {package_name} not found in registry")
+        self.assertIsNotNone(package_data, f"Package {package_name} not found in registry")
         
         # Create a specific test environment for this test
         test_env_name = "test_install_env"
@@ -116,24 +120,25 @@ class OnlinePackageLoaderTests(unittest.TestCase):
             result = self.env_manager.add_package_to_environment(
                 package_name, 
                 env_name=test_env_name,
-                version_constraint=version
+                version_constraint=version_constraint,
+                auto_approve=True  # Automatically approve installation in tests
             )
             
-            self.assertTrue(result, f"Failed to add package {package_name}@{version} to environment")
+            self.assertTrue(result, f"Failed to add package {package_name}@{version_constraint} to environment")
             
             # Get environment path
             env_path = self.env_manager.get_environment_path(test_env_name)
             installed_path = env_path / package_name
             
             # Verify installation
-            self.assertTrue(installed_path.exists(), "Package not installed to environment directory")
-            self.assertTrue((installed_path / "hatch_metadata.json").exists(), "Installation missing metadata file")
-            
+            self.assertTrue(installed_path.exists(), f"Package not installed to environment directory: {installed_path}")
+            self.assertTrue((installed_path / "hatch_metadata.json").exists(), f"Installation missing metadata file: {installed_path / 'hatch_metadata.json'}")
+
             # Verify the cache contains the package
             cache_path = self.cache_dir / "packages" / f"{package_name}-{version}"
-            self.assertTrue(cache_path.exists(), "Package not cached during installation")
-            self.assertTrue((cache_path / "hatch_metadata.json").exists(), "Cache missing metadata file")
-            
+            self.assertTrue(cache_path.exists(), f"Package not cached during installation: {cache_path}")
+            self.assertTrue((cache_path / "hatch_metadata.json").exists(), f"Cache missing metadata file: {cache_path / 'hatch_metadata.json'}")
+
             logger.info(f"Successfully installed and cached package: {package_name}@{version}")
         except Exception as e:
             self.fail(f"Package installation raised exception: {e}")
@@ -141,17 +146,16 @@ class OnlinePackageLoaderTests(unittest.TestCase):
     def test_cache_reuse(self):
         """Test that the cache is reused for multiple installs."""
         package_name = "base_pkg_1"
-        version = "==1.0.1"
-        
+        version = "1.0.1"
+        version_constraint = f"=={version}"
+
         # Find package in registry
         package_data = find_package(self.registry_data, package_name)
-        if not package_data:
-            self.skipTest(f"Package {package_name} not found in registry")
+        self.assertIsNotNone(package_data, f"Package {package_name} not found in registry")
             
         # Get package URL
-        package_url = get_package_release_url(package_data, version)
-        if not package_url:
-            self.skipTest(f"No download URL found for {package_name}@{version}")
+        package_url = get_package_release_url(package_data, version_constraint)
+        self.assertIsNotNone(package_url, f"No download URL found for {package_name}@{version_constraint}")
         
         # Create two test environments
         first_env = "test_cache_env1"
@@ -164,27 +168,29 @@ class OnlinePackageLoaderTests(unittest.TestCase):
         result_first = self.env_manager.add_package_to_environment(
             package_name, 
             env_name=first_env,
-            version_constraint=version
+            version_constraint=version_constraint,
+            auto_approve=True  # Automatically approve installation in tests
         )
         first_install_time = time.time() - start_time_first
-        self.assertTrue(result_first, f"Failed to add package {package_name}@{version} to first environment")
+        logger.info(f"First installation took {first_install_time:.2f} seconds")
+        self.assertTrue(result_first, f"Failed to add package {package_name}@{version_constraint} to first environment")
+        first_env_path = self.env_manager.get_environment_path(first_env)
+        self.assertTrue((first_env_path / package_name).exists(), f"Package not found at the expected path: {first_env_path / package_name}")
         
         # Second install - should use cache
         start_time = time.time()
         result_second = self.env_manager.add_package_to_environment(
             package_name, 
             env_name=second_env,
-            version_constraint=version
+            version_constraint=version_constraint,
+            auto_approve=True  # Automatically approve installation in tests
         )
         install_time = time.time() - start_time
         
         logger.info(f"Second installation took {install_time:.2f} seconds (should be faster if cache used)")
-          # Both installations should succeed
-        first_env_path = self.env_manager.get_environment_path(first_env)
+
         second_env_path = self.env_manager.get_environment_path(second_env)
-        
-        self.assertTrue((first_env_path / package_name).exists(), "First installation failed")
-        self.assertTrue((second_env_path / package_name).exists(), "Second installation failed")
+        self.assertTrue((second_env_path / package_name).exists(), f"Package not found at the expected path: {second_env_path / package_name}")
 
 
 if __name__ == "__main__":

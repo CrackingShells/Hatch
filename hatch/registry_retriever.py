@@ -18,7 +18,8 @@ from urllib.parse import urlparse
 class RegistryRetriever:
     """Manages the retrieval and caching of the Hatch package registry.
     
-    Provides caching at file system level and in-memory level.
+    Provides caching at file system level and in-memory level with persistent
+    timestamp tracking for cache freshness across CLI invocations.
     Works in both local simulation and online GitHub environments.
     Handles registry timing issues with fallback to previous day's registry.
     """
@@ -39,6 +40,8 @@ class RegistryRetriever:
             local_registry_cache_path (Path, optional): Path to local registry file. Defaults to None.
         """
         self.logger = logging.getLogger('hatch.registry_retriever')
+        self.logger.setLevel(logging.INFO)
+
         self.cache_ttl = cache_ttl
         self.simulation_mode = simulation_mode
         self.is_delayed = False  # Flag to indicate if using a previous day's registry
@@ -70,6 +73,54 @@ class RegistryRetriever:
         # In-memory cache
         self._registry_cache = None
         self._last_fetch_time = 0
+        
+        # Set up persistent timestamp file path
+        self._last_fetch_time_path = self.cache_dir / "registry" / ".last_fetch_time"
+        
+        # Load persistent timestamp on initialization
+        self._load_last_fetch_time()
+    
+    def _load_last_fetch_time(self) -> None:
+        """Load the last fetch timestamp from persistent storage.
+        
+        Reads the timestamp from the .last_fetch_time file and sets
+        self._last_fetch_time accordingly. If the file is missing or
+        corrupt, treats the cache as outdated.
+        """
+        try:
+            if self._last_fetch_time_path.exists():
+                with open(self._last_fetch_time_path, 'r', encoding='utf-8') as f:
+                    timestamp_str = f.read().strip()
+                    # Parse ISO8601 timestamp
+                    timestamp_dt = datetime.datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                    self._last_fetch_time = timestamp_dt.timestamp()
+                    self.logger.debug(f"Loaded last fetch time from disk: {timestamp_str}")
+            else:
+                self.logger.debug("No persistent timestamp file found, treating cache as outdated")
+        except Exception as e:
+            self.logger.warning(f"Failed to read persistent timestamp: {e}, treating cache as outdated")
+            self._last_fetch_time = 0
+    
+    def _save_last_fetch_time(self) -> None:
+        """Save the current fetch timestamp to persistent storage.
+        
+        Writes the current UTC timestamp to the .last_fetch_time file
+        in ISO8601 format for persistence across CLI invocations.
+        """
+        try:
+            # Ensure directory exists
+            self._last_fetch_time_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Write current UTC time in ISO8601 format
+            current_time = datetime.datetime.now(datetime.timezone.utc)
+            timestamp_str = current_time.isoformat().replace('+00:00', 'Z')
+            
+            with open(self._last_fetch_time_path, 'w', encoding='utf-8') as f:
+                f.write(timestamp_str)
+            
+            self.logger.debug(f"Saved last fetch time to disk: {timestamp_str}")
+        except Exception as e:
+            self.logger.warning(f"Failed to save persistent timestamp: {e}")
     
     def _read_local_cache(self) -> Dict[str, Any]:
         """Read the registry from local cache file.
@@ -207,7 +258,6 @@ class RegistryRetriever:
             try:
                 self.logger.debug("Using local cache file")
                 registry_data = self._read_local_cache()
-                
                 # Update in-memory cache
                 self._registry_cache = registry_data
                 self._last_fetch_time = current_time
@@ -235,6 +285,9 @@ class RegistryRetriever:
             self._registry_cache = registry_data
             self._last_fetch_time = current_time
             
+            # Update persistent timestamp
+            self._save_last_fetch_time()
+            
             return registry_data
             
         except Exception as e:
@@ -244,8 +297,9 @@ class RegistryRetriever:
     def is_cache_outdated(self) -> bool:
         """Check if the cached registry is outdated.
         
-        Determines if the cached registry is not from today's UTC date
-        or if the cache TTL has expired.
+        Determines if the cached registry is outdated based on the persistent
+        timestamp and cache TTL. Falls back to file mtime for backward compatibility
+        if no persistent timestamp is available.
         
         Returns:
             bool: True if cache is outdated, False if cache is current.
@@ -254,21 +308,22 @@ class RegistryRetriever:
             return True  # If file doesn't exist, consider it outdated
 
         now = datetime.datetime.now(datetime.timezone.utc)
-        today_utc = now.date()
-        cache_stat = self.registry_cache_path.stat()
-        cache_mtime_dt = datetime.datetime.fromtimestamp(
-            cache_stat.st_mtime, tz=datetime.timezone.utc
-        )
-        cache_mtime_date = cache_mtime_dt.date()
+        
+        # Use persistent timestamp if available (primary method)
+        if self._last_fetch_time > 0:
+            time_since_fetch = now.timestamp() - self._last_fetch_time
+            if time_since_fetch > self.cache_ttl:
+                return True
+            
+            # Also check if cache is not from today (existing logic)
+            last_fetch_dt = datetime.datetime.fromtimestamp(
+                self._last_fetch_time, tz=datetime.timezone.utc
+            )
+            if last_fetch_dt.date() < now.date():
+                return True
 
-        # Outdated if not from today
-        if cache_mtime_date < today_utc:
-            return True
-
-        # Outdated if TTL expired
-        if (now - cache_mtime_dt).total_seconds() > self.cache_ttl:
-            return True
-
+            return False
+        
         return False
 
 # Example usage
