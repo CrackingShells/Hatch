@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Any, Tuple
 
 from hatch_validator.registry.registry_service import RegistryService, RegistryError
 from hatch.registry_retriever import RegistryRetriever
+from hatch_validator.package.package_service import PackageService
 from hatch.package_loader import HatchPackageLoader
 from hatch.installers.dependency_installation_orchestrator import DependencyInstallerOrchestrator
 from hatch.installers.installation_context import InstallationContext
@@ -719,8 +720,10 @@ class HatchEnvironmentManager:
             with open(self.environments_dir / env_name / pkg["name"] / "hatch_metadata.json", 'r') as f:
                 hatch_metadata = json.load(f)
 
+            package_service = PackageService(hatch_metadata)
+
             # retrieve entry points
-            ep += [(self.environments_dir / env_name / pkg["name"] / hatch_metadata.get("entry_point")).resolve()]
+            ep += [(self.environments_dir / env_name / pkg["name"] / package_service.get_hatch_mcp_entry_point()).resolve()]
 
         return ep
 
