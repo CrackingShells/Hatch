@@ -1,0 +1,67 @@
+site_name: Hatch
+site_description: Hatch is the package manager for the Hatch! ecosystem.
+site_url: https://crackingshells.github.io/Hatch/
+repo_url: https://github.com/CrackingShells/Hatch
+repo_name: CrackingShells/Hatch
+docs_dir: docs
+site_logo: resources/images/Logo/hatch_wide_light_bg_transparent.png
+
+theme:
+  name: readthedocs
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - tables
+  - fenced_code
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Users:
+      - Getting Started: articles/users/GettingStarted.md
+      - CLI Reference: articles/users/CLIReference.md
+      - Security & Trust: articles/users/SecurityAndTrust.md
+      - Troubleshooting:
+          - Report Issues: articles/users/Troubleshooting/ReportIssues.md
+      - Tutorials:
+          - Getting Started:
+              - 01 Installation: articles/users/tutorials/01-getting-started/01-installation.md
+              - 02 Create Env: articles/users/tutorials/01-getting-started/02-create-env.md
+              - 03 Install Package: articles/users/tutorials/01-getting-started/03-install-package.md
+              - 04 Checkpoint: articles/users/tutorials/01-getting-started/04-checkpoint.md
+          - Environments:
+              - 01 Manage Envs: articles/users/tutorials/02-environments/01-manage-envs.md
+              - 02 Python Env: articles/users/tutorials/02-environments/02-python-env.md
+              - 03 Checkpoint: articles/users/tutorials/02-environments/03-checkpoint.md
+          - Author Package:
+              - 01 Generate Template: articles/users/tutorials/03-author-package/01-generate-template.md
+              - 02 Implement Functionality: articles/users/tutorials/03-author-package/02-implement-functionality.md
+              - 03 Edit Metadata: articles/users/tutorials/03-author-package/03-edit-metadata.md
+              - 04 Validate and Install: articles/users/tutorials/03-author-package/04-validate-and-install.md
+              - 05 Checkpoint: articles/users/tutorials/03-author-package/05-checkpoint.md
+  - Developers:
+      - Overview: articles/devs/index.md
+      - Architecture:
+          - System Overview: articles/devs/architecture/system_overview.md
+          - Component Architecture: articles/devs/architecture/component_architecture.md
+      - Contribution Guides:
+          - How to Contribute: articles/devs/contribution_guides/how_to_contribute.md
+          - Release Policy: articles/devs/contribution_guides/release_policy.md
+      - Development Processes:
+          - Developer Onboarding: articles/devs/development_processes/developer_onboarding.md
+          - Testing Standards: articles/devs/development_processes/testing_standards.md
+      - Implementation Guides:
+          - Overview: articles/devs/implementation_guides/index.md
+          - Adding Installers: articles/devs/implementation_guides/adding_installers.md
+          - Installation Orchestration: articles/devs/implementation_guides/installation_orchestration.md
+          - Package Loader Extensions: articles/devs/implementation_guides/package_loader_extensions.md
+          - Registry Integration: articles/devs/implementation_guides/registry_integration.md
+  - Appendices:
+      - Overview: articles/appendices/index.md
+      - Glossary: articles/appendices/glossary.md
+      - Limits and Known Issues: articles/appendices/LimitsAndKnownIssues.md
+      - State and Data Models: articles/appendices/state_and_data_models.md
