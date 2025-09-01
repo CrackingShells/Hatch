@@ -4,13 +4,25 @@ site_url: https://crackingshells.github.io/Hatch/
 repo_url: https://github.com/CrackingShells/Hatch
 repo_name: CrackingShells/Hatch
 docs_dir: docs
-site_logo: resources/images/Logo/hatch_wide_light_bg_transparent.png
 
 theme:
   name: readthedocs
 
 plugins:
   - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_object_full_path: false
+            show_category_heading: true
+            show_labels: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
 
 markdown_extensions:
   - admonition
@@ -60,6 +72,23 @@ nav:
           - Installation Orchestration: articles/devs/implementation_guides/installation_orchestration.md
           - Package Loader Extensions: articles/devs/implementation_guides/package_loader_extensions.md
           - Registry Integration: articles/devs/implementation_guides/registry_integration.md
+  - API Reference:
+      - Overview: articles/api/index.md
+      - Core Modules:
+          - CLI: articles/api/cli.md
+          - Environment Manager: articles/api/environment_manager.md
+          - Package Loader: articles/api/package_loader.md
+          - Python Environment Manager: articles/api/python_environment_manager.md
+          - Registry Explorer: articles/api/registry_explorer.md
+          - Template Generator: articles/api/template_generator.md
+      - Installers:
+          - Base Installer: articles/api/installers/base.md
+          - Docker Installer: articles/api/installers/docker.md
+          - Hatch Installer: articles/api/installers/hatch.md
+          - Python Installer: articles/api/installers/python.md
+          - System Installer: articles/api/installers/system.md
+          - Installation Context: articles/api/installers/context.md
+          - Dependency Orchestrator: articles/api/installers/orchestrator.md
   - Appendices:
       - Overview: articles/appendices/index.md
       - Glossary: articles/appendices/glossary.md
