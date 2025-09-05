@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hatch"
-dynamic = ["version"]
+version = "0.6.1"
 authors = [
   { name = "Hatch Team" },
 ]
@@ -42,8 +42,7 @@ hatch = "hatch.cli_hatch:main"
 [tool.setuptools]
 package-dir = {"" = "."}
 
-[tool.setuptools.dynamic]
-version = {file = "VERSION"}
+
 
 [tool.setuptools.packages.find]
 where = ["."]

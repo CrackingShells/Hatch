@@ -31,7 +31,37 @@ pip install -e .
 hatch create my-package --description "My MCP server package"
 ```
 
-## Contributing and help
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
+
+### Quick Start
+
+1. **Fork and clone** the repository
+2. **Install dependencies**: `pip install -e .` and `npm install`
+3. **Create a feature branch**: `git checkout -b feat/your-feature`
+4. **Make changes** and add tests
+5. **Use conventional commits**: `npm run commit` for guided commits
+6. **Run tests**: `python -c "import hatch; print('Hatch package imports successfully')"`
+7. **Create a pull request**
+
+### Commit Messages
+
+We use [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning:
+
+```bash
+feat: add new feature
+fix: resolve bug
+docs: update documentation
+test: add tests
+chore: maintenance tasks
+```
+
+Use `npm run commit` for guided commit messages.
+
+For detailed guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+## Getting Help
 
 - Read developer onboarding and contribution guides in `docs/articles/devs/`
 - Report issues or feature requests on the GitHub repository: <https://github.com/CrackingShells/Hatch/issues>

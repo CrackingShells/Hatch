@@ -1,0 +1,62 @@
+{
+  "repositoryUrl": "https://github.com/CrackingShells/Hatch",
+  "tagFormat": "v${version}",
+  "branches": [
+    "main",
+    {
+      "name": "dev",
+      "prerelease": "dev"
+    }
+  ],
+  "plugins": [
+    [
+      "@semantic-release/commit-analyzer",
+      {
+        "preset": "conventionalcommits",
+        "releaseRules": [
+          {"type": "docs", "scope": "README", "release": "patch"},
+          {"type": "refactor", "release": "patch"},
+          {"type": "style", "release": "patch"},
+          {"type": "test", "release": false},
+          {"type": "chore", "release": false}
+        ]
+      }
+    ],
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            {"type": "feat", "section": "Features"},
+            {"type": "fix", "section": "Bug Fixes"},
+            {"type": "docs", "section": "Documentation"},
+            {"type": "refactor", "section": "Code Refactoring"},
+            {"type": "perf", "section": "Performance Improvements"}
+          ]
+        }
+      }
+    ],
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md", "pyproject.toml"],
+        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "successComment": false,
+        "failComment": false,
+        "releasedLabels": false
+      }
+    ]
+  ]
+}
