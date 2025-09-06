@@ -6,7 +6,7 @@ repo_name: CrackingShells/Hatch
 docs_dir: docs
 
 theme:
-  name: readthedocs
+  name: material
 
 plugins:
   - search
