@@ -25,6 +25,7 @@ plugins:
             show_labels: true
             show_symbol_type_heading: true
             show_symbol_type_toc: true
+  - print-site
 
 markdown_extensions:
   - admonition
