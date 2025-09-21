@@ -15,6 +15,35 @@ from pathlib import Path
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch_validator import HatchPackageValidator
 from hatch.template_generator import create_package_template
+from hatch.mcp_host_config import MCPHostConfigurationManager, MCPHostType, MCPHostRegistry
+
+def parse_host_list(host_arg: str):
+    """Parse comma-separated host list or 'all'."""
+    if not host_arg:
+        return []
+
+    if host_arg.lower() == 'all':
+        return MCPHostRegistry.detect_available_hosts()
+
+    hosts = []
+    for host_str in host_arg.split(','):
+        host_str = host_str.strip()
+        try:
+            host_type = MCPHostType(host_str)
+            hosts.append(host_type)
+        except ValueError:
+            available = [h.value for h in MCPHostType]
+            raise ValueError(f"Unknown host '{host_str}'. Available: {available}")
+
+    return hosts
+
+def request_confirmation(message: str, auto_approve: bool = False) -> bool:
+    """Request user confirmation following Hatch patterns."""
+    if auto_approve:
+        return True
+
+    response = input(f"{message} [y/N]: ")
+    return response.lower() in ['y', 'yes']
 
 def main():
     """Main entry point for Hatch CLI.
@@ -128,6 +157,9 @@ def main():
     pkg_add_parser.add_argument("--force-download", "-f", action="store_true", help="Force download even if package is in cache")
     pkg_add_parser.add_argument("--refresh-registry", "-r", action="store_true", help="Force refresh of registry data")
     pkg_add_parser.add_argument("--auto-approve", action="store_true", help="Automatically approve changes installation of deps for automation scenario")
+    # MCP host configuration integration
+    pkg_add_parser.add_argument("--host", help="Comma-separated list of MCP host platforms to configure (e.g., claude-desktop,cursor)")
+    pkg_add_parser.add_argument("--no-mcp-config", action="store_true", help="Skip automatic MCP host configuration even if package has MCP servers")
 
     # Remove package command
     pkg_remove_parser = pkg_subparsers.add_parser("remove", help="Remove a package from the current environment")
@@ -137,6 +169,15 @@ def main():
     # List packages command
     pkg_list_parser = pkg_subparsers.add_parser("list", help="List packages in an environment")
     pkg_list_parser.add_argument("--env", "-e", help="Environment name (default: current environment)")
+
+    # Sync package MCP servers command
+    pkg_sync_parser = pkg_subparsers.add_parser("sync", help="Synchronize package MCP servers to host platforms")
+    pkg_sync_parser.add_argument("package_name", help="Name of the package whose MCP servers to sync")
+    pkg_sync_parser.add_argument("--host", required=True, help="Comma-separated list of host platforms to sync to (or 'all')")
+    pkg_sync_parser.add_argument("--env", "-e", default=None, help="Environment name (default: current environment)")
+    pkg_sync_parser.add_argument("--dry-run", action="store_true", help="Preview changes without execution")
+    pkg_sync_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
+    pkg_sync_parser.add_argument("--no-backup", action="store_true", help="Disable default backup behavior")
 
     # General arguments for the environment manager
     parser.add_argument("--envs-dir", default=Path.home() / ".hatch" / "envs", help="Directory to store environments")
@@ -151,6 +192,9 @@ def main():
         cache_ttl=args.cache_ttl,
         cache_dir=args.cache_dir
     )
+
+    # Initialize MCP configuration manager
+    mcp_manager = MCPHostConfigurationManager()
 
     # Execute commands
     if args.command == "create":
@@ -405,9 +449,25 @@ def main():
     
     elif args.command == "package":
         if args.pkg_command == "add":
-            if env_manager.add_package_to_environment(args.package_path_or_name, args.env, args.version, 
+            # Add package to environment
+            if env_manager.add_package_to_environment(args.package_path_or_name, args.env, args.version,
                                                       args.force_download, args.refresh_registry, args.auto_approve):
                 print(f"Successfully added package: {args.package_path_or_name}")
+
+                # Handle MCP host configuration if requested
+                if hasattr(args, 'host') and args.host and not args.no_mcp_config:
+                    try:
+                        hosts = parse_host_list(args.host)
+                        env_name = args.env or env_manager.get_current_environment()
+
+                        # TODO: Implement MCP server configuration for package
+                        # This will be implemented when we have package MCP server detection
+                        print(f"MCP host configuration for hosts {[h.value for h in hosts]} will be implemented in next phase")
+
+                    except ValueError as e:
+                        print(f"Warning: MCP host configuration failed: {e}")
+                        # Don't fail the entire operation for MCP configuration issues
+
                 return 0
             else:
                 print(f"Failed to add package: {args.package_path_or_name}")
@@ -432,6 +492,31 @@ def main():
             for pkg in packages:
                 print(f"{pkg['name']} ({pkg['version']})\tHatch compliant: {pkg['hatch_compliant']}\tsource: {pkg['source']['uri']}\tlocation: {pkg['source']['path']}")
             return 0
+
+        elif args.pkg_command == "sync":
+            try:
+                # Parse host list
+                hosts = parse_host_list(args.host)
+                env_name = args.env or env_manager.get_current_environment()
+
+                # Check if package exists in environment
+                packages = env_manager.list_packages(env_name)
+                package_exists = any(pkg['name'] == args.package_name for pkg in packages)
+
+                if not package_exists:
+                    print(f"Package '{args.package_name}' not found in environment '{env_name}'")
+                    return 1
+
+                # TODO: Implement package MCP server synchronization
+                # This will sync the package's MCP servers to the specified hosts
+                print(f"Synchronizing MCP servers for package '{args.package_name}' to hosts: {[h.value for h in hosts]}")
+                print("Package MCP server synchronization will be implemented in next phase")
+
+                return 0
+
+            except ValueError as e:
+                print(f"Error: {e}")
+                return 1
             
         else:
             parser.print_help()
