@@ -12,6 +12,7 @@ Hatch provides powerful tools for managing MCP server packages, environments, an
 
 - **[Getting Started](./articles/users/GettingStarted.md)** - Quick start guide for using Hatch
 - **[Command Reference](./articles/users/CLIReference.md)** - Complete CLI command documentation
+- **[MCP Host Configuration](./articles/users/MCPHostConfiguration.md)** - Configure MCP servers across different host platforms
 - **[Tutorials Start](./articles/users/tutorials/01-getting-started/01-installation.md)** - Step-by-step guides for your journey from installation to authoring Hatch packages for MCP server easy sharing.
 
 ### For Developers
@@ -24,6 +25,7 @@ High-level system understanding and design patterns for developers getting famil
 
 - [System Overview](./articles/devs/architecture/system_overview.md) - Introduction to Hatch's architecture
 - [Component Architecture](./articles/devs/architecture/component_architecture.md) - Detailed component breakdown
+- [MCP Host Configuration](./articles/devs/architecture/mcp_host_configuration.md) - Architecture for MCP host configuration management
 
 #### [Implementation Guides](./articles/devs/implementation_guides/)
 
@@ -31,6 +33,7 @@ Technical how-to guides for implementing specific features and extending the sys
 
 - [Adding New Installers](./articles/devs/implementation_guides/adding_installers.md) - Implementing new dependency installer types
 - [Registry Integration](./articles/devs/implementation_guides/registry_integration.md) - Working with package registries
+- [MCP Host Configuration Extension](./articles/devs/implementation_guides/mcp_host_configuration_extension.md) - Adding support for new MCP host platforms
 
 #### [Development Processes](./articles/devs/development_processes/)
 

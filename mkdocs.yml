@@ -39,6 +39,7 @@ nav:
   - Users:
       - Getting Started: articles/users/GettingStarted.md
       - CLI Reference: articles/users/CLIReference.md
+      - MCP Host Configuration: articles/users/MCPHostConfiguration.md
       - Security & Trust: articles/users/SecurityAndTrust.md
       - Troubleshooting:
           - Report Issues: articles/users/Troubleshooting/ReportIssues.md
@@ -63,6 +64,7 @@ nav:
       - Architecture:
           - System Overview: articles/devs/architecture/system_overview.md
           - Component Architecture: articles/devs/architecture/component_architecture.md
+          - MCP Host Configuration: articles/devs/architecture/mcp_host_configuration.md
       - Contribution Guides:
           - How to Contribute: articles/devs/contribution_guides/how_to_contribute.md
           - Release Policy: articles/devs/contribution_guides/release_policy.md
@@ -75,6 +77,7 @@ nav:
           - Installation Orchestration: articles/devs/implementation_guides/installation_orchestration.md
           - Package Loader Extensions: articles/devs/implementation_guides/package_loader_extensions.md
           - Registry Integration: articles/devs/implementation_guides/registry_integration.md
+          - MCP Host Configuration Extension: articles/devs/implementation_guides/mcp_host_configuration_extension.md
   - API Reference:
       - Overview: articles/api/index.md
       - Core Modules:
