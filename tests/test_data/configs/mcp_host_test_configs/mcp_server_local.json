@@ -1,0 +1,12 @@
+{
+  "command": "python",
+  "args": [
+    "server.py",
+    "--port",
+    "8080"
+  ],
+  "env": {
+    "API_KEY": "test",
+    "DEBUG": "true"
+  }
+}

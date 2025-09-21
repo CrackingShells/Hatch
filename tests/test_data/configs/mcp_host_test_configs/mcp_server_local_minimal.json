@@ -1,0 +1,6 @@
+{
+  "command": "python",
+  "args": [
+    "minimal_server.py"
+  ]
+}

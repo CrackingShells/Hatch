@@ -255,3 +255,218 @@ def load_mock_response(response_name: str) -> Dict[str, Any]:
 def get_test_packages_dir() -> Path:
     """Get test packages directory."""
     return test_data.get_test_packages_dir()
+
+
+class MCPHostConfigTestDataLoader(TestDataLoader):
+    """Specialized test data loader for MCP host configuration tests v2."""
+
+    def __init__(self):
+        super().__init__()
+        self.mcp_host_configs_dir = self.configs_dir / "mcp_host_test_configs"
+        self.mcp_host_configs_dir.mkdir(exist_ok=True)
+
+    def load_host_config_template(self, host_type: str, config_type: str = "simple") -> Dict[str, Any]:
+        """Load host-specific configuration template."""
+        config_path = self.mcp_host_configs_dir / f"{host_type}_{config_type}.json"
+        if not config_path.exists():
+            self._create_host_config_template(host_type, config_type)
+
+        with open(config_path, 'r') as f:
+            return json.load(f)
+
+    def load_corrected_environment_data(self, data_type: str = "simple") -> Dict[str, Any]:
+        """Load corrected environment data structure (v2)."""
+        config_path = self.mcp_host_configs_dir / f"environment_v2_{data_type}.json"
+        if not config_path.exists():
+            self._create_corrected_environment_data(data_type)
+
+        with open(config_path, 'r') as f:
+            return json.load(f)
+
+    def load_mcp_server_config(self, server_type: str = "local") -> Dict[str, Any]:
+        """Load consolidated MCPServerConfig templates."""
+        config_path = self.mcp_host_configs_dir / f"mcp_server_{server_type}.json"
+        if not config_path.exists():
+            self._create_mcp_server_config(server_type)
+
+        with open(config_path, 'r') as f:
+            return json.load(f)
+
+    def _create_host_config_template(self, host_type: str, config_type: str):
+        """Create host-specific configuration templates with inheritance patterns."""
+        templates = {
+            # Claude family templates
+            "claude-desktop_simple": {
+                "mcpServers": {
+                    "test_server": {
+                        "command": "/usr/local/bin/python",  # Absolute path required
+                        "args": ["server.py"],
+                        "env": {"API_KEY": "test"}
+                    }
+                },
+                "theme": "dark",  # Claude-specific settings
+                "auto_update": True
+            },
+            "claude-code_simple": {
+                "mcpServers": {
+                    "test_server": {
+                        "command": "/usr/local/bin/python",  # Absolute path required
+                        "args": ["server.py"],
+                        "env": {}
+                    }
+                },
+                "workspace_settings": {"mcp_enabled": True}  # Claude Code specific
+            },
+
+            # Cursor family templates
+            "cursor_simple": {
+                "mcpServers": {
+                    "test_server": {
+                        "command": "python",  # Flexible path handling
+                        "args": ["server.py"],
+                        "env": {"API_KEY": "test"}
+                    }
+                }
+            },
+            "cursor_remote": {
+                "mcpServers": {
+                    "remote_server": {
+                        "url": "https://api.example.com/mcp",
+                        "headers": {"Authorization": "Bearer token"}
+                    }
+                }
+            },
+            "lmstudio_simple": {
+                "mcpServers": {
+                    "test_server": {
+                        "command": "python",  # Inherits Cursor format
+                        "args": ["server.py"],
+                        "env": {}
+                    }
+                }
+            },
+
+            # Independent strategy templates
+            "vscode_simple": {
+                "mcp": {
+                    "servers": {
+                        "test_server": {
+                            "command": "python",
+                            "args": ["server.py"]
+                        }
+                    }
+                }
+            },
+            "gemini_simple": {
+                "mcpServers": {
+                    "test_server": {
+                        "command": "python",
+                        "args": ["server.py"]
+                    }
+                }
+            }
+        }
+
+        template_key = f"{host_type}_{config_type}"
+        config = templates.get(template_key, {"mcpServers": {}})
+        config_path = self.mcp_host_configs_dir / f"{template_key}.json"
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+
+    def _create_corrected_environment_data(self, data_type: str):
+        """Create corrected environment data templates (v2 structure)."""
+        templates = {
+            "simple": {
+                "name": "test_environment",
+                "description": "Test environment with corrected MCP structure",
+                "created_at": "2025-09-21T10:00:00.000000",
+                "packages": [
+                    {
+                        "name": "weather-toolkit",
+                        "version": "1.0.0",
+                        "type": "hatch",
+                        "source": "github:user/weather-toolkit",
+                        "installed_at": "2025-09-21T10:00:00.000000",
+                        "configured_hosts": {
+                            "claude-desktop": {
+                                "config_path": "~/Library/Application Support/Claude/claude_desktop_config.json",
+                                "configured_at": "2025-09-21T10:00:00.000000",
+                                "last_synced": "2025-09-21T10:00:00.000000",
+                                "server_config": {
+                                    "command": "/usr/local/bin/python",
+                                    "args": ["weather.py"],
+                                    "env": {"API_KEY": "weather_key"}
+                                }
+                            }
+                        }
+                    }
+                ]
+            },
+            "multi_host": {
+                "name": "multi_host_environment",
+                "description": "Environment with single server configured across multiple hosts",
+                "created_at": "2025-09-21T10:00:00.000000",
+                "packages": [
+                    {
+                        "name": "file-manager",
+                        "version": "2.0.0",
+                        "type": "hatch",
+                        "source": "github:user/file-manager",
+                        "installed_at": "2025-09-21T10:00:00.000000",
+                        "configured_hosts": {
+                            "claude-desktop": {
+                                "config_path": "~/Library/Application Support/Claude/claude_desktop_config.json",
+                                "configured_at": "2025-09-21T10:00:00.000000",
+                                "last_synced": "2025-09-21T10:00:00.000000",
+                                "server_config": {
+                                    "command": "/usr/local/bin/python",
+                                    "args": ["file_manager.py"],
+                                    "env": {"DEBUG": "true"}
+                                }
+                            },
+                            "cursor": {
+                                "config_path": "~/.cursor/mcp.json",
+                                "configured_at": "2025-09-21T10:00:00.000000",
+                                "last_synced": "2025-09-21T10:00:00.000000",
+                                "server_config": {
+                                    "command": "python",
+                                    "args": ["file_manager.py"],
+                                    "env": {"DEBUG": "true"}
+                                }
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+
+        config = templates.get(data_type, {"packages": []})
+        config_path = self.mcp_host_configs_dir / f"environment_v2_{data_type}.json"
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+
+    def _create_mcp_server_config(self, server_type: str):
+        """Create consolidated MCPServerConfig templates."""
+        templates = {
+            "local": {
+                "command": "python",
+                "args": ["server.py", "--port", "8080"],
+                "env": {"API_KEY": "test", "DEBUG": "true"}
+            },
+            "remote": {
+                "url": "https://api.example.com/mcp",
+                "headers": {"Authorization": "Bearer token", "Content-Type": "application/json"}
+            },
+            "local_minimal": {
+                "command": "python",
+                "args": ["minimal_server.py"]
+            },
+            "remote_minimal": {
+                "url": "https://minimal.example.com/mcp"
+            }
+        }
+
+        config = templates.get(server_type, {})
+        config_path = self.mcp_host_configs_dir / f"mcp_server_{server_type}.json"
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
