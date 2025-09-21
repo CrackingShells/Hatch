@@ -8,6 +8,7 @@ This module provides the CLI functionality for Hatch, allowing users to:
 """
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ from pathlib import Path
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch_validator import HatchPackageValidator
 from hatch.template_generator import create_package_template
-from hatch.mcp_host_config import MCPHostConfigurationManager, MCPHostType, MCPHostRegistry
+from hatch.mcp_host_config import MCPHostConfigurationManager, MCPHostType, MCPHostRegistry, MCPServerConfig
 
 def parse_host_list(host_arg: str):
     """Parse comma-separated host list or 'all'."""
@@ -44,6 +45,49 @@ def request_confirmation(message: str, auto_approve: bool = False) -> bool:
 
     response = input(f"{message} [y/N]: ")
     return response.lower() in ['y', 'yes']
+
+def get_package_mcp_server_config(env_manager: HatchEnvironmentManager, env_name: str, package_name: str) -> MCPServerConfig:
+    """Get MCP server configuration for a package using existing APIs."""
+    try:
+        # Get package info from environment
+        packages = env_manager.list_packages(env_name)
+        package_info = next((pkg for pkg in packages if pkg['name'] == package_name), None)
+
+        if not package_info:
+            raise ValueError(f"Package '{package_name}' not found in environment '{env_name}'")
+
+        # Load package metadata using existing pattern from environment_manager.py:716-727
+        package_path = Path(package_info['source']['path'])
+        metadata_path = package_path / "hatch_metadata.json"
+
+        if not metadata_path.exists():
+            raise ValueError(f"Package '{package_name}' is not a Hatch package (no hatch_metadata.json)")
+
+        with open(metadata_path, 'r') as f:
+            metadata = json.load(f)
+
+        # Use PackageService for schema-aware access
+        from hatch_validator.package.package_service import PackageService
+        package_service = PackageService(metadata)
+
+        # Get the HatchMCP entry point (this handles both v1.2.0 and v1.2.1 schemas)
+        hatch_mcp_entry_point = package_service.get_hatch_mcp_entry_point()
+        if not hatch_mcp_entry_point:
+            raise ValueError(f"Package '{package_name}' does not have a HatchMCP entry point")
+
+        # Create server configuration
+        server_path = str(package_path / hatch_mcp_entry_point)
+        server_config = MCPServerConfig(
+            name=package_name,
+            command="python",
+            args=[server_path],
+            env={}
+        )
+
+        return server_config
+
+    except Exception as e:
+        raise ValueError(f"Failed to get MCP server config for package '{package_name}': {e}")
 
 def main():
     """Main entry point for Hatch CLI.
@@ -460,9 +504,40 @@ def main():
                         hosts = parse_host_list(args.host)
                         env_name = args.env or env_manager.get_current_environment()
 
-                        # TODO: Implement MCP server configuration for package
-                        # This will be implemented when we have package MCP server detection
-                        print(f"MCP host configuration for hosts {[h.value for h in hosts]} will be implemented in next phase")
+                        # Get the package name from the path/name argument
+                        package_name = args.package_path_or_name
+                        if '/' in package_name or '\\' in package_name:
+                            # Extract package name from path
+                            package_name = Path(package_name).name
+
+                        # Get MCP server configuration for the newly added package
+                        server_config = get_package_mcp_server_config(env_manager, env_name, package_name)
+
+                        print(f"Configuring MCP server for package '{package_name}' on {len(hosts)} host(s)...")
+
+                        # Configure on each host
+                        success_count = 0
+                        for host in hosts:
+                            try:
+                                result = mcp_manager.configure_server(
+                                    hostname=host,
+                                    server_config=server_config,
+                                    no_backup=False  # Always backup when adding packages
+                                )
+
+                                if result.success:
+                                    print(f"✓ Configured {server_config.name} on {host.value}")
+                                    success_count += 1
+                                else:
+                                    print(f"✗ Failed to configure {server_config.name} on {host.value}: {result.error_message}")
+
+                            except Exception as e:
+                                print(f"✗ Error configuring {server_config.name} on {host.value}: {e}")
+
+                        if success_count > 0:
+                            print(f"MCP configuration completed: {success_count}/{len(hosts)} hosts configured")
+                        else:
+                            print("Warning: MCP configuration failed on all hosts")
 
                     except ValueError as e:
                         print(f"Warning: MCP host configuration failed: {e}")
@@ -499,20 +574,51 @@ def main():
                 hosts = parse_host_list(args.host)
                 env_name = args.env or env_manager.get_current_environment()
 
-                # Check if package exists in environment
-                packages = env_manager.list_packages(env_name)
-                package_exists = any(pkg['name'] == args.package_name for pkg in packages)
+                # Get MCP server configuration for the package
+                server_config = get_package_mcp_server_config(env_manager, env_name, args.package_name)
 
-                if not package_exists:
-                    print(f"Package '{args.package_name}' not found in environment '{env_name}'")
+                if args.dry_run:
+                    print(f"[DRY RUN] Would synchronize MCP server for package '{args.package_name}' to hosts: {[h.value for h in hosts]}")
+                    print(f"[DRY RUN] Server config: {server_config.name} -> {' '.join(server_config.args)}")
+                    return 0
+
+                # Confirm operation unless auto-approved
+                if not request_confirmation(
+                    f"Synchronize MCP server for package '{args.package_name}' to {len(hosts)} host(s)?",
+                    args.auto_approve
+                ):
+                    print("Operation cancelled.")
+                    return 0
+
+                # Perform synchronization to each host
+                success_count = 0
+                for host in hosts:
+                    try:
+                        result = mcp_manager.configure_server(
+                            hostname=host,
+                            server_config=server_config,
+                            no_backup=args.no_backup
+                        )
+
+                        if result.success:
+                            print(f"✓ Successfully configured {server_config.name} on {host.value}")
+                            success_count += 1
+                        else:
+                            print(f"✗ Failed to configure {server_config.name} on {host.value}: {result.error_message}")
+
+                    except Exception as e:
+                        print(f"✗ Error configuring {server_config.name} on {host.value}: {e}")
+
+                # Report results
+                if success_count == len(hosts):
+                    print(f"Successfully synchronized package '{args.package_name}' to all {len(hosts)} host(s)")
+                    return 0
+                elif success_count > 0:
+                    print(f"Partially synchronized package '{args.package_name}': {success_count}/{len(hosts)} hosts succeeded")
                     return 1
-
-                # TODO: Implement package MCP server synchronization
-                # This will sync the package's MCP servers to the specified hosts
-                print(f"Synchronizing MCP servers for package '{args.package_name}' to hosts: {[h.value for h in hosts]}")
-                print("Package MCP server synchronization will be implemented in next phase")
-
-                return 0
+                else:
+                    print(f"Failed to synchronize package '{args.package_name}' to any hosts")
+                    return 1
 
             except ValueError as e:
                 print(f"Error: {e}")
