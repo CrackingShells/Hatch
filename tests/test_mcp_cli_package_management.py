@@ -259,6 +259,8 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
                 'source': {'path': '/path/to/package'}
             }
         ]
+        # Mock the Python executable method to return a proper string
+        mock_env_manager.get_current_python_executable.return_value = "/path/to/python"
 
         # Mock file system and metadata
         with patch('pathlib.Path.exists', return_value=True):
@@ -272,7 +274,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
 
                     self.assertIsInstance(config, MCPServerConfig)
                     self.assertEqual(config.name, "test-package")
-                    self.assertEqual(config.command, "python")
+                    self.assertEqual(config.command, "/path/to/python")  # Now uses environment-specific Python
                     self.assertTrue(config.args[0].endswith("hatch_mcp_server.py"))
 
     @regression_test

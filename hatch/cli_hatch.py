@@ -93,11 +93,17 @@ def get_package_mcp_server_config(env_manager: HatchEnvironmentManager, env_name
         if not hatch_mcp_entry_point:
             raise ValueError(f"Package '{package_name}' does not have a HatchMCP entry point")
 
+        # Get environment-specific Python executable
+        python_executable = env_manager.get_current_python_executable()
+        if not python_executable:
+            # Fallback to system Python if no environment-specific Python available
+            python_executable = "python"
+
         # Create server configuration
         server_path = str(package_path / hatch_mcp_entry_point)
         server_config = MCPServerConfig(
             name=package_name,
-            command="python",
+            command=python_executable,
             args=[server_path],
             env={}
         )
