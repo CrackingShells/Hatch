@@ -1020,10 +1020,9 @@ def main():
                 force = getattr(args, 'force', False)
                 
                 if not force:
-                    # Ask for confirmation
+                    # Ask for confirmation using TTY-aware function
                     env_name = args.hatch_env or env_manager.get_current_environment()
-                    response = input(f"Remove Python environment for '{env_name}'? [y/N]: ")
-                    if response.lower() not in ['y', 'yes']:
+                    if not request_confirmation(f"Remove Python environment for '{env_name}'?"):
                         print("Operation cancelled")
                         return 0
                 
