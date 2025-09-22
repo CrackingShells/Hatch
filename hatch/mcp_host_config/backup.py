@@ -266,11 +266,11 @@ class MCPHostConfigBackupManager:
     
     def restore_backup(self, hostname: str, backup_file: Optional[str] = None) -> bool:
         """Restore configuration from backup.
-        
+
         Args:
             hostname (str): Host identifier
             backup_file (str, optional): Specific backup file name. Defaults to latest.
-            
+
         Returns:
             bool: True if restoration successful, False otherwise
         """
@@ -280,14 +280,31 @@ class MCPHostConfigBackupManager:
                 backup_path = self.backup_root / hostname / backup_file
             else:
                 backup_path = self._get_latest_backup(hostname)
-            
+
             if not backup_path or not backup_path.exists():
                 return False
-            
-            # For now, we don't have host-specific config paths (future implementation)
-            # This is a placeholder that would be implemented in host configuration phase
-            return True
-            
+
+            # Get target configuration path using host registry
+            from .host_management import MCPHostRegistry
+            from .models import MCPHostType
+
+            try:
+                host_type = MCPHostType(hostname)
+                target_path = MCPHostRegistry.get_host_config_path(host_type)
+
+                if not target_path:
+                    return False
+
+                # Ensure target directory exists
+                target_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # Perform atomic restore operation
+                return self.atomic_ops.atomic_copy(backup_path, target_path)
+
+            except ValueError:
+                # Invalid hostname
+                return False
+
         except Exception:
             return False
     

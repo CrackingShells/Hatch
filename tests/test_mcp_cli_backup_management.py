@@ -127,7 +127,7 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
 
                     # Verify success message
                     print_calls = [call[0][0] for call in mock_print.call_args_list]
-                    self.assertTrue(any("✓ Successfully restored backup" in call for call in print_calls))
+                    self.assertTrue(any("[SUCCESS] Successfully restored backup" in call for call in print_calls))
 
 
 class TestMCPBackupListCommand(unittest.TestCase):

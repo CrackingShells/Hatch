@@ -308,10 +308,10 @@ def handle_mcp_backup_restore(host: str, backup_file: Optional[str] = None, dry_
         success = backup_manager.restore_backup(host, backup_file)
 
         if success:
-            print(f"✓ Successfully restored backup '{backup_file}' for host '{host}'")
+            print(f"[SUCCESS] Successfully restored backup '{backup_file}' for host '{host}'")
             return 0
         else:
-            print(f"✗ Failed to restore backup '{backup_file}' for host '{host}'")
+            print(f"[ERROR] Failed to restore backup '{backup_file}' for host '{host}'")
             return 1
 
     except Exception as e:
