@@ -40,12 +40,28 @@ def parse_host_list(host_arg: str):
     return hosts
 
 def request_confirmation(message: str, auto_approve: bool = False) -> bool:
-    """Request user confirmation following Hatch patterns."""
-    if auto_approve:
+    """Request user confirmation with non-TTY support following Hatch patterns."""
+    import os
+    import sys
+
+    # Check for non-interactive mode indicators
+    if (auto_approve or
+        not sys.stdin.isatty() or
+        os.getenv('HATCH_AUTO_APPROVE', '').lower() in ('1', 'true', 'yes')):
         return True
 
-    response = input(f"{message} [y/N]: ")
-    return response.lower() in ['y', 'yes']
+    # Interactive mode - request user input
+    try:
+        while True:
+            response = input(f"{message} [y/N]: ").strip().lower()
+            if response in ['y', 'yes']:
+                return True
+            elif response in ['n', 'no', '']:
+                return False
+            else:
+                print("Please enter 'y' for yes or 'n' for no.")
+    except (EOFError, KeyboardInterrupt):
+        return False
 
 def get_package_mcp_server_config(env_manager: HatchEnvironmentManager, env_name: str, package_name: str) -> MCPServerConfig:
     """Get MCP server configuration for a package using existing APIs."""
@@ -419,6 +435,156 @@ def handle_mcp_backup_clean(host: str, older_than_days: Optional[int] = None, ke
         print(f"Error cleaning backups: {e}")
         return 1
 
+def parse_env_vars(env_list: Optional[list]) -> dict:
+    """Parse environment variables from command line format."""
+    if not env_list:
+        return {}
+
+    env_dict = {}
+    for env_var in env_list:
+        if '=' not in env_var:
+            print(f"Warning: Invalid environment variable format '{env_var}'. Expected KEY=VALUE")
+            continue
+        key, value = env_var.split('=', 1)
+        env_dict[key.strip()] = value.strip()
+
+    return env_dict
+
+def parse_headers(headers_list: Optional[list]) -> dict:
+    """Parse HTTP headers from command line format."""
+    if not headers_list:
+        return {}
+
+    headers_dict = {}
+    for header in headers_list:
+        if '=' not in header:
+            print(f"Warning: Invalid header format '{header}'. Expected KEY=VALUE")
+            continue
+        key, value = header.split('=', 1)
+        headers_dict[key.strip()] = value.strip()
+
+    return headers_dict
+
+def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
+                        env: Optional[list] = None, url: Optional[str] = None,
+                        headers: Optional[list] = None, no_backup: bool = False,
+                        dry_run: bool = False, auto_approve: bool = False):
+    """Handle 'hatch mcp configure' command."""
+    try:
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
+            return 1
+
+        # Parse environment variables and headers
+        env_dict = parse_env_vars(env)
+        headers_dict = parse_headers(headers)
+
+        # Create server configuration (only include headers if URL is provided)
+        config_data = {
+            'name': server_name,
+            'command': command,
+            'args': args or [],
+            'env': env_dict,
+            'url': url
+        }
+
+        # Only add headers if URL is provided (per MCPServerConfig validation)
+        if url and headers_dict:
+            config_data['headers'] = headers_dict
+
+        server_config = MCPServerConfig(**config_data)
+
+        if dry_run:
+            print(f"[DRY RUN] Would configure MCP server '{server_name}' on host '{host}':")
+            print(f"[DRY RUN] Command: {command}")
+            if args:
+                print(f"[DRY RUN] Args: {args}")
+            if env_dict:
+                print(f"[DRY RUN] Environment: {env_dict}")
+            if url:
+                print(f"[DRY RUN] URL: {url}")
+            if headers_dict:
+                print(f"[DRY RUN] Headers: {headers_dict}")
+            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            return 0
+
+        # Confirm operation unless auto-approved
+        if not request_confirmation(
+            f"Configure MCP server '{server_name}' on host '{host}'?",
+            auto_approve
+        ):
+            print("Operation cancelled.")
+            return 0
+
+        # Perform configuration
+        mcp_manager = MCPHostConfigurationManager()
+        result = mcp_manager.configure_server(
+            server_config=server_config,
+            hostname=host,
+            no_backup=no_backup
+        )
+
+        if result.success:
+            print(f"✓ Successfully configured MCP server '{server_name}' on host '{host}'")
+            if result.backup_path:
+                print(f"  Backup created: {result.backup_path}")
+            return 0
+        else:
+            print(f"✗ Failed to configure MCP server '{server_name}' on host '{host}': {result.error_message}")
+            return 1
+
+    except Exception as e:
+        print(f"Error configuring MCP server: {e}")
+        return 1
+
+def handle_mcp_remove(host: str, server_name: str, no_backup: bool = False,
+                     dry_run: bool = False, auto_approve: bool = False):
+    """Handle 'hatch mcp remove' command."""
+    try:
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
+            return 1
+
+        if dry_run:
+            print(f"[DRY RUN] Would remove MCP server '{server_name}' from host '{host}'")
+            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            return 0
+
+        # Confirm operation unless auto-approved
+        if not request_confirmation(
+            f"Remove MCP server '{server_name}' from host '{host}'?",
+            auto_approve
+        ):
+            print("Operation cancelled.")
+            return 0
+
+        # Perform removal
+        mcp_manager = MCPHostConfigurationManager()
+        result = mcp_manager.remove_server(
+            server_name=server_name,
+            hostname=host,
+            no_backup=no_backup
+        )
+
+        if result.success:
+            print(f"✓ Successfully removed MCP server '{server_name}' from host '{host}'")
+            if result.backup_path:
+                print(f"  Backup created: {result.backup_path}")
+            return 0
+        else:
+            print(f"✗ Failed to remove MCP server '{server_name}' from host '{host}': {result.error_message}")
+            return 1
+
+    except Exception as e:
+        print(f"Error removing MCP server: {e}")
+        return 1
+
 def main():
     """Main entry point for Hatch CLI.
     
@@ -571,6 +737,27 @@ def main():
     mcp_backup_clean_parser.add_argument("--keep-count", type=int, help="Keep only the specified number of newest backups")
     mcp_backup_clean_parser.add_argument("--dry-run", action="store_true", help="Preview cleanup operation without execution")
     mcp_backup_clean_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
+
+    # MCP direct management commands
+    mcp_configure_parser = mcp_subparsers.add_parser("configure", help="Configure MCP server directly on host")
+    mcp_configure_parser.add_argument("host", help="Host platform to configure (e.g., claude-desktop, cursor)")
+    mcp_configure_parser.add_argument("server_name", help="Name for the MCP server")
+    mcp_configure_parser.add_argument("command", help="Command to execute the MCP server")
+    mcp_configure_parser.add_argument("args", nargs="*", help="Arguments for the MCP server command")
+    mcp_configure_parser.add_argument("--env", "-e", action="append", help="Environment variables (format: KEY=VALUE)")
+    mcp_configure_parser.add_argument("--url", help="Server URL for remote MCP servers")
+    mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE)")
+    mcp_configure_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before configuration")
+    mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
+    mcp_configure_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
+
+    # Remove MCP server command
+    mcp_remove_parser = mcp_subparsers.add_parser("remove", help="Remove MCP server from host")
+    mcp_remove_parser.add_argument("host", help="Host platform to remove from (e.g., claude-desktop, cursor)")
+    mcp_remove_parser.add_argument("server_name", help="Name of the MCP server to remove")
+    mcp_remove_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before removal")
+    mcp_remove_parser.add_argument("--dry-run", action="store_true", help="Preview removal without execution")
+    mcp_remove_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
 
     # Package management commands
     pkg_subparsers = subparsers.add_parser("package", help="Package management commands").add_subparsers(
@@ -1046,6 +1233,20 @@ def main():
             else:
                 print("Unknown backup command")
                 return 1
+
+        elif args.mcp_command == "configure":
+            return handle_mcp_configure(
+                args.host, args.server_name, args.command, args.args,
+                args.env, args.url, args.headers, args.no_backup,
+                args.dry_run, args.auto_approve
+            )
+
+        elif args.mcp_command == "remove":
+            return handle_mcp_remove(
+                args.host, args.server_name, args.no_backup,
+                args.dry_run, args.auto_approve
+            )
+
         else:
             print("Unknown MCP command")
             return 1
