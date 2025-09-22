@@ -228,16 +228,36 @@ def handle_mcp_list_servers(env_manager: HatchEnvironmentManager, env_name: Opti
         mcp_packages = []
 
         for package in packages:
-            try:
-                # Check if package has MCP server entry point
-                server_config = get_package_mcp_server_config(env_manager, env_name, package['name'])
+            # Check if package has host configuration tracking (indicating MCP server)
+            configured_hosts = package.get('configured_hosts', {})
+            if configured_hosts:
+                # Use the tracked server configuration from any host
+                first_host = next(iter(configured_hosts.values()))
+                server_config_data = first_host.get('server_config', {})
+
+                # Create a simple server config object
+                class SimpleServerConfig:
+                    def __init__(self, data):
+                        self.name = data.get('name', package['name'])
+                        self.command = data.get('command', 'unknown')
+                        self.args = data.get('args', [])
+
+                server_config = SimpleServerConfig(server_config_data)
                 mcp_packages.append({
                     'package': package,
                     'server_config': server_config
                 })
-            except ValueError:
-                # Package doesn't have MCP server
-                continue
+            else:
+                # Try the original method as fallback
+                try:
+                    server_config = get_package_mcp_server_config(env_manager, env_name, package['name'])
+                    mcp_packages.append({
+                        'package': package,
+                        'server_config': server_config
+                    })
+                except:
+                    # Package doesn't have MCP server or method failed
+                    continue
 
         if not mcp_packages:
             print(f"No MCP servers configured in environment '{env_name}'")
@@ -257,6 +277,26 @@ def handle_mcp_list_servers(env_manager: HatchEnvironmentManager, env_name: Opti
             command = f"{server_config.command} {' '.join(server_config.args)}"
 
             print(f"{server_name:<20} {package_name:<20} {version:<10} {command}")
+
+            # Display host configuration tracking information
+            configured_hosts = package.get('configured_hosts', {})
+            if configured_hosts:
+                print(f"{'':>20} Configured on hosts:")
+                for hostname, host_config in configured_hosts.items():
+                    config_path = host_config.get('config_path', 'unknown')
+                    last_synced = host_config.get('last_synced', 'unknown')
+                    # Format the timestamp for better readability
+                    if last_synced != 'unknown':
+                        try:
+                            from datetime import datetime
+                            dt = datetime.fromisoformat(last_synced.replace('Z', '+00:00'))
+                            last_synced = dt.strftime('%Y-%m-%d %H:%M:%S')
+                        except:
+                            pass  # Keep original format if parsing fails
+                    print(f"{'':>22} - {hostname}: {config_path} (synced: {last_synced})")
+            else:
+                print(f"{'':>20} No host configurations tracked")
+            print()  # Add blank line between servers
 
         return 0
     except Exception as e:
@@ -1180,6 +1220,24 @@ def main():
                         if result.success:
                             print(f"[SUCCESS] Successfully configured {server_config.name} on {host.value}")
                             success_count += 1
+
+                            # Update package metadata with host configuration tracking
+                            try:
+                                server_config_dict = {
+                                    "name": server_config.name,
+                                    "command": server_config.command,
+                                    "args": server_config.args
+                                }
+
+                                env_manager.update_package_host_configuration(
+                                    env_name=env_name,
+                                    package_name=args.package_name,
+                                    hostname=host.value,
+                                    server_config=server_config_dict
+                                )
+                            except Exception as e:
+                                # Log but don't fail the sync operation
+                                print(f"[WARNING] Failed to update package metadata: {e}")
                         else:
                             print(f"[ERROR] Failed to configure {server_config.name} on {host.value}: {result.error_message}")
 

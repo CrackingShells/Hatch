@@ -598,7 +598,77 @@ class HatchEnvironmentManager:
         }]
 
         self._save_environments()
-    
+
+    def update_package_host_configuration(self, env_name: str, package_name: str,
+                                        hostname: str, server_config: dict) -> bool:
+        """Update package metadata with host configuration tracking.
+
+        Args:
+            env_name (str): Environment name
+            package_name (str): Package name
+            hostname (str): Host identifier (e.g., 'gemini', 'claude-desktop')
+            server_config (dict): Server configuration data
+
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        try:
+            if env_name not in self._environments:
+                self.logger.error(f"Environment {env_name} does not exist")
+                return False
+
+            # Find the package in the environment
+            packages = self._environments[env_name].get("packages", [])
+            for i, pkg in enumerate(packages):
+                if pkg.get("name") == package_name:
+                    # Initialize configured_hosts if it doesn't exist
+                    if "configured_hosts" not in pkg:
+                        pkg["configured_hosts"] = {}
+
+                    # Add or update host configuration
+                    from datetime import datetime
+                    pkg["configured_hosts"][hostname] = {
+                        "config_path": self._get_host_config_path(hostname),
+                        "configured_at": datetime.now().isoformat(),
+                        "last_synced": datetime.now().isoformat(),
+                        "server_config": server_config
+                    }
+
+                    # Update the package in the environment
+                    self._environments[env_name]["packages"][i] = pkg
+                    self._save_environments()
+
+                    self.logger.info(f"Updated host configuration for package {package_name} on {hostname}")
+                    return True
+
+            self.logger.error(f"Package {package_name} not found in environment {env_name}")
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Failed to update package host configuration: {e}")
+            return False
+
+    def _get_host_config_path(self, hostname: str) -> str:
+        """Get configuration file path for a host.
+
+        Args:
+            hostname (str): Host identifier
+
+        Returns:
+            str: Configuration file path
+        """
+        # Map hostnames to their typical config paths
+        host_config_paths = {
+            'gemini': '~/.gemini/settings.json',
+            'claude-desktop': '~/.claude/claude_desktop_config.json',
+            'claude-code': '.claude/mcp_config.json',
+            'vscode': '.vscode/settings.json',
+            'cursor': '~/.cursor/mcp.json',
+            'lmstudio': '~/.lmstudio/mcp.json'
+        }
+
+        return host_config_paths.get(hostname, f'~/.{hostname}/config.json')
+
     def get_environment_path(self, env_name: str) -> Path:
         """
         Get the path to the environment directory.
