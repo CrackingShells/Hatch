@@ -1166,19 +1166,19 @@ def main():
                 for host in hosts:
                     try:
                         result = mcp_manager.configure_server(
-                            hostname=host,
+                            hostname=host.value,  # Use enum value (string) instead of enum object
                             server_config=server_config,
                             no_backup=args.no_backup
                         )
 
                         if result.success:
-                            print(f"✓ Successfully configured {server_config.name} on {host.value}")
+                            print(f"[SUCCESS] Successfully configured {server_config.name} on {host.value}")
                             success_count += 1
                         else:
-                            print(f"✗ Failed to configure {server_config.name} on {host.value}: {result.error_message}")
+                            print(f"[ERROR] Failed to configure {server_config.name} on {host.value}: {result.error_message}")
 
                     except Exception as e:
-                        print(f"✗ Error configuring {server_config.name} on {host.value}: {e}")
+                        print(f"[ERROR] Error configuring {server_config.name} on {host.value}: {e}")
 
                 # Report results
                 if success_count == len(hosts):

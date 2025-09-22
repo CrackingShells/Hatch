@@ -306,26 +306,32 @@ class MCPHostConfigBackupManager:
             return []
         
         backups = []
-        pattern = f"mcp.json.{hostname}.*"
-        
-        for backup_file in host_backup_dir.glob(pattern):
-            try:
-                # Parse timestamp from filename
-                timestamp_str = backup_file.name.split('.')[-1]
-                timestamp = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S_%f")
-                
-                backup_info = BackupInfo(
-                    hostname=hostname,
-                    timestamp=timestamp,
-                    file_path=backup_file,
-                    file_size=backup_file.stat().st_size,
-                    original_config_path=Path("placeholder")  # Will be implemented in host config phase
-                )
-                backups.append(backup_info)
-                
-            except (ValueError, OSError):
-                # Skip invalid backup files
-                continue
+
+        # Search for both correct format and legacy incorrect format for backward compatibility
+        patterns = [
+            f"mcp.json.{hostname}.*",  # Correct format: mcp.json.gemini.*
+            f"mcp.json.MCPHostType.{hostname.upper()}.*"  # Legacy incorrect format: mcp.json.MCPHostType.GEMINI.*
+        ]
+
+        for pattern in patterns:
+            for backup_file in host_backup_dir.glob(pattern):
+                try:
+                    # Parse timestamp from filename
+                    timestamp_str = backup_file.name.split('.')[-1]
+                    timestamp = datetime.strptime(timestamp_str, "%Y%m%d_%H%M%S_%f")
+
+                    backup_info = BackupInfo(
+                        hostname=hostname,
+                        timestamp=timestamp,
+                        file_path=backup_file,
+                        file_size=backup_file.stat().st_size,
+                        original_config_path=Path("placeholder")  # Will be implemented in host config phase
+                    )
+                    backups.append(backup_info)
+
+                except (ValueError, OSError):
+                    # Skip invalid backup files
+                    continue
         
         # Sort by timestamp (newest first)
         return sorted(backups, key=lambda b: b.timestamp, reverse=True)
