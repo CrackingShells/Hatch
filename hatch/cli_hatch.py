@@ -44,13 +44,11 @@ def request_confirmation(message: str, auto_approve: bool = False) -> bool:
     import os
     import sys
 
-    # Check for non-interactive mode indicators
-    if (auto_approve or
-        not sys.stdin.isatty() or
-        os.getenv('HATCH_AUTO_APPROVE', '').lower() in ('1', 'true', 'yes')):
+    # Check for auto-approve first
+    if auto_approve or os.getenv('HATCH_AUTO_APPROVE', '').lower() in ('1', 'true', 'yes'):
         return True
 
-    # Interactive mode - request user input
+    # Interactive mode - request user input (works in both TTY and test environments)
     try:
         while True:
             response = input(f"{message} [y/N]: ").strip().lower()
@@ -61,6 +59,9 @@ def request_confirmation(message: str, auto_approve: bool = False) -> bool:
             else:
                 print("Please enter 'y' for yes or 'n' for no.")
     except (EOFError, KeyboardInterrupt):
+        # Only auto-approve on EOF/interrupt if not in TTY (non-interactive environment)
+        if not sys.stdin.isatty():
+            return True
         return False
 
 def get_package_mcp_server_config(env_manager: HatchEnvironmentManager, env_name: str, package_name: str) -> MCPServerConfig:
@@ -528,12 +529,12 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         )
 
         if result.success:
-            print(f"✓ Successfully configured MCP server '{server_name}' on host '{host}'")
+            print(f"[SUCCESS] Successfully configured MCP server '{server_name}' on host '{host}'")
             if result.backup_path:
                 print(f"  Backup created: {result.backup_path}")
             return 0
         else:
-            print(f"✗ Failed to configure MCP server '{server_name}' on host '{host}': {result.error_message}")
+            print(f"[ERROR] Failed to configure MCP server '{server_name}' on host '{host}': {result.error_message}")
             return 1
 
     except Exception as e:
@@ -573,12 +574,12 @@ def handle_mcp_remove(host: str, server_name: str, no_backup: bool = False,
         )
 
         if result.success:
-            print(f"✓ Successfully removed MCP server '{server_name}' from host '{host}'")
+            print(f"[SUCCESS] Successfully removed MCP server '{server_name}' from host '{host}'")
             if result.backup_path:
                 print(f"  Backup created: {result.backup_path}")
             return 0
         else:
-            print(f"✗ Failed to remove MCP server '{server_name}' from host '{host}': {result.error_message}")
+            print(f"[ERROR] Failed to remove MCP server '{server_name}' from host '{host}': {result.error_message}")
             return 1
 
     except Exception as e:
@@ -742,7 +743,7 @@ def main():
     mcp_configure_parser = mcp_subparsers.add_parser("configure", help="Configure MCP server directly on host")
     mcp_configure_parser.add_argument("host", help="Host platform to configure (e.g., claude-desktop, cursor)")
     mcp_configure_parser.add_argument("server_name", help="Name for the MCP server")
-    mcp_configure_parser.add_argument("command", help="Command to execute the MCP server")
+    mcp_configure_parser.add_argument("server_command", help="Command to execute the MCP server")
     mcp_configure_parser.add_argument("args", nargs="*", help="Arguments for the MCP server command")
     mcp_configure_parser.add_argument("--env", "-e", action="append", help="Environment variables (format: KEY=VALUE)")
     mcp_configure_parser.add_argument("--url", help="Server URL for remote MCP servers")
@@ -1235,7 +1236,7 @@ def main():
 
         elif args.mcp_command == "configure":
             return handle_mcp_configure(
-                args.host, args.server_name, args.command, args.args,
+                args.host, args.server_name, args.server_command, args.args,
                 args.env, args.url, args.headers, args.no_backup,
                 args.dry_run, args.auto_approve
             )
