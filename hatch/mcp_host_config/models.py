@@ -101,7 +101,7 @@ class MCPServerConfig(BaseModel):
     
     class Config:
         """Pydantic configuration."""
-        extra = "forbid"  # Prevent additional fields for strict validation
+        extra = "allow"  # Allow additional fields for host-specific extensions
         json_encoders = {
             Path: str
         }

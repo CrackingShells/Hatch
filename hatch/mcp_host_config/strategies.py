@@ -458,21 +458,35 @@ class GeminiHostStrategy(MCPHostStrategy):
                 except Exception:
                     pass
             
-            # Convert MCPServerConfig objects to dict
-            servers_dict = {}
+            # Preserve existing servers and add/update new ones
+            existing_servers = existing_config.get(self.get_config_key(), {})
+
+            # Convert MCPServerConfig objects to dict and merge with existing
             for name, server_config in config.servers.items():
-                servers_dict[name] = server_config.model_dump(exclude_none=True)
+                existing_servers[name] = server_config.model_dump(exclude_none=True)
+
+            # Update configuration with merged servers
+            existing_config[self.get_config_key()] = existing_servers
             
-            # Update configuration
-            existing_config[self.get_config_key()] = servers_dict
-            
-            # Write atomically
+            # Write atomically with enhanced error handling
             temp_path = config_path.with_suffix('.tmp')
-            with open(temp_path, 'w') as f:
-                json.dump(existing_config, f, indent=2)
-            
-            temp_path.replace(config_path)
-            return True
+            try:
+                with open(temp_path, 'w') as f:
+                    json.dump(existing_config, f, indent=2, ensure_ascii=False)
+
+                # Verify the JSON is valid by reading it back
+                with open(temp_path, 'r') as f:
+                    json.load(f)  # This will raise an exception if JSON is invalid
+
+                # Only replace if verification succeeds
+                temp_path.replace(config_path)
+                return True
+            except Exception as json_error:
+                # Clean up temp file on JSON error
+                if temp_path.exists():
+                    temp_path.unlink()
+                logger.error(f"JSON serialization/verification failed: {json_error}")
+                raise
             
         except Exception as e:
             logger.error(f"Failed to write Gemini configuration: {e}")
