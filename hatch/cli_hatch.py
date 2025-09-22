@@ -12,6 +12,7 @@ import json
 import logging
 import sys
 from pathlib import Path
+from typing import Optional
 
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch_validator import HatchPackageValidator
@@ -88,6 +89,156 @@ def get_package_mcp_server_config(env_manager: HatchEnvironmentManager, env_name
 
     except Exception as e:
         raise ValueError(f"Failed to get MCP server config for package '{package_name}': {e}")
+
+def handle_mcp_discover_hosts():
+    """Handle 'hatch mcp discover hosts' command."""
+    try:
+        # Import strategies to trigger registration
+        import hatch.mcp_host_config.strategies
+
+        available_hosts = MCPHostRegistry.detect_available_hosts()
+        print("Available MCP host platforms:")
+
+        for host_type in MCPHostType:
+            try:
+                strategy = MCPHostRegistry.get_strategy(host_type)
+                config_path = strategy.get_config_path()
+                is_available = host_type in available_hosts
+
+                status = "✓ Available" if is_available else "✗ Not detected"
+                print(f"  {host_type.value}: {status}")
+                if config_path:
+                    print(f"    Config path: {config_path}")
+            except Exception as e:
+                print(f"  {host_type.value}: Error - {e}")
+
+        return 0
+    except Exception as e:
+        print(f"Error discovering hosts: {e}")
+        return 1
+
+def handle_mcp_discover_servers(env_manager: HatchEnvironmentManager, env_name: Optional[str] = None):
+    """Handle 'hatch mcp discover servers' command."""
+    try:
+        env_name = env_name or env_manager.get_current_environment()
+
+        if not env_manager.environment_exists(env_name):
+            print(f"Error: Environment '{env_name}' does not exist")
+            return 1
+
+        packages = env_manager.list_packages(env_name)
+        mcp_packages = []
+
+        for package in packages:
+            try:
+                # Check if package has MCP server entry point
+                server_config = get_package_mcp_server_config(env_manager, env_name, package['name'])
+                mcp_packages.append({
+                    'package': package,
+                    'server_config': server_config
+                })
+            except ValueError:
+                # Package doesn't have MCP server
+                continue
+
+        if not mcp_packages:
+            print(f"No MCP servers found in environment '{env_name}'")
+            return 0
+
+        print(f"MCP servers in environment '{env_name}':")
+        for item in mcp_packages:
+            package = item['package']
+            server_config = item['server_config']
+            print(f"  {server_config.name}:")
+            print(f"    Package: {package['name']} v{package.get('version', 'unknown')}")
+            print(f"    Command: {server_config.command}")
+            print(f"    Args: {server_config.args}")
+            if server_config.env:
+                print(f"    Environment: {server_config.env}")
+
+        return 0
+    except Exception as e:
+        print(f"Error discovering servers: {e}")
+        return 1
+
+def handle_mcp_list_hosts():
+    """Handle 'hatch mcp list hosts' command."""
+    try:
+        # Import strategies to trigger registration
+        import hatch.mcp_host_config.strategies
+
+        available_hosts = MCPHostRegistry.detect_available_hosts()
+        all_hosts = list(MCPHostType)
+
+        print("MCP host platforms status:")
+        print(f"{'Host Platform':<20} {'Status':<15} {'Config Path'}")
+        print("-" * 70)
+
+        for host_type in all_hosts:
+            try:
+                strategy = MCPHostRegistry.get_strategy(host_type)
+                config_path = strategy.get_config_path()
+                is_available = host_type in available_hosts
+
+                status = "Available" if is_available else "Not detected"
+                config_display = str(config_path) if config_path else "N/A"
+
+                print(f"{host_type.value:<20} {status:<15} {config_display}")
+            except Exception as e:
+                print(f"{host_type.value:<20} {'Error':<15} {str(e)}")
+
+        return 0
+    except Exception as e:
+        print(f"Error listing hosts: {e}")
+        return 1
+
+def handle_mcp_list_servers(env_manager: HatchEnvironmentManager, env_name: Optional[str] = None):
+    """Handle 'hatch mcp list servers' command."""
+    try:
+        env_name = env_name or env_manager.get_current_environment()
+
+        if not env_manager.environment_exists(env_name):
+            print(f"Error: Environment '{env_name}' does not exist")
+            return 1
+
+        packages = env_manager.list_packages(env_name)
+        mcp_packages = []
+
+        for package in packages:
+            try:
+                # Check if package has MCP server entry point
+                server_config = get_package_mcp_server_config(env_manager, env_name, package['name'])
+                mcp_packages.append({
+                    'package': package,
+                    'server_config': server_config
+                })
+            except ValueError:
+                # Package doesn't have MCP server
+                continue
+
+        if not mcp_packages:
+            print(f"No MCP servers configured in environment '{env_name}'")
+            return 0
+
+        print(f"MCP servers in environment '{env_name}':")
+        print(f"{'Server Name':<20} {'Package':<20} {'Version':<10} {'Command'}")
+        print("-" * 80)
+
+        for item in mcp_packages:
+            package = item['package']
+            server_config = item['server_config']
+
+            server_name = server_config.name
+            package_name = package['name']
+            version = package.get('version', 'unknown')
+            command = f"{server_config.command} {' '.join(server_config.args)}"
+
+            print(f"{server_name:<20} {package_name:<20} {version:<10} {command}")
+
+        return 0
+    except Exception as e:
+        print(f"Error listing servers: {e}")
+        return 1
 
 def main():
     """Main entry point for Hatch CLI.
@@ -188,6 +339,35 @@ def main():
     python_shell_parser.add_argument("--hatch_env", default=None, help="Hatch environment name in which the Python environment is located (default: current environment)")
     python_shell_parser.add_argument("--cmd", help="Command to run in the shell (optional)")
     
+    # MCP host configuration commands
+    mcp_subparsers = subparsers.add_parser("mcp", help="MCP host configuration commands").add_subparsers(
+        dest="mcp_command", help="MCP command to execute"
+    )
+
+    # MCP discovery commands
+    mcp_discover_subparsers = mcp_subparsers.add_parser("discover", help="Discover MCP hosts and servers").add_subparsers(
+        dest="discover_command", help="Discovery command to execute"
+    )
+
+    # Discover hosts command
+    mcp_discover_hosts_parser = mcp_discover_subparsers.add_parser("hosts", help="Discover available MCP host platforms")
+
+    # Discover servers command
+    mcp_discover_servers_parser = mcp_discover_subparsers.add_parser("servers", help="Discover configured MCP servers")
+    mcp_discover_servers_parser.add_argument("--env", "-e", default=None, help="Environment name (default: current environment)")
+
+    # MCP list commands
+    mcp_list_subparsers = mcp_subparsers.add_parser("list", help="List MCP hosts and servers").add_subparsers(
+        dest="list_command", help="List command to execute"
+    )
+
+    # List hosts command
+    mcp_list_hosts_parser = mcp_list_subparsers.add_parser("hosts", help="List detected MCP host platforms with status")
+
+    # List servers command
+    mcp_list_servers_parser = mcp_list_subparsers.add_parser("servers", help="List configured MCP servers from environment")
+    mcp_list_servers_parser.add_argument("--env", "-e", default=None, help="Environment name (default: current environment)")
+
     # Package management commands
     pkg_subparsers = subparsers.add_parser("package", help="Package management commands").add_subparsers(
         dest="pkg_command", help="Package command to execute"
@@ -623,10 +803,33 @@ def main():
             except ValueError as e:
                 print(f"Error: {e}")
                 return 1
-            
+
         else:
             parser.print_help()
             return 1
+
+    elif args.command == "mcp":
+        if args.mcp_command == "discover":
+            if args.discover_command == "hosts":
+                return handle_mcp_discover_hosts()
+            elif args.discover_command == "servers":
+                return handle_mcp_discover_servers(env_manager, args.env)
+            else:
+                print("Unknown discover command")
+                return 1
+
+        elif args.mcp_command == "list":
+            if args.list_command == "hosts":
+                return handle_mcp_list_hosts()
+            elif args.list_command == "servers":
+                return handle_mcp_list_servers(env_manager, args.env)
+            else:
+                print("Unknown list command")
+                return 1
+        else:
+            print("Unknown MCP command")
+            return 1
+
     else:
         parser.print_help()
         return 1
