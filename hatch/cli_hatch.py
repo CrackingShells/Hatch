@@ -240,6 +240,185 @@ def handle_mcp_list_servers(env_manager: HatchEnvironmentManager, env_name: Opti
         print(f"Error listing servers: {e}")
         return 1
 
+def handle_mcp_backup_restore(host: str, backup_file: Optional[str] = None, dry_run: bool = False, auto_approve: bool = False):
+    """Handle 'hatch mcp backup restore' command."""
+    try:
+        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
+
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
+            return 1
+
+        backup_manager = MCPHostConfigBackupManager()
+
+        # Get backup file path
+        if backup_file:
+            backup_path = backup_manager.backup_root / host / backup_file
+            if not backup_path.exists():
+                print(f"Error: Backup file '{backup_file}' not found for host '{host}'")
+                return 1
+        else:
+            backup_path = backup_manager._get_latest_backup(host)
+            if not backup_path:
+                print(f"Error: No backups found for host '{host}'")
+                return 1
+            backup_file = backup_path.name
+
+        if dry_run:
+            print(f"[DRY RUN] Would restore backup for host '{host}':")
+            print(f"[DRY RUN] Backup file: {backup_file}")
+            print(f"[DRY RUN] Backup path: {backup_path}")
+            return 0
+
+        # Confirm operation unless auto-approved
+        if not request_confirmation(
+            f"Restore backup '{backup_file}' for host '{host}'? This will overwrite current configuration.",
+            auto_approve
+        ):
+            print("Operation cancelled.")
+            return 0
+
+        # Perform restoration
+        success = backup_manager.restore_backup(host, backup_file)
+
+        if success:
+            print(f"✓ Successfully restored backup '{backup_file}' for host '{host}'")
+            return 0
+        else:
+            print(f"✗ Failed to restore backup '{backup_file}' for host '{host}'")
+            return 1
+
+    except Exception as e:
+        print(f"Error restoring backup: {e}")
+        return 1
+
+def handle_mcp_backup_list(host: str, detailed: bool = False):
+    """Handle 'hatch mcp backup list' command."""
+    try:
+        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
+
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
+            return 1
+
+        backup_manager = MCPHostConfigBackupManager()
+        backups = backup_manager.list_backups(host)
+
+        if not backups:
+            print(f"No backups found for host '{host}'")
+            return 0
+
+        print(f"Backups for host '{host}' ({len(backups)} found):")
+
+        if detailed:
+            print(f"{'Backup File':<40} {'Created':<20} {'Size':<10} {'Age (days)'}")
+            print("-" * 80)
+
+            for backup in backups:
+                created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                size = f"{backup.file_size:,} B"
+                age = backup.age_days
+
+                print(f"{backup.file_path.name:<40} {created:<20} {size:<10} {age}")
+        else:
+            for backup in backups:
+                created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                print(f"  {backup.file_path.name} (created: {created}, {backup.age_days} days ago)")
+
+        return 0
+    except Exception as e:
+        print(f"Error listing backups: {e}")
+        return 1
+
+def handle_mcp_backup_clean(host: str, older_than_days: Optional[int] = None, keep_count: Optional[int] = None,
+                           dry_run: bool = False, auto_approve: bool = False):
+    """Handle 'hatch mcp backup clean' command."""
+    try:
+        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
+
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
+            return 1
+
+        # Validate cleanup criteria
+        if not older_than_days and not keep_count:
+            print("Error: Must specify either --older-than-days or --keep-count")
+            return 1
+
+        backup_manager = MCPHostConfigBackupManager()
+        backups = backup_manager.list_backups(host)
+
+        if not backups:
+            print(f"No backups found for host '{host}'")
+            return 0
+
+        # Determine which backups would be cleaned
+        to_clean = []
+
+        if older_than_days:
+            for backup in backups:
+                if backup.age_days > older_than_days:
+                    to_clean.append(backup)
+
+        if keep_count and len(backups) > keep_count:
+            # Keep newest backups, remove oldest
+            to_clean.extend(backups[keep_count:])
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_to_clean = []
+        for backup in to_clean:
+            if backup.file_path not in seen:
+                seen.add(backup.file_path)
+                unique_to_clean.append(backup)
+
+        if not unique_to_clean:
+            print(f"No backups match cleanup criteria for host '{host}'")
+            return 0
+
+        if dry_run:
+            print(f"[DRY RUN] Would clean {len(unique_to_clean)} backup(s) for host '{host}':")
+            for backup in unique_to_clean:
+                print(f"[DRY RUN]   {backup.file_path.name} (age: {backup.age_days} days)")
+            return 0
+
+        # Confirm operation unless auto-approved
+        if not request_confirmation(
+            f"Clean {len(unique_to_clean)} backup(s) for host '{host}'?",
+            auto_approve
+        ):
+            print("Operation cancelled.")
+            return 0
+
+        # Perform cleanup
+        filters = {}
+        if older_than_days:
+            filters['older_than_days'] = older_than_days
+        if keep_count:
+            filters['keep_count'] = keep_count
+
+        cleaned_count = backup_manager.clean_backups(host, **filters)
+
+        if cleaned_count > 0:
+            print(f"✓ Successfully cleaned {cleaned_count} backup(s) for host '{host}'")
+            return 0
+        else:
+            print(f"No backups were cleaned for host '{host}'")
+            return 0
+
+    except Exception as e:
+        print(f"Error cleaning backups: {e}")
+        return 1
+
 def main():
     """Main entry point for Hatch CLI.
     
@@ -367,6 +546,31 @@ def main():
     # List servers command
     mcp_list_servers_parser = mcp_list_subparsers.add_parser("servers", help="List configured MCP servers from environment")
     mcp_list_servers_parser.add_argument("--env", "-e", default=None, help="Environment name (default: current environment)")
+
+    # MCP backup commands
+    mcp_backup_subparsers = mcp_subparsers.add_parser("backup", help="Backup management commands").add_subparsers(
+        dest="backup_command", help="Backup command to execute"
+    )
+
+    # Restore backup command
+    mcp_backup_restore_parser = mcp_backup_subparsers.add_parser("restore", help="Restore MCP host configuration from backup")
+    mcp_backup_restore_parser.add_argument("host", help="Host platform to restore (e.g., claude-desktop, cursor)")
+    mcp_backup_restore_parser.add_argument("--backup-file", "-f", default=None, help="Specific backup file to restore (default: latest)")
+    mcp_backup_restore_parser.add_argument("--dry-run", action="store_true", help="Preview restore operation without execution")
+    mcp_backup_restore_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
+
+    # List backups command
+    mcp_backup_list_parser = mcp_backup_subparsers.add_parser("list", help="List available backups for MCP host")
+    mcp_backup_list_parser.add_argument("host", help="Host platform to list backups for (e.g., claude-desktop, cursor)")
+    mcp_backup_list_parser.add_argument("--detailed", "-d", action="store_true", help="Show detailed backup information")
+
+    # Clean backups command
+    mcp_backup_clean_parser = mcp_backup_subparsers.add_parser("clean", help="Clean old backups based on criteria")
+    mcp_backup_clean_parser.add_argument("host", help="Host platform to clean backups for (e.g., claude-desktop, cursor)")
+    mcp_backup_clean_parser.add_argument("--older-than-days", type=int, help="Remove backups older than specified days")
+    mcp_backup_clean_parser.add_argument("--keep-count", type=int, help="Keep only the specified number of newest backups")
+    mcp_backup_clean_parser.add_argument("--dry-run", action="store_true", help="Preview cleanup operation without execution")
+    mcp_backup_clean_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
 
     # Package management commands
     pkg_subparsers = subparsers.add_parser("package", help="Package management commands").add_subparsers(
@@ -825,6 +1029,22 @@ def main():
                 return handle_mcp_list_servers(env_manager, args.env)
             else:
                 print("Unknown list command")
+                return 1
+
+        elif args.mcp_command == "backup":
+            if args.backup_command == "restore":
+                return handle_mcp_backup_restore(
+                    args.host, args.backup_file, args.dry_run, args.auto_approve
+                )
+            elif args.backup_command == "list":
+                return handle_mcp_backup_list(args.host, args.detailed)
+            elif args.backup_command == "clean":
+                return handle_mcp_backup_clean(
+                    args.host, args.older_than_days, args.keep_count,
+                    args.dry_run, args.auto_approve
+                )
+            else:
+                print("Unknown backup command")
                 return 1
         else:
             print("Unknown MCP command")
