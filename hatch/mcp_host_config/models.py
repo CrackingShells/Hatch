@@ -6,7 +6,7 @@ environment data structures, and host configuration management following
 the v2 design specification with consolidated MCPServerConfig model.
 """
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
 from typing import Dict, List, Optional, Union
 from datetime import datetime
 from pathlib import Path
@@ -28,6 +28,8 @@ class MCPHostType(str, Enum):
 
 class MCPServerConfig(BaseModel):
     """Consolidated MCP server configuration supporting local and remote servers."""
+
+    model_config = ConfigDict(extra="forbid")
 
     # Server identification
     name: Optional[str] = Field(None, description="Server name for identification")
@@ -99,12 +101,7 @@ class MCPServerConfig(BaseModel):
         """Check if this is a remote server configuration."""
         return self.url is not None
     
-    class Config:
-        """Pydantic configuration."""
-        extra = "allow"  # Allow additional fields for host-specific extensions
-        json_encoders = {
-            Path: str
-        }
+
 
 
 class HostConfigurationMetadata(BaseModel):

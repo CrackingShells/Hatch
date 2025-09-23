@@ -283,7 +283,11 @@ class TestMCPListCommands(unittest.TestCase):
                 self.assertEqual(result, 0)
                 
                 # Verify formatted table output
-                print_calls = [call[0][0] for call in mock_print.call_args_list]
+                print_calls = []
+                for call in mock_print.call_args_list:
+                    if call[0]:  # Check if args exist
+                        print_calls.append(call[0][0])
+
                 self.assertTrue(any("MCP servers in environment 'test-env':" in call for call in print_calls))
                 self.assertTrue(any("Server Name" in call for call in print_calls))
                 self.assertTrue(any("weather-toolkit-server" in call for call in print_calls))
