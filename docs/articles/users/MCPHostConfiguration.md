@@ -132,19 +132,24 @@ hatch mcp configure weather-server \
   --args weather_server.py
 ```
 
-### Environment Synchronization
+### Advanced Synchronization
 
-Sync your current environment's MCP configurations to host platforms:
+Hatch provides comprehensive synchronization capabilities for managing MCP configurations across environments and hosts. For detailed information, see [Synchronization Commands](MCP/synchronization_commands.md).
+
+#### Quick Examples
 
 ```bash
-# Sync current environment to specific hosts
-hatch mcp sync --hosts claude-desktop,cursor
+# Sync environment to hosts
+hatch mcp sync --from-env production --to-host claude-desktop,cursor
 
-# Sync to all available hosts
-hatch mcp sync --all-hosts
+# Copy configuration between hosts
+hatch mcp sync --from-host claude-desktop --to-host cursor
 
-# Preview sync without making changes
-hatch mcp sync --all-hosts --dry-run
+# Sync with filtering
+hatch mcp sync --from-env dev --to-host all --pattern ".*api.*"
+
+# Preview changes
+hatch mcp sync --from-env prod --to-host all --dry-run
 ```
 
 ## Host-Specific Considerations

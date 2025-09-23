@@ -307,6 +307,180 @@ HATCH_AUTO_APPROVE=yes hatch package add production_package
 
 ---
 
+## MCP Host Configuration Commands
+
+### `hatch mcp configure`
+
+Configure an MCP server on a specific host platform.
+
+Syntax:
+
+`hatch mcp configure <server-name> --host <host> [--command CMD] [--args ARGS] [--url URL] [--header HEADER] [--env-var VAR] [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `server-name` | string (positional) | Name of the MCP server to configure | n/a |
+| `--host` | string | Target host platform (claude-desktop, cursor, etc.) | n/a |
+| `--command` | string | Command to execute for local servers | none |
+| `--args` | string | Command arguments for local servers | none |
+| `--url` | string | URL for remote MCP servers | none |
+| `--header` | string | HTTP headers for remote servers (repeatable) | none |
+| `--env-var` | string | Environment variables (repeatable) | none |
+| `--dry-run` | flag | Preview configuration without applying changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before configuration | false |
+
+### `hatch mcp sync`
+
+Synchronize MCP configurations across environments and hosts.
+
+Syntax:
+
+`hatch mcp sync [--from-env ENV | --from-host HOST] --to-host HOSTS [--servers SERVERS | --pattern PATTERN] [--dry-run] [--auto-approve] [--no-backup]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--from-env` | string | Source Hatch environment (mutually exclusive with --from-host) | none |
+| `--from-host` | string | Source host platform (mutually exclusive with --from-env) | none |
+| `--to-host` | string | Target hosts (comma-separated or 'all') | n/a |
+| `--servers` | string | Specific server names to sync (mutually exclusive with --pattern) | none |
+| `--pattern` | string | Regex pattern for server selection (mutually exclusive with --servers) | none |
+| `--dry-run` | flag | Preview synchronization without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before synchronization | false |
+
+### `hatch mcp remove server`
+
+Remove an MCP server from one or more hosts.
+
+Syntax:
+
+`hatch mcp remove server <server-name> --host <hosts> [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `server-name` | string (positional) | Name of the server to remove | n/a |
+| `--host` | string | Target hosts (comma-separated or 'all') | n/a |
+| `--dry-run` | flag | Preview removal without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before removal | false |
+
+### `hatch mcp remove host`
+
+Remove complete host configuration.
+
+Syntax:
+
+`hatch mcp remove host <host-name> [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `host-name` | string (positional) | Name of the host to remove | n/a |
+| `--dry-run` | flag | Preview removal without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before removal | false |
+
+### `hatch mcp list hosts`
+
+List available MCP host platforms.
+
+Syntax:
+
+`hatch mcp list hosts [--detailed]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--detailed` | flag | Show detailed host information | false |
+
+### `hatch mcp list servers`
+
+List configured MCP servers on hosts.
+
+Syntax:
+
+`hatch mcp list servers [--host HOST] [--detailed]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--host` | string | Specific host to list servers for | all hosts |
+| `--detailed` | flag | Show detailed server information | false |
+
+### `hatch mcp discover hosts`
+
+Discover available MCP host platforms on the system.
+
+Syntax:
+
+`hatch mcp discover hosts`
+
+### `hatch mcp discover servers`
+
+Discover MCP servers in Hatch environments.
+
+Syntax:
+
+`hatch mcp discover servers [--env ENV]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env` | string | Specific environment to discover servers in | current environment |
+
+### `hatch mcp backup create`
+
+Create backup of host configurations.
+
+Syntax:
+
+`hatch mcp backup create --host <hosts>`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--host` | string | Hosts to backup (comma-separated or 'all') | n/a |
+
+### `hatch mcp backup list`
+
+List available configuration backups.
+
+Syntax:
+
+`hatch mcp backup list [--host HOST] [--detailed]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--host` | string | Filter backups by host | all hosts |
+| `--detailed` | flag | Show detailed backup information | false |
+
+### `hatch mcp backup restore`
+
+Restore host configuration from backup.
+
+Syntax:
+
+`hatch mcp backup restore <backup-id> [--dry-run] [--auto-approve]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `backup-id` | string (positional) | Backup identifier to restore | n/a |
+| `--dry-run` | flag | Preview restore without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+
+### `hatch mcp backup clean`
+
+Clean old backup files.
+
+Syntax:
+
+`hatch mcp backup clean [--older-than DAYS] [--keep-count COUNT] [--dry-run] [--auto-approve]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--older-than` | integer | Remove backups older than specified days | none |
+| `--keep-count` | integer | Keep only the most recent N backups | none |
+| `--dry-run` | flag | Preview cleanup without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+
+---
+
 ## Exit codes
 
 | Code | Meaning |
