@@ -1,50 +1,43 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = [ "setuptools>=61.0" ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "hatch"
-version = "0.6.1"
-authors = [
-  { name = "Hatch Team" },
-]
+version = "0.7.0-dev.1"
 description = "Package manager for the Cracking Shells ecosystem"
 readme = "README.md"
 requires-python = ">=3.12"
 classifiers = [
-    "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: GNU Affero General Public License v3",
-    "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: GNU Affero General Public License v3",
+  "Operating System :: OS Independent"
 ]
-
 dependencies = [
-    "jsonschema>=4.0.0",
-    "requests>=2.25.0",
-    "packaging>=20.0",
-    "docker>=7.1.0",
-    "pydantic>=2.0.0",
-    
-    "hatch_validator @ git+https://github.com/CrackingShells/Hatch-Validator.git@v0.7.1",
-    "wobble @ git+https://github.com/CrackingShells/Wobble.git@v0.2.0"
+  "jsonschema>=4.0.0",
+  "requests>=2.25.0",
+  "packaging>=20.0",
+  "docker>=7.1.0",
+  "pydantic>=2.0.0",
+  "hatch_validator @ git+https://github.com/CrackingShells/Hatch-Validator.git@v0.7.1",
+  "wobble @ git+https://github.com/CrackingShells/Wobble.git@v0.2.0"
 ]
 
-[project.optional-dependencies]
-docs = [
-    "mkdocs>=1.4.0",
-    "mkdocstrings[python]>=0.20.0"
-]
+  [[project.authors]]
+  name = "Hatch Team"
 
-[project.scripts]
-hatch = "hatch.cli_hatch:main"
+  [project.optional-dependencies]
+  docs = [ "mkdocs>=1.4.0", "mkdocstrings[python]>=0.20.0" ]
 
-[project.urls]
-"Homepage" = "https://github.com/CrackingShells/Hatch"
-"Bug Tracker" = "https://github.com/CrackingShells/Hatch/issues"
+  [project.scripts]
+  hatch = "hatch.cli_hatch:main"
 
-[tool.setuptools]
-package-dir = {"" = "."}
+  [project.urls]
+  Homepage = "https://github.com/CrackingShells/Hatch"
+  "Bug Tracker" = "https://github.com/CrackingShells/Hatch/issues"
 
-
+[tool.setuptools.package-dir]
+"" = "."
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = [ "." ]
