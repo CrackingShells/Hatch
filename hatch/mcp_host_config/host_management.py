@@ -307,3 +307,49 @@ class MCPHostConfigurationManager:
             servers_synced=servers_synced,
             hosts_updated=hosts_updated
         )
+
+    def remove_host_configuration(self, hostname: str, no_backup: bool = False) -> ConfigurationResult:
+        """Remove entire host configuration (all MCP servers).
+
+        Args:
+            hostname (str): Host identifier
+            no_backup (bool, optional): Skip backup creation. Defaults to False.
+
+        Returns:
+            ConfigurationResult: Result of the removal operation
+        """
+        try:
+            host_type = MCPHostType(hostname)
+            strategy = self.host_registry.get_strategy(host_type)
+            config_path = strategy.get_config_path()
+
+            if not config_path or not config_path.exists():
+                return ConfigurationResult(
+                    success=True,
+                    hostname=hostname,
+                    error_message="No configuration file to remove"
+                )
+
+            # Create backup if requested
+            backup_path = None
+            if not no_backup and self.backup_manager:
+                backup_result = self.backup_manager.create_backup(config_path, hostname)
+                if backup_result.success:
+                    backup_path = backup_result.backup_path
+
+            # Remove configuration file
+            config_path.unlink()
+
+            return ConfigurationResult(
+                success=True,
+                hostname=hostname,
+                backup_created=backup_path is not None,
+                backup_path=backup_path
+            )
+
+        except Exception as e:
+            return ConfigurationResult(
+                success=False,
+                hostname=hostname,
+                error_message=str(e)
+            )
