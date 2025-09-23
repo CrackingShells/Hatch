@@ -1387,7 +1387,7 @@ def main():
 
                         # Configure on each host
                         success_count = 0
-                        for host in hosts:
+                        for host in hosts: # 'host', here, is a string
                             try:
                                 result = mcp_manager.configure_server(
                                     hostname=host,
@@ -1396,13 +1396,13 @@ def main():
                                 )
 
                                 if result.success:
-                                    print(f"✓ Configured {server_config.name} on {host.value}")
+                                    print(f"✓ Configured {server_config.name} on {host}")
                                     success_count += 1
                                 else:
-                                    print(f"✗ Failed to configure {server_config.name} on {host.value}: {result.error_message}")
+                                    print(f"✗ Failed to configure {server_config.name} on {host}: {result.error_message}")
 
                             except Exception as e:
-                                print(f"✗ Error configuring {server_config.name} on {host.value}: {e}")
+                                print(f"✗ Error configuring {server_config.name} on {host}: {e}")
 
                         if success_count > 0:
                             print(f"MCP configuration completed: {success_count}/{len(hosts)} hosts configured")
@@ -1448,7 +1448,7 @@ def main():
                 server_config = get_package_mcp_server_config(env_manager, env_name, args.package_name)
 
                 if args.dry_run:
-                    print(f"[DRY RUN] Would synchronize MCP server for package '{args.package_name}' to hosts: {[h.value for h in hosts]}")
+                    print(f"[DRY RUN] Would synchronize MCP server for package '{args.package_name}' to hosts: {[h for h in hosts]}")
                     print(f"[DRY RUN] Server config: {server_config.name} -> {' '.join(server_config.args)}")
                     return 0
 
@@ -1462,16 +1462,16 @@ def main():
 
                 # Perform synchronization to each host
                 success_count = 0
-                for host in hosts:
+                for host in hosts: # 'host', here, is a string
                     try:
                         result = mcp_manager.configure_server(
-                            hostname=host.value,  # Use enum value (string) instead of enum object
+                            hostname=host,
                             server_config=server_config,
                             no_backup=args.no_backup
                         )
 
                         if result.success:
-                            print(f"[SUCCESS] Successfully configured {server_config.name} on {host.value}")
+                            print(f"[SUCCESS] Successfully configured {server_config.name} on {host}")
                             success_count += 1
 
                             # Update package metadata with host configuration tracking
@@ -1485,17 +1485,17 @@ def main():
                                 env_manager.update_package_host_configuration(
                                     env_name=env_name,
                                     package_name=args.package_name,
-                                    hostname=host.value,
+                                    hostname=host,
                                     server_config=server_config_dict
                                 )
                             except Exception as e:
                                 # Log but don't fail the sync operation
                                 print(f"[WARNING] Failed to update package metadata: {e}")
                         else:
-                            print(f"[ERROR] Failed to configure {server_config.name} on {host.value}: {result.error_message}")
+                            print(f"[ERROR] Failed to configure {server_config.name} on {host}: {result.error_message}")
 
                     except Exception as e:
-                        print(f"[ERROR] Error configuring {server_config.name} on {host.value}: {e}")
+                        print(f"[ERROR] Error configuring {server_config.name} on {host}: {e}")
 
                 # Report results
                 if success_count == len(hosts):
