@@ -353,3 +353,194 @@ class MCPHostConfigurationManager:
                 hostname=hostname,
                 error_message=str(e)
             )
+
+    def sync_configurations(self,
+                           from_env: Optional[str] = None,
+                           from_host: Optional[str] = None,
+                           to_hosts: Optional[List[str]] = None,
+                           servers: Optional[List[str]] = None,
+                           pattern: Optional[str] = None,
+                           no_backup: bool = False) -> SyncResult:
+        """Advanced synchronization with multiple source/target options.
+
+        Args:
+            from_env (str, optional): Source environment name
+            from_host (str, optional): Source host name
+            to_hosts (List[str], optional): Target host names
+            servers (List[str], optional): Specific server names to sync
+            pattern (str, optional): Regex pattern for server selection
+            no_backup (bool, optional): Skip backup creation. Defaults to False.
+
+        Returns:
+            SyncResult: Result of the synchronization operation
+
+        Raises:
+            ValueError: If source specification is invalid
+        """
+        import re
+        from hatch.environment_manager import HatchEnvironmentManager
+
+        # Validate source specification
+        if not from_env and not from_host:
+            raise ValueError("Must specify either from_env or from_host as source")
+        if from_env and from_host:
+            raise ValueError("Cannot specify both from_env and from_host as source")
+
+        # Default to all available hosts if no targets specified
+        if not to_hosts:
+            to_hosts = [host.value for host in self.host_registry.detect_available_hosts()]
+
+        try:
+            # Resolve source data
+            if from_env:
+                # Get environment data
+                env_manager = HatchEnvironmentManager()
+                env_data = env_manager.get_environment_data(from_env)
+                if not env_data:
+                    return SyncResult(
+                        success=False,
+                        results=[ConfigurationResult(
+                            success=False,
+                            hostname="",
+                            error_message=f"Environment '{from_env}' not found"
+                        )],
+                        servers_synced=0,
+                        hosts_updated=0
+                    )
+
+                # Extract servers from environment
+                source_servers = {}
+                for package in env_data.get_mcp_packages():
+                    # Use package name as server name (single server per package)
+                    source_servers[package.name] = package.configured_hosts
+
+            else:  # from_host
+                # Read host configuration
+                try:
+                    host_type = MCPHostType(from_host)
+                    strategy = self.host_registry.get_strategy(host_type)
+                    host_config = strategy.read_configuration()
+
+                    # Extract servers from host configuration
+                    source_servers = {}
+                    for server_name, server_config in host_config.servers.items():
+                        source_servers[server_name] = {
+                            from_host: {"server_config": server_config}
+                        }
+
+                except ValueError:
+                    return SyncResult(
+                        success=False,
+                        results=[ConfigurationResult(
+                            success=False,
+                            hostname="",
+                            error_message=f"Invalid source host '{from_host}'"
+                        )],
+                        servers_synced=0,
+                        hosts_updated=0
+                    )
+
+            # Apply server filtering
+            if servers:
+                # Filter by specific server names
+                filtered_servers = {name: config for name, config in source_servers.items()
+                                  if name in servers}
+                source_servers = filtered_servers
+            elif pattern:
+                # Filter by regex pattern
+                regex = re.compile(pattern)
+                filtered_servers = {name: config for name, config in source_servers.items()
+                                  if regex.match(name)}
+                source_servers = filtered_servers
+
+            # Apply synchronization to target hosts
+            results = []
+            servers_synced = 0
+
+            for target_host in to_hosts:
+                try:
+                    host_type = MCPHostType(target_host)
+                    strategy = self.host_registry.get_strategy(host_type)
+
+                    # Read current target configuration
+                    current_config = strategy.read_configuration()
+
+                    # Create backup if requested
+                    backup_path = None
+                    if not no_backup and self.backup_manager:
+                        config_path = strategy.get_config_path()
+                        if config_path and config_path.exists():
+                            backup_result = self.backup_manager.create_backup(config_path, target_host)
+                            if backup_result.success:
+                                backup_path = backup_result.backup_path
+
+                    # Add servers to target configuration
+                    host_servers_added = 0
+                    for server_name, server_hosts in source_servers.items():
+                        # Find appropriate server config for this target host
+                        server_config = None
+
+                        if from_env:
+                            # For environment source, look for host-specific config
+                            if target_host in server_hosts:
+                                server_config = server_hosts[target_host]["server_config"]
+                            elif "claude-desktop" in server_hosts:
+                                # Fallback to claude-desktop config for compatibility
+                                server_config = server_hosts["claude-desktop"]["server_config"]
+                        else:
+                            # For host source, use the server config directly
+                            if from_host in server_hosts:
+                                server_config = server_hosts[from_host]["server_config"]
+
+                        if server_config:
+                            current_config.add_server(server_name, server_config)
+                            host_servers_added += 1
+
+                    # Write updated configuration
+                    success = strategy.write_configuration(current_config, no_backup=no_backup)
+
+                    results.append(ConfigurationResult(
+                        success=success,
+                        hostname=target_host,
+                        backup_created=backup_path is not None,
+                        backup_path=backup_path
+                    ))
+
+                    if success:
+                        servers_synced += host_servers_added
+
+                except ValueError:
+                    results.append(ConfigurationResult(
+                        success=False,
+                        hostname=target_host,
+                        error_message=f"Invalid target host '{target_host}'"
+                    ))
+                except Exception as e:
+                    results.append(ConfigurationResult(
+                        success=False,
+                        hostname=target_host,
+                        error_message=str(e)
+                    ))
+
+            # Calculate summary statistics
+            successful_results = [r for r in results if r.success]
+            hosts_updated = len(successful_results)
+
+            return SyncResult(
+                success=hosts_updated > 0,
+                results=results,
+                servers_synced=servers_synced,
+                hosts_updated=hosts_updated
+            )
+
+        except Exception as e:
+            return SyncResult(
+                success=False,
+                results=[ConfigurationResult(
+                    success=False,
+                    hostname="",
+                    error_message=f"Synchronization failed: {str(e)}"
+                )],
+                servers_synced=0,
+                hosts_updated=0
+            )
