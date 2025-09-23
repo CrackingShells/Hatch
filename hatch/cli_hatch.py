@@ -12,7 +12,7 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch_validator import HatchPackageValidator
@@ -632,6 +632,141 @@ def handle_mcp_remove(host: str, server_name: str, no_backup: bool = False,
         print(f"Error removing MCP server: {e}")
         return 1
 
+def parse_host_list(host_arg: str) -> List[str]:
+    """Parse comma-separated host list or 'all'."""
+    if not host_arg:
+        return []
+
+    if host_arg.lower() == 'all':
+        from hatch.mcp_host_config.host_management import MCPHostRegistry
+        available_hosts = MCPHostRegistry.detect_available_hosts()
+        return [host.value for host in available_hosts]
+
+    hosts = []
+    for host_str in host_arg.split(','):
+        host_str = host_str.strip()
+        try:
+            host_type = MCPHostType(host_str)
+            hosts.append(host_type.value)
+        except ValueError:
+            available = [h.value for h in MCPHostType]
+            raise ValueError(f"Unknown host '{host_str}'. Available: {available}")
+
+    return hosts
+
+def handle_mcp_remove_server(server_name: str, hosts: Optional[str] = None,
+                           env: Optional[str] = None, no_backup: bool = False,
+                           dry_run: bool = False, auto_approve: bool = False):
+    """Handle 'hatch mcp remove server' command."""
+    try:
+        # Determine target hosts
+        if hosts:
+            target_hosts = parse_host_list(hosts)
+        elif env:
+            # TODO: Implement environment-based server removal
+            print("Error: Environment-based removal not yet implemented")
+            return 1
+        else:
+            print("Error: Must specify either --host or --env")
+            return 1
+
+        if not target_hosts:
+            print("Error: No valid hosts specified")
+            return 1
+
+        if dry_run:
+            print(f"[DRY RUN] Would remove MCP server '{server_name}' from hosts: {', '.join(target_hosts)}")
+            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            return 0
+
+        # Confirm operation unless auto-approved
+        hosts_str = ', '.join(target_hosts)
+        if not request_confirmation(
+            f"Remove MCP server '{server_name}' from hosts: {hosts_str}?",
+            auto_approve
+        ):
+            print("Operation cancelled.")
+            return 0
+
+        # Perform removal on each host
+        mcp_manager = MCPHostConfigurationManager()
+        success_count = 0
+        total_count = len(target_hosts)
+
+        for host in target_hosts:
+            result = mcp_manager.remove_server(
+                server_name=server_name,
+                hostname=host,
+                no_backup=no_backup
+            )
+
+            if result.success:
+                print(f"[SUCCESS] Successfully removed '{server_name}' from '{host}'")
+                if result.backup_path:
+                    print(f"  Backup created: {result.backup_path}")
+                success_count += 1
+            else:
+                print(f"[ERROR] Failed to remove '{server_name}' from '{host}': {result.error_message}")
+
+        # Summary
+        if success_count == total_count:
+            print(f"[SUCCESS] Removed '{server_name}' from all {total_count} hosts")
+            return 0
+        elif success_count > 0:
+            print(f"[PARTIAL SUCCESS] Removed '{server_name}' from {success_count}/{total_count} hosts")
+            return 1
+        else:
+            print(f"[ERROR] Failed to remove '{server_name}' from any hosts")
+            return 1
+
+    except Exception as e:
+        print(f"Error removing MCP server: {e}")
+        return 1
+
+def handle_mcp_remove_host(host_name: str, no_backup: bool = False,
+                          dry_run: bool = False, auto_approve: bool = False):
+    """Handle 'hatch mcp remove host' command."""
+    try:
+        # Validate host type
+        try:
+            host_type = MCPHostType(host_name)
+        except ValueError:
+            print(f"Error: Invalid host '{host_name}'. Supported hosts: {[h.value for h in MCPHostType]}")
+            return 1
+
+        if dry_run:
+            print(f"[DRY RUN] Would remove entire host configuration for '{host_name}'")
+            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            return 0
+
+        # Confirm operation unless auto-approved
+        if not request_confirmation(
+            f"Remove entire host configuration for '{host_name}'? This will remove ALL MCP servers from this host.",
+            auto_approve
+        ):
+            print("Operation cancelled.")
+            return 0
+
+        # Perform host configuration removal
+        mcp_manager = MCPHostConfigurationManager()
+        result = mcp_manager.remove_host_configuration(
+            hostname=host_name,
+            no_backup=no_backup
+        )
+
+        if result.success:
+            print(f"[SUCCESS] Successfully removed host configuration for '{host_name}'")
+            if result.backup_path:
+                print(f"  Backup created: {result.backup_path}")
+            return 0
+        else:
+            print(f"[ERROR] Failed to remove host configuration for '{host_name}': {result.error_message}")
+            return 1
+
+    except Exception as e:
+        print(f"Error removing host configuration: {e}")
+        return 1
+
 def main():
     """Main entry point for Hatch CLI.
     
@@ -798,13 +933,26 @@ def main():
     mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
     mcp_configure_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
 
-    # Remove MCP server command
-    mcp_remove_parser = mcp_subparsers.add_parser("remove", help="Remove MCP server from host")
-    mcp_remove_parser.add_argument("host", help="Host platform to remove from (e.g., claude-desktop, cursor)")
-    mcp_remove_parser.add_argument("server_name", help="Name of the MCP server to remove")
-    mcp_remove_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before removal")
-    mcp_remove_parser.add_argument("--dry-run", action="store_true", help="Preview removal without execution")
-    mcp_remove_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
+    # Remove MCP commands (object-action pattern)
+    mcp_remove_subparsers = mcp_subparsers.add_parser("remove", help="Remove MCP servers or host configurations").add_subparsers(
+        dest="remove_command", help="Remove command to execute"
+    )
+
+    # Remove server command
+    mcp_remove_server_parser = mcp_remove_subparsers.add_parser("server", help="Remove MCP server from hosts")
+    mcp_remove_server_parser.add_argument("server_name", help="Name of the MCP server to remove")
+    mcp_remove_server_parser.add_argument("--host", help="Target hosts (comma-separated or 'all')")
+    mcp_remove_server_parser.add_argument("--env", "-e", help="Environment name (for environment-based removal)")
+    mcp_remove_server_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before removal")
+    mcp_remove_server_parser.add_argument("--dry-run", action="store_true", help="Preview removal without execution")
+    mcp_remove_server_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
+
+    # Remove host command
+    mcp_remove_host_parser = mcp_remove_subparsers.add_parser("host", help="Remove entire host configuration")
+    mcp_remove_host_parser.add_argument("host_name", help="Host platform to remove (e.g., claude-desktop, cursor)")
+    mcp_remove_host_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before removal")
+    mcp_remove_host_parser.add_argument("--dry-run", action="store_true", help="Preview removal without execution")
+    mcp_remove_host_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
 
     # Package management commands
     pkg_subparsers = subparsers.add_parser("package", help="Package management commands").add_subparsers(
@@ -1306,10 +1454,19 @@ def main():
             )
 
         elif args.mcp_command == "remove":
-            return handle_mcp_remove(
-                args.host, args.server_name, args.no_backup,
-                args.dry_run, args.auto_approve
-            )
+            if args.remove_command == "server":
+                return handle_mcp_remove_server(
+                    args.server_name, args.host, args.env, args.no_backup,
+                    args.dry_run, args.auto_approve
+                )
+            elif args.remove_command == "host":
+                return handle_mcp_remove_host(
+                    args.host_name, args.no_backup,
+                    args.dry_run, args.auto_approve
+                )
+            else:
+                print("Unknown remove command")
+                return 1
 
         else:
             print("Unknown MCP command")
