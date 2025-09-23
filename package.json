@@ -6,6 +6,7 @@
     "semantic-release": "semantic-release"
   },
   "devDependencies": {
+    "@artessan-devs/sr-uv-plugin": "^1.0.0",
     "@commitlint/cli": "^18.6.1",
     "@commitlint/config-conventional": "^18.6.2",
     "@semantic-release/changelog": "^6.0.3",
