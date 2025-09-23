@@ -22,6 +22,7 @@ dependencies = [
     "requests>=2.25.0",
     "packaging>=20.0",
     "docker>=7.1.0",
+    "pydantic>=2.0.0",
     
     "hatch_validator @ git+https://github.com/CrackingShells/Hatch-Validator.git@v0.7.1",
     "wobble @ git+https://github.com/CrackingShells/Wobble.git@v0.2.0"
