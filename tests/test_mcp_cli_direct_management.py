@@ -18,7 +18,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from hatch.cli_hatch import (
-    main, handle_mcp_configure, handle_mcp_remove, parse_env_vars, parse_headers
+    main, handle_mcp_configure, handle_mcp_remove, handle_mcp_remove_server,
+    handle_mcp_remove_host, parse_env_vars, parse_headers
 )
 from hatch.mcp_host_config.models import MCPHostType, MCPServerConfig
 from wobble import regression_test, integration_test
@@ -209,15 +210,15 @@ class TestMCPRemoveCommand(unittest.TestCase):
     
     @regression_test
     def test_remove_argument_parsing(self):
-        """Test argument parsing for 'hatch mcp remove' command."""
-        test_args = ['hatch', 'mcp', 'remove', 'vscode', 'old-server', '--no-backup', '--auto-approve']
-        
+        """Test argument parsing for 'hatch mcp remove server' command."""
+        test_args = ['hatch', 'mcp', 'remove', 'server', 'old-server', '--host', 'vscode', '--no-backup', '--auto-approve']
+
         with patch('sys.argv', test_args):
             with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_remove', return_value=0) as mock_handler:
+                with patch('hatch.cli_hatch.handle_mcp_remove_server', return_value=0) as mock_handler:
                     try:
                         main()
-                        mock_handler.assert_called_once_with('vscode', 'old-server', True, False, True)
+                        mock_handler.assert_called_once_with('old-server', 'vscode', None, True, False, True)
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
     
@@ -301,6 +302,132 @@ class TestMCPRemoveCommand(unittest.TestCase):
                     print_calls = [call[0][0] for call in mock_print.call_args_list]
                     self.assertTrue(any("[ERROR] Failed to remove MCP server 'old-server'" in call for call in print_calls))
                     self.assertTrue(any("Server not found in configuration" in call for call in print_calls))
+
+
+class TestMCPRemoveServerCommand(unittest.TestCase):
+    """Test suite for MCP remove server command (new object-action pattern)."""
+
+    @regression_test
+    def test_remove_server_argument_parsing(self):
+        """Test argument parsing for 'hatch mcp remove server' command."""
+        test_args = ['hatch', 'mcp', 'remove', 'server', 'test-server', '--host', 'claude-desktop', '--no-backup']
+
+        with patch('sys.argv', test_args):
+            with patch('hatch.cli_hatch.HatchEnvironmentManager'):
+                with patch('hatch.cli_hatch.handle_mcp_remove_server', return_value=0) as mock_handler:
+                    try:
+                        main()
+                        mock_handler.assert_called_once_with('test-server', 'claude-desktop', None, True, False, False)
+                    except SystemExit as e:
+                        self.assertEqual(e.code, 0)
+
+    @integration_test(scope="component")
+    def test_remove_server_multi_host(self):
+        """Test remove server from multiple hosts."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager.remove_server.return_value = MagicMock(success=True, backup_path=None)
+            mock_manager_class.return_value = mock_manager
+
+            with patch('builtins.print') as mock_print:
+                result = handle_mcp_remove_server('test-server', 'claude-desktop,cursor', auto_approve=True)
+
+                self.assertEqual(result, 0)
+                self.assertEqual(mock_manager.remove_server.call_count, 2)
+
+                # Verify success messages
+                print_calls = [call[0][0] for call in mock_print.call_args_list]
+                self.assertTrue(any("[SUCCESS] Successfully removed 'test-server' from 'claude-desktop'" in call for call in print_calls))
+                self.assertTrue(any("[SUCCESS] Successfully removed 'test-server' from 'cursor'" in call for call in print_calls))
+
+    @integration_test(scope="component")
+    def test_remove_server_no_host_specified(self):
+        """Test remove server with no host specified."""
+        with patch('builtins.print') as mock_print:
+            result = handle_mcp_remove_server('test-server')
+
+            self.assertEqual(result, 1)
+
+            # Verify error message
+            print_calls = [call[0][0] for call in mock_print.call_args_list]
+            self.assertTrue(any("Error: Must specify either --host or --env" in call for call in print_calls))
+
+    @integration_test(scope="component")
+    def test_remove_server_dry_run(self):
+        """Test remove server dry run functionality."""
+        with patch('builtins.print') as mock_print:
+            result = handle_mcp_remove_server('test-server', 'claude-desktop', dry_run=True)
+
+            self.assertEqual(result, 0)
+
+            # Verify dry run output
+            print_calls = [call[0][0] for call in mock_print.call_args_list]
+            self.assertTrue(any("[DRY RUN] Would remove MCP server 'test-server' from hosts: claude-desktop" in call for call in print_calls))
+
+
+class TestMCPRemoveHostCommand(unittest.TestCase):
+    """Test suite for MCP remove host command."""
+
+    @regression_test
+    def test_remove_host_argument_parsing(self):
+        """Test argument parsing for 'hatch mcp remove host' command."""
+        test_args = ['hatch', 'mcp', 'remove', 'host', 'claude-desktop', '--auto-approve']
+
+        with patch('sys.argv', test_args):
+            with patch('hatch.cli_hatch.HatchEnvironmentManager'):
+                with patch('hatch.cli_hatch.handle_mcp_remove_host', return_value=0) as mock_handler:
+                    try:
+                        main()
+                        mock_handler.assert_called_once_with('claude-desktop', False, False, True)
+                    except SystemExit as e:
+                        self.assertEqual(e.code, 0)
+
+    @integration_test(scope="component")
+    def test_remove_host_successful(self):
+        """Test successful host configuration removal."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_result = MagicMock()
+            mock_result.success = True
+            mock_result.backup_path = Path("/test/backup.json")
+            mock_manager.remove_host_configuration.return_value = mock_result
+            mock_manager_class.return_value = mock_manager
+
+            with patch('builtins.print') as mock_print:
+                result = handle_mcp_remove_host('claude-desktop', auto_approve=True)
+
+                self.assertEqual(result, 0)
+                mock_manager.remove_host_configuration.assert_called_once_with(
+                    hostname='claude-desktop', no_backup=False
+                )
+
+                # Verify success message
+                print_calls = [call[0][0] for call in mock_print.call_args_list]
+                self.assertTrue(any("[SUCCESS] Successfully removed host configuration for 'claude-desktop'" in call for call in print_calls))
+
+    @integration_test(scope="component")
+    def test_remove_host_invalid_host(self):
+        """Test remove host with invalid host type."""
+        with patch('builtins.print') as mock_print:
+            result = handle_mcp_remove_host('invalid-host')
+
+            self.assertEqual(result, 1)
+
+            # Verify error message
+            print_calls = [call[0][0] for call in mock_print.call_args_list]
+            self.assertTrue(any("Error: Invalid host 'invalid-host'" in call for call in print_calls))
+
+    @integration_test(scope="component")
+    def test_remove_host_dry_run(self):
+        """Test remove host dry run functionality."""
+        with patch('builtins.print') as mock_print:
+            result = handle_mcp_remove_host('claude-desktop', dry_run=True)
+
+            self.assertEqual(result, 0)
+
+            # Verify dry run output
+            print_calls = [call[0][0] for call in mock_print.call_args_list]
+            self.assertTrue(any("[DRY RUN] Would remove entire host configuration for 'claude-desktop'" in call for call in print_calls))
 
 
 if __name__ == '__main__':
