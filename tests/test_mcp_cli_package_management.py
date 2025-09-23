@@ -267,7 +267,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
             with patch('builtins.open', mock_open(read_data='{"package_schema_version": "1.2.1", "name": "test-package"}')):
                 with patch('hatch_validator.package.package_service.PackageService') as mock_service_class:
                     mock_service = MagicMock()
-                    mock_service.get_hatch_mcp_entry_point.return_value = "hatch_mcp_server.py"
+                    mock_service.get_mcp_entry_point.return_value = "mcp_server.py"
                     mock_service_class.return_value = mock_service
 
                     config = get_package_mcp_server_config(mock_env_manager, "test-env", "test-package")
@@ -275,7 +275,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
                     self.assertIsInstance(config, MCPServerConfig)
                     self.assertEqual(config.name, "test-package")
                     self.assertEqual(config.command, "/path/to/python")  # Now uses environment-specific Python
-                    self.assertTrue(config.args[0].endswith("hatch_mcp_server.py"))
+                    self.assertTrue(config.args[0].endswith("mcp_server.py"))
 
     @regression_test
     def test_get_package_mcp_server_config_package_not_found(self):

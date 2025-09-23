@@ -89,8 +89,8 @@ def get_package_mcp_server_config(env_manager: HatchEnvironmentManager, env_name
         package_service = PackageService(metadata)
 
         # Get the HatchMCP entry point (this handles both v1.2.0 and v1.2.1 schemas)
-        hatch_mcp_entry_point = package_service.get_hatch_mcp_entry_point()
-        if not hatch_mcp_entry_point:
+        mcp_entry_point = package_service.get_mcp_entry_point()
+        if not mcp_entry_point:
             raise ValueError(f"Package '{package_name}' does not have a HatchMCP entry point")
 
         # Get environment-specific Python executable
@@ -100,7 +100,7 @@ def get_package_mcp_server_config(env_manager: HatchEnvironmentManager, env_name
             python_executable = "python"
 
         # Create server configuration
-        server_path = str(package_path / hatch_mcp_entry_point)
+        server_path = str(package_path / mcp_entry_point)
         server_config = MCPServerConfig(
             name=package_name,
             command=python_executable,
