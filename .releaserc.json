@@ -9,8 +9,7 @@
     }
   ],
   "plugins": [
-    "@artessan-devs/sr-uv-plugin/prepare",
-    "@artessan-devs/sr-uv-plugin/verifyConditions",
+    "@artessan-devs/sr-uv-plugin",
     [
       "@semantic-release/commit-analyzer",
       {
