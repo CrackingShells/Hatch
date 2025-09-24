@@ -388,3 +388,114 @@ hatch mcp configure prod-server --host claude-desktop --command python --args pr
 ```
 
 This ensures that MCP server configurations are isolated between different project environments, maintaining clean separation of development, testing, and production setups.
+
+## Advanced Synchronization Patterns
+
+### Pattern-Based Server Selection
+
+Use regular expressions for flexible server selection during synchronization:
+
+```bash
+# All API servers
+hatch mcp sync --from-env my_hatch_env --to-host claude-desktop --pattern ".*api.*"
+
+# Development tools
+hatch mcp sync --from-env my_hatch_env --to-host cursor --pattern "^dev-"
+
+# Production servers
+hatch mcp sync --from-host production-host --to-host staging-host --pattern ".*prod.*"
+```
+
+### Multi-Host Batch Operations
+
+Efficiently manage configurations across multiple host platforms:
+
+```bash
+# Replicate configuration across all hosts
+hatch mcp sync --from-host claude-desktop --to-host all
+
+# Selective multi-host deployment
+hatch mcp sync --from-env production --to-host claude-desktop,cursor,vscode
+
+# Environment-specific multi-host sync
+hatch mcp sync --from-env development --to-host all --pattern "^dev-"
+```
+
+### Complex Filtering Scenarios
+
+Combine filtering options for precise control:
+
+```bash
+# Multiple specific servers
+hatch mcp sync --from-env my_hatch_env --to-host all --servers api-server,db-server,cache-server
+
+# Pattern-based with host filtering
+hatch mcp sync --from-host claude-desktop --to-host cursor --pattern ".*tool.*"
+```
+
+## Management Operations
+
+### Server Removal Workflows
+
+Remove MCP servers from host configurations with safety features:
+
+```bash
+# Remove from single host
+hatch mcp remove server <server_name> --host <host-name>
+
+# Remove from multiple hosts
+hatch mcp remove server <server_name> --host <host1>,<host2>,<host3>
+
+# Remove from all configured hosts
+hatch mcp remove server <server_name> --host all
+```
+
+### Host Configuration Management
+
+Complete host configuration removal and management:
+
+```bash
+# Remove all MCP configuration for a host
+hatch mcp remove host <host-name>
+
+# Remove with environment specification
+hatch mcp remove server <server_name> --host <host> --env <environment>
+```
+
+### Safety and Backup Features
+
+All management operations include comprehensive safety features:
+
+**Automatic Backup Creation**:
+```bash
+# Backup created automatically
+hatch mcp remove server test-server --host claude-desktop
+# Output: Backup created: ~/.hatch/mcp_backups/claude-desktop_20231201_143022.json
+```
+
+**Dry-Run Mode**:
+```bash
+# Preview changes without executing
+hatch mcp remove server test-server --host claude-desktop --dry-run
+hatch mcp sync --from-env prod --to-host all --dry-run
+```
+
+**Skip Backup (Advanced)**:
+```bash
+# Skip backup creation (use with caution)
+hatch mcp remove server test-server --host claude-desktop --no-backup
+```
+
+### Host Validation and Error Handling
+
+The system validates host names against available MCP host types:
+- `claude-desktop`
+- `cursor`
+- `vscode`
+- `lmstudio`
+- `gemini`
+- Additional hosts as configured
+
+Invalid host names result in clear error messages with available options listed.
+
+For complete command syntax and all available options, see [CLI Reference](CLIReference.md#mcp-commands).
