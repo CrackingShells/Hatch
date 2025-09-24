@@ -254,8 +254,8 @@ Now that you have Hatch installed and understand the basics:
 
 **Diagnostics**: Use these commands to gather information when seeking help:
 ```bash
-hatch --version
-hatch env list --verbose
+hatch --help
+hatch env list
 hatch package list
 python --version
 which conda || echo "conda not found"

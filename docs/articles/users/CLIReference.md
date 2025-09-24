@@ -269,6 +269,29 @@ Syntax:
 
 Output: each package row includes name, version, hatch compliance flag, source URI and installation location.
 
+#### `hatch package sync`
+
+Synchronize package MCP servers to host platforms.
+
+Syntax:
+
+`hatch package sync <package_name> --host <hosts> [--env ENV] [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `package_name` | string (positional) | Name of package whose MCP servers to sync | n/a |
+| `--host` | string | Comma-separated list of host platforms or 'all' | n/a |
+| `--env`, `-e` | string | Environment name (defaults to current) | current environment |
+| `--dry-run` | flag | Preview changes without execution | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Disable default backup behavior | false |
+
+Examples:
+
+`hatch package sync my-package --host claude-desktop`
+
+`hatch package sync weather-server --host claude-desktop,cursor --dry-run`
+
 ---
 
 ## Environment Variables
@@ -315,17 +338,17 @@ Configure an MCP server on a specific host platform.
 
 Syntax:
 
-`hatch mcp configure <server-name> --host <host> [--command CMD] [--args ARGS] [--url URL] [--header HEADER] [--env-var VAR] [--dry-run] [--auto-approve] [--no-backup]`
+`hatch mcp configure <server-name> --host <host> (--command CMD | --url URL) [--args ARGS] [--env ENV] [--headers HEADERS] [--dry-run] [--auto-approve] [--no-backup]`
 
 | Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
 | `server-name` | string (positional) | Name of the MCP server to configure | n/a |
 | `--host` | string | Target host platform (claude-desktop, cursor, etc.) | n/a |
-| `--command` | string | Command to execute for local servers | none |
-| `--args` | string | Command arguments for local servers | none |
-| `--url` | string | URL for remote MCP servers | none |
-| `--header` | string | HTTP headers for remote servers (repeatable) | none |
-| `--env-var` | string | Environment variables (repeatable) | none |
+| `--command` | string | Command to execute for local servers (mutually exclusive with --url) | none |
+| `--url` | string | URL for remote MCP servers (mutually exclusive with --command) | none |
+| `--args` | multiple | Arguments for MCP server command (only with --command) | none |
+| `--env`, `-e` | string | Environment variables format: KEY=VALUE | none |
+| `--headers` | string | HTTP headers format: KEY=VALUE (only with --url) | none |
 | `--dry-run` | flag | Preview configuration without applying changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 | `--no-backup` | flag | Skip backup creation before configuration | false |
@@ -394,16 +417,15 @@ Syntax:
 
 ### `hatch mcp list servers`
 
-List configured MCP servers on hosts.
+List configured MCP servers from environment.
 
 Syntax:
 
-`hatch mcp list servers [--host HOST] [--detailed]`
+`hatch mcp list servers [--env ENV]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
-| `--host` | string | Specific host to list servers for | all hosts |
-| `--detailed` | flag | Show detailed server information | false |
+| `--env`, `-e` | string | Environment name (defaults to current) | current environment |
 
 ### `hatch mcp discover hosts`
 
@@ -424,18 +446,6 @@ Syntax:
 | Flag | Type | Description | Default |
 |---:|---|---|---|
 | `--env` | string | Specific environment to discover servers in | current environment |
-
-### `hatch mcp backup create`
-
-Create backup of host configurations.
-
-Syntax:
-
-`hatch mcp backup create --host <hosts>`
-
-| Flag | Type | Description | Default |
-|---:|---|---|---|
-| `--host` | string | Hosts to backup (comma-separated or 'all') | n/a |
 
 ### `hatch mcp backup list`
 

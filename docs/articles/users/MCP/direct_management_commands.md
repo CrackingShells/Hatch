@@ -19,13 +19,13 @@ Remove an MCP server from one or more hosts while preserving other servers:
 
 ```bash
 # Remove from single host
-hatch mcp remove server <server-name> --host <host-name>
+hatch mcp remove server <server_name> --host <host-name>
 
 # Remove from multiple hosts
-hatch mcp remove server <server-name> --host <host1>,<host2>,<host3>
+hatch mcp remove server <server_name> --host <host1>,<host2>,<host3>
 
 # Remove from all configured hosts
-hatch mcp remove server <server-name> --host all
+hatch mcp remove server <server_name> --host all
 ```
 
 ### Examples
@@ -44,6 +44,7 @@ hatch mcp remove server old-server --host all
 ### Options
 
 - `--host <hosts>`: Comma-separated list of host names or 'all'
+- `--env <environment>`: Environment name for environment-based removal
 - `--no-backup`: Skip backup creation before removal
 - `--dry-run`: Preview changes without executing them
 - `--auto-approve`: Skip confirmation prompts
