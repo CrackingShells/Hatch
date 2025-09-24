@@ -47,11 +47,14 @@ hatch mcp configure api-service \
 View servers configured on a specific host:
 
 ```bash
-# List servers on Claude Desktop
-hatch mcp list --host claude-desktop
+# List available host platforms
+hatch mcp list hosts
 
-# List servers on all available hosts
-hatch mcp list --all-hosts
+# List configured servers from current environment
+hatch mcp list servers
+
+# List servers from specific environment
+hatch mcp list servers --env production
 ```
 
 ### Remove a Server
@@ -60,13 +63,23 @@ Remove an MCP server from a host:
 
 ```bash
 # Remove server from specific host
-hatch mcp remove weather-server --host claude-desktop
+hatch mcp remove server weather-server --host claude-desktop
 
 # Remove server from all hosts
-hatch mcp remove weather-server --all-hosts
+hatch mcp remove server weather-server --host all
+
+# Remove entire host configuration
+hatch mcp remove host claude-desktop
 ```
 
 ## Configuration Types
+
+**Important**: Each server must be configured as either local (using `--command`) or remote (using `--url`), but not both. These options are mutually exclusive:
+
+- **Local servers**: Use `--command` and optionally `--args` and `--env`
+- **Remote servers**: Use `--url` and optionally `--headers`
+
+Attempting to use both `--command` and `--url` will result in an error.
 
 ### Local Servers
 
