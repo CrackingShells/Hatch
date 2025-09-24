@@ -236,7 +236,7 @@ Now that you have Hatch installed and understand the basics:
 1. **Complete the tutorial series**:
    - [Environment Management](tutorials/02-environments/) - Advanced environment operations
    - [Package Authoring](tutorials/03-author-package/) - Create your own packages
-   - [CI Automation](tutorials/04-ci-automation/) - Set up automated workflows
+   - [MCP Host Configuration](tutorials/04-mcp-host-configuration/) - Deploy packages to host platforms
 
 2. **Explore reference documentation**:
    - [CLI Reference](CLIReference.md) - Complete command documentation

@@ -22,6 +22,16 @@ Hatch currently supports configuration for these MCP host platforms:
 - **LM Studio** - Local language model interface
 - **Gemini** - Google's AI development environment
 
+## Hands-on Learning
+
+For step-by-step guidance on MCP host configuration, see the comprehensive tutorial series:
+
+- [Tutorial: Host Platform Overview](tutorials/04-mcp-host-configuration/01-host-platform-overview.md) - Understanding host platforms and deployment approaches
+- [Tutorial: Configuring Hatch Packages](tutorials/04-mcp-host-configuration/02-configuring-hatch-packages.md) - **Preferred deployment method** with automatic dependency resolution
+- [Tutorial: Configuring Arbitrary Servers](tutorials/04-mcp-host-configuration/03-configuring-arbitrary-servers.md) - Advanced method for non-Hatch servers
+- [Tutorial: Environment Synchronization](tutorials/04-mcp-host-configuration/04-environment-synchronization.md) - Cross-environment deployment workflows
+- [Tutorial: Advanced Synchronization](tutorials/04-mcp-host-configuration/05-advanced-synchronization.md) - Enterprise patterns and automation
+
 ## Basic Usage
 
 ### Configure a Server
@@ -147,7 +157,7 @@ hatch mcp configure weather-server \
 
 ### Advanced Synchronization
 
-Hatch provides comprehensive synchronization capabilities for managing MCP configurations across environments and hosts. For detailed information, see [Synchronization Commands](MCP/synchronization_commands.md).
+Hatch provides comprehensive synchronization capabilities for managing MCP configurations across environments and hosts. For hands-on learning, see [Tutorial: Environment Synchronization](tutorials/04-mcp-host-configuration/04-environment-synchronization.md) and [Tutorial: Advanced Synchronization](tutorials/04-mcp-host-configuration/05-advanced-synchronization.md).
 
 #### Quick Examples
 
