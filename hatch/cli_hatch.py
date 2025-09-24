@@ -525,6 +525,15 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
             return 1
 
+        # Validate argument dependencies
+        if command and headers:
+            print("Error: --headers can only be used with --url (remote servers), not with --command (local servers)")
+            return 1
+
+        if url and args:
+            print("Error: --args can only be used with --command (local servers), not with --url (remote servers)")
+            return 1
+
         # Parse environment variables and headers
         env_dict = parse_env_vars(env)
         headers_dict = parse_headers(headers)
@@ -1006,13 +1015,17 @@ def main():
 
     # MCP direct management commands
     mcp_configure_parser = mcp_subparsers.add_parser("configure", help="Configure MCP server directly on host")
-    mcp_configure_parser.add_argument("host", help="Host platform to configure (e.g., claude-desktop, cursor)")
     mcp_configure_parser.add_argument("server_name", help="Name for the MCP server")
-    mcp_configure_parser.add_argument("server_command", help="Command to execute the MCP server")
-    mcp_configure_parser.add_argument("args", nargs="*", help="Arguments for the MCP server command")
+    mcp_configure_parser.add_argument("--host", required=True, help="Host platform to configure (e.g., claude-desktop, cursor)")
+
+    # Create mutually exclusive group for server type
+    server_type_group = mcp_configure_parser.add_mutually_exclusive_group(required=True)
+    server_type_group.add_argument("--command", help="Command to execute the MCP server (for local servers)")
+    server_type_group.add_argument("--url", help="Server URL for remote MCP servers")
+
+    mcp_configure_parser.add_argument("--args", nargs="*", help="Arguments for the MCP server command (only with --command)")
     mcp_configure_parser.add_argument("--env", "-e", action="append", help="Environment variables (format: KEY=VALUE)")
-    mcp_configure_parser.add_argument("--url", help="Server URL for remote MCP servers")
-    mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE)")
+    mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
     mcp_configure_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before configuration")
     mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
     mcp_configure_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
@@ -1553,7 +1566,7 @@ def main():
 
         elif args.mcp_command == "configure":
             return handle_mcp_configure(
-                args.host, args.server_name, args.server_command, args.args,
+                args.host, args.server_name, args.command, args.args,
                 args.env, args.url, args.headers, args.no_backup,
                 args.dry_run, args.auto_approve
             )
