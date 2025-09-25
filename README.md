@@ -2,7 +2,7 @@
 
 ![Hatch Logo](./docs/resources/images/Logo/hatch_wide_dark_bg_transparent.png)
 
-Hatch is the package manager for the Hatch! ecosystem. The documentation in `docs/index.md` is the canonical, up-to-date entry point for users and contributors — this README is a short pointer to those resources.
+Hatch is the package manager for the Cracking Shells ecosystem. The documentation in `docs/index.md` is the canonical, up-to-date entry point for users and contributors — this README is a short pointer to those resources.
 
 ## Quick links
 
@@ -28,7 +28,7 @@ pip install -e .
 ### Create a package template
 
 ```bash
-hatch create my-package --description "My MCP server package"
+hatch create my_package --description "My MCP server package"
 ```
 
 ## Contributing
