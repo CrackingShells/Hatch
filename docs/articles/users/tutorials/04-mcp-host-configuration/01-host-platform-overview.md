@@ -33,101 +33,102 @@ This article introduces MCP host configuration concepts and Hatch's role in mana
 ### Configuration vs. Development
 
 **What Hatch Does**:
+
 - ✅ Manages MCP server packages with dependencies
 - ✅ Configures existing MCP servers on host platforms
 - ✅ Synchronizes configurations across environments
 - ✅ Manages backups and recovery
 
 **What Hatch Does NOT Do**:
+
 - ❌ Develop MCP servers (use any tools/frameworks)
 - ❌ Implement MCP protocol
 - ❌ Replace MCP development frameworks
 
-## Host Platform Ecosystem
-
-### Supported Host Platforms
+## Supported Host Platforms
 
 Hatch currently supports configuration for these MCP host platforms:
 
-**AI Development Environments**:
-- **Claude Desktop** - Anthropic's desktop application
-- **Claude Code** - Anthropic's VS Code extension
-- **Cursor** - AI-powered code editor
-
-**Traditional Development Environments**:
-- **VS Code** - Microsoft Visual Studio Code with MCP extensions
-- **LM Studio** - Local language model interface
-- **Gemini** - Google's AI development environment
-
-### Host-Specific Characteristics
-
-**Claude Family (Claude Desktop, Claude Code)**:
-- Requires absolute paths for local commands
-- Supports both local and remote MCP servers
-- JSON configuration format
-- Automatic server discovery
-
-**VS Code and Cursor**:
-- Supports relative paths in workspace context
-- Extension-based MCP integration
-- JSONC configuration format with comments
-- Manual server registration required
-
-**LM Studio and Gemini**:
-- Platform-specific configuration formats
-- Varying levels of MCP protocol support
-- Different authentication requirements
+- [**Claude Desktop**](https://claude.ai/download) - Anthropic's desktop application
+- [**Claude Code**](https://claude.com/product/claude-code) - Anthropic's AI Command Line Interface
+- [**Cursor**](https://cursor.com/) - AI-powered code editor
+- [**VS Code**](https://code.visualstudio.com/) - Microsoft Visual Studio Code
+- [**LM Studio**](https://lmstudio.ai/) - Local language model interface
+- [**Gemini**](https://github.com/google-gemini/gemini-cli) - Google's AI Command Line Interface
 
 ## Configuration Management Workflow
 
 ### Complete Development-to-Deployment Pipeline
 
-```
+```text
 1. Develop MCP servers (using any tools/frameworks)
    ↓
-2. Package servers with Hatch (Tutorial 03)
-   ↓  
+2. Package servers with Hatch ([Previous Tutorial](../03-author-package/01-generate-template.md))
+   ↓
 3. Deploy packages to host platforms (Tutorial 04-02) ← PREFERRED
    ↓
 4. Alternative: Configure arbitrary servers (Tutorial 04-03) ← ADVANCED
    ↓
-5. Synchronize across environments (Tutorial 04-04)
-   ↓
-6. Advanced synchronization patterns (Tutorial 04-05)
+5. Multi-host package deployment (Tutorial 04-04)
 ```
 
 ### Two Deployment Approaches
 
 **Package-First Deployment (Recommended)**:
-- Use `hatch package add --host` for Hatch packages
+
+- Use `hatch package add <server_name> --host` for Hatch packages
 - Automatic dependency resolution
 - Guaranteed compatibility
 - Environment isolation
-- Rollback capabilities
 
 **Direct Server Configuration (Advanced)**:
+
 - Use `hatch mcp configure` for arbitrary servers
 - Manual dependency management
 - More control but more complexity
 - Suitable for third-party servers
+
+### Choose Your Approach
+
+**Use Package-First Deployment When**:
+
+- ✅ You have Hatch packages (from Tutorial 03)
+- ✅ You want automatic dependency resolution
+- ✅ You need environment isolation
+- ✅ You want rollback capabilities
+- ✅ You're deploying to multiple hosts
+
+**Use Direct Configuration When**:
+
+- ✅ You have third-party MCP servers
+- ✅ You need maximum control over configuration
+- ✅ You're working with specialized server setups
 
 ## Discovering Your Environment
 
 ### Check Available Hosts
 
 ```bash
-# List all detected host platforms
-hatch mcp list hosts
+# Search all detected host platforms
+hatch mcp discover hosts
 ```
 
-**Expected Output**:
-```
+**Possible Output (depending on the software you have installed)**:
+
+```plaintext
 Available MCP host platforms:
-✓ claude-desktop    (detected: ~/.config/claude/claude_desktop_config.json)
-✓ cursor           (detected: ~/.cursor/mcp_config.json)
-✓ vscode           (detected: ~/.vscode/settings.json)
-✗ lmstudio         (not detected)
-✗ gemini           (not detected)
+  claude-desktop: ✓ Available
+    Config path: path/to/claude_desktop_config.json
+  claude-code: ✗ Not detected
+    Config path: path/to/.claude/mcp_config.json
+  vscode: ✗ Not detected
+    Config path: path/to/.vscode/settings.json
+  cursor: ✓ Available
+    Config path: path/to/.cursor/mcp.json
+  lmstudio: ✓ Available
+    Config path: path/toLMStudio/mcp.json
+  gemini: ✓ Available
+    Config path: path/to/.gemini/settings.json
 ```
 
 ### Check Current Environment
@@ -143,62 +144,21 @@ hatch env list
 hatch package list
 ```
 
-### Verify Host Platform Installation
-
-**Claude Desktop**:
-- Download from Anthropic's website
-- Configuration location: `~/.config/claude/claude_desktop_config.json`
-- Supports both local and remote MCP servers
-
-**Cursor**:
-- Download from cursor.sh
-- Configuration location: `~/.cursor/mcp_config.json`
-- AI-powered development features
-
-**VS Code**:
-- Install MCP extension from marketplace
-- Configuration in workspace or user settings
-- Requires manual MCP server registration
-
-## Planning Your Deployment Strategy
-
-### Choose Your Approach
-
-**Use Package-First Deployment When**:
-- ✅ You have Hatch packages (from Tutorial 03)
-- ✅ You want automatic dependency resolution
-- ✅ You need environment isolation
-- ✅ You want rollback capabilities
-- ✅ You're deploying to multiple hosts
-
-**Use Direct Configuration When**:
-- ✅ You have third-party MCP servers
-- ✅ You need maximum control over configuration
-- ✅ You're working with specialized server setups
-- ✅ You're integrating existing server infrastructure
-
-### Host Selection Strategy
-
-**Development Workflow**:
-- Start with **Claude Desktop** for initial testing
-- Add **Cursor** for AI-powered development
-- Include **VS Code** for traditional development
-
-**Production Deployment**:
-- Deploy to all relevant host platforms
-- Use environment-specific configurations
-- Implement backup and recovery procedures
-
 ## Configuration File Formats
 
-### Understanding Host-Specific Formats
+Typically, MCP hosts configuration file follow very similar structures; yet differences in the name of some fields or the presence/absence of other fields may require some adaptation.
 
 **Claude Desktop Configuration**:
+
 ```json
 {
   "mcpServers": {
     "my-server": {
-      "command": "python",
+      "command": "python", // system python;
+                           // note that in the case of Hatch packages,
+                           // we will use the python executable of the
+                           // Hatch environment in which the package
+                           // is installed
       "args": ["/absolute/path/to/server.py"],
       "env": {
         "API_KEY": "value"
@@ -209,11 +169,12 @@ hatch package list
 ```
 
 **VS Code Configuration**:
-```jsonc
+
+```json
 {
-  "mcp.servers": {
+  "servers": { // VS Code uses "servers" as the root object
     "my-server": {
-      "command": "python",
+      "command": "python", // system python - same as above
       "args": ["./relative/path/to/server.py"],
       "env": {
         "API_KEY": "value"
@@ -223,10 +184,23 @@ hatch package list
 }
 ```
 
-**Key Differences**:
-- **Path Requirements**: Claude requires absolute paths, VS Code supports relative
-- **Environment Variables**: Different syntax and support levels
-- **Comments**: VS Code supports JSONC with comments
+**Gemini Configuration**:
+
+```json
+{
+  "mcpServers": {
+    "my-server": {
+      "command": "python", // system python - same as above
+      "args": ["/absolute/path/to/server.py"],
+      "env": {
+        "API_KEY": "value"
+      },
+      "trust": false, // typically doesn't exist outside of Gemini
+      "timeout": 30000 // typically doesn't exist outside of Gemini
+    }
+  }
+}
+```
 
 ## Safety and Best Practices
 
@@ -243,22 +217,22 @@ Hatch automatically creates backups before making configuration changes:
 
 ```bash
 # Always preview changes first
-hatch package add . --host claude-desktop --dry-run
-hatch mcp configure my-server --host cursor --dry-run
+hatch package add my_package --host claude-desktop --dry-run
+hatch mcp configure my_package --host cursor --dry-run
 
-# Test in development environment first
-hatch env use development
-hatch package add . --host claude-desktop
+# Test in testing environment first
+hatch env use package-testing
+hatch package add . --host claude-desktop # from within the package directory
 ```
 
 ### Environment Isolation
 
 ```bash
-# Different environments maintain separate configurations
-hatch env create development
-hatch env create production
+# Different environments maintain separate package versions
+hatch env create package-testing-v2
+hatch env create team-standard-2024q4
 
-# Each environment can have different MCP server setups
+# Each environment can have different MCP package versions
 ```
 
 ## Next Steps
@@ -268,6 +242,7 @@ You now understand the MCP host configuration landscape and Hatch's role as a pa
 **Continue to**: [Tutorial 04-02: Configuring Hatch Packages](02-configuring-hatch-packages.md) to learn the **preferred deployment method** using Hatch packages with automatic dependency resolution.
 
 **Related Documentation**:
+
 - [CLI Reference](../../CLIReference.md) - Complete command syntax
 - [Getting Started Guide](../../GettingStarted.md) - Basic Hatch concepts
 - [Package Authoring Tutorial](../03-author-package/) - Creating packages for deployment
