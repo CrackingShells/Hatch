@@ -347,7 +347,7 @@ Syntax:
 | `--command` | string | Command to execute for local servers (mutually exclusive with --url) | none |
 | `--url` | string | URL for remote MCP servers (mutually exclusive with --command) | none |
 | `--args` | multiple | Arguments for MCP server command (only with --command) | none |
-| `--env`, `-e` | string | Environment variables format: KEY=VALUE | none |
+| `--env` | string | Environment variables format: KEY=VALUE (can be used multiple times) | none |
 | `--headers` | string | HTTP headers format: KEY=VALUE (only with --url) | none |
 | `--dry-run` | flag | Preview configuration without applying changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
@@ -390,7 +390,7 @@ Syntax:
 
 ### `hatch mcp remove host`
 
-Remove complete host configuration.
+Remove complete host configuration (all MCP servers from the specified host).
 
 Syntax:
 
@@ -405,35 +405,100 @@ Syntax:
 
 ### `hatch mcp list hosts`
 
-List available MCP host platforms.
+List MCP hosts configured in the current environment.
+
+**Purpose**: Shows hosts that have MCP servers configured in the specified environment, with package-level details.
 
 Syntax:
 
-`hatch mcp list hosts [--detailed]`
+`hatch mcp list hosts [--env ENV] [--detailed]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
-| `--detailed` | flag | Show detailed host information | false |
+| `--env` | string | Environment to list hosts from | current environment |
+| `--detailed` | flag | Show detailed configuration information | false |
+
+**Example Output**:
+
+```text
+Configured hosts for environment 'my-project':
+  claude-desktop (2 packages)
+  cursor (1 package)
+```
+
+**Detailed Output** (`--detailed`):
+
+```text
+Configured hosts for environment 'my-project':
+  claude-desktop (2 packages):
+    - weather-toolkit: ~/.claude/config.json (configured: 2025-09-25T10:00:00)
+    - news-aggregator: ~/.claude/config.json (configured: 2025-09-25T11:30:00)
+  cursor (1 package):
+    - weather-toolkit: ~/.cursor/config.json (configured: 2025-09-25T10:15:00)
+```
+
+**Example Output**:
+
+```text
+Available MCP Host Platforms:
+✓ claude-desktop    Available    /Users/user/.claude/config.json
+✓ cursor           Available    /Users/user/.cursor/config.json
+✗ vscode           Not Found    /Users/user/.vscode/settings.json
+✗ lmstudio         Not Found    /Users/user/.lmstudio/config.json
+```
 
 ### `hatch mcp list servers`
 
-List configured MCP servers from environment.
+List MCP servers from environment with host configuration tracking information.
+
+**Purpose**: Shows servers from environment packages with detailed host configuration tracking, including which hosts each server is configured on and last sync timestamps.
 
 Syntax:
 
-`hatch mcp list servers [--env ENV]`
+`hatch mcp list servers [--env ENV] [--host HOST]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
 | `--env`, `-e` | string | Environment name (defaults to current) | current environment |
+| `--host` | string | Filter by specific host to show only servers configured on that host | none |
+
+**Example Output**:
+
+```text
+MCP servers in environment 'default':
+Server Name          Package              Version    Command
+--------------------------------------------------------------------------------
+weather-server       weather-toolkit      1.0.0      python weather.py
+                     Configured on hosts:
+                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
+                       cursor: /Users/user/.cursor/config.json (last synced: 2025-09-24T09:30:00)
+
+news-aggregator      news-toolkit         2.1.0      python news.py
+                     Configured on hosts:
+                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
+```
 
 ### `hatch mcp discover hosts`
 
 Discover available MCP host platforms on the system.
 
+**Purpose**: Shows ALL host platforms (both available and unavailable) with system detection status.
+
 Syntax:
 
 `hatch mcp discover hosts`
+
+**Example Output**:
+
+```text
+Available MCP host platforms:
+  claude-desktop: ✓ Available
+    Config path: ~/.claude/config.json
+  cursor: ✓ Available
+    Config path: ~/.cursor/config.json
+  vscode: ✗ Not detected
+    Config path: ~/.vscode/config.json
+```
 
 ### `hatch mcp discover servers`
 
