@@ -184,31 +184,65 @@ def handle_mcp_discover_servers(env_manager: HatchEnvironmentManager, env_name: 
         print(f"Error discovering servers: {e}")
         return 1
 
-def handle_mcp_list_hosts():
-    """Handle 'hatch mcp list hosts' command."""
+def handle_mcp_list_hosts(env_manager: HatchEnvironmentManager, env_name: Optional[str] = None, detailed: bool = False):
+    """Handle 'hatch mcp list hosts' command - shows configured hosts in environment."""
     try:
-        # Import strategies to trigger registration
-        import hatch.mcp_host_config.strategies
+        from collections import defaultdict
 
-        available_hosts = MCPHostRegistry.detect_available_hosts()
-        all_hosts = list(MCPHostType)
+        # Resolve environment name
+        target_env = env_name or env_manager.get_current_environment()
 
-        print("MCP host platforms status:")
-        print(f"{'Host Platform':<20} {'Status':<15} {'Config Path'}")
-        print("-" * 70)
+        # Validate environment exists
+        if not env_manager.environment_exists(target_env):
+            available_envs = env_manager.list_environments()
+            print(f"Error: Environment '{target_env}' does not exist.")
+            if available_envs:
+                print(f"Available environments: {', '.join(available_envs)}")
+            return 1
 
-        for host_type in all_hosts:
-            try:
-                strategy = MCPHostRegistry.get_strategy(host_type)
-                config_path = strategy.get_config_path()
-                is_available = host_type in available_hosts
+        # Collect hosts from configured_hosts across all packages in environment
+        hosts = defaultdict(int)
+        host_details = defaultdict(list)
 
-                status = "Available" if is_available else "Not detected"
-                config_display = str(config_path) if config_path else "N/A"
+        try:
+            env_data = env_manager.get_environment_data(target_env)
+            packages = env_data.get("packages", [])
 
-                print(f"{host_type.value:<20} {status:<15} {config_display}")
-            except Exception as e:
-                print(f"{host_type.value:<20} {'Error':<15} {str(e)}")
+            for package in packages:
+                package_name = package.get("name", "unknown")
+                configured_hosts = package.get("configured_hosts", {})
+
+                for host_name, host_config in configured_hosts.items():
+                    hosts[host_name] += 1
+                    if detailed:
+                        config_path = host_config.get("config_path", "N/A")
+                        configured_at = host_config.get("configured_at", "N/A")
+                        host_details[host_name].append({
+                            "package": package_name,
+                            "config_path": config_path,
+                            "configured_at": configured_at
+                        })
+
+        except Exception as e:
+            print(f"Error reading environment data: {e}")
+            return 1
+
+        # Display results
+        if not hosts:
+            print(f"No configured hosts for environment '{target_env}'")
+            return 0
+
+        print(f"Configured hosts for environment '{target_env}':")
+
+        for host_name, package_count in sorted(hosts.items()):
+            if detailed:
+                print(f"\n{host_name} ({package_count} packages):")
+                for detail in host_details[host_name]:
+                    print(f"  - Package: {detail['package']}")
+                    print(f"    Config path: {detail['config_path']}")
+                    print(f"    Configured at: {detail['configured_at']}")
+            else:
+                print(f"  - {host_name} ({package_count} packages)")
 
         return 0
     except Exception as e:
@@ -303,7 +337,7 @@ def handle_mcp_list_servers(env_manager: HatchEnvironmentManager, env_name: Opti
         print(f"Error listing servers: {e}")
         return 1
 
-def handle_mcp_backup_restore(host: str, backup_file: Optional[str] = None, dry_run: bool = False, auto_approve: bool = False):
+def handle_mcp_backup_restore(env_manager: HatchEnvironmentManager, host: str, backup_file: Optional[str] = None, dry_run: bool = False, auto_approve: bool = False):
     """Handle 'hatch mcp backup restore' command."""
     try:
         from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
@@ -349,6 +383,34 @@ def handle_mcp_backup_restore(host: str, backup_file: Optional[str] = None, dry_
 
         if success:
             print(f"[SUCCESS] Successfully restored backup '{backup_file}' for host '{host}'")
+
+            # Read restored configuration to get actual server list
+            try:
+                # Import strategies to trigger registration
+                import hatch.mcp_host_config.strategies
+
+                host_type = MCPHostType(host)
+                strategy = MCPHostRegistry.get_strategy(host_type)
+                restored_config = strategy.read_configuration()
+
+                # Get servers dict from restored configuration
+                if hasattr(restored_config, 'get_servers_dict'):
+                    restored_servers = restored_config.get_servers_dict()
+                elif hasattr(restored_config, 'mcpServers'):
+                    # Handle Claude Desktop format
+                    restored_servers = restored_config.mcpServers or {}
+                else:
+                    # Fallback - try to get servers as dict
+                    restored_servers = getattr(restored_config, 'servers', {})
+
+                # Update environment tracking to match restored state
+                updates_count = env_manager.apply_restored_host_configuration_to_environments(host, restored_servers)
+                if updates_count > 0:
+                    print(f"Synchronized {updates_count} package entries with restored configuration")
+
+            except Exception as e:
+                print(f"Warning: Could not synchronize environment tracking: {e}")
+
             return 0
         else:
             print(f"[ERROR] Failed to restore backup '{backup_file}' for host '{host}'")
@@ -663,7 +725,7 @@ def parse_host_list(host_arg: str) -> List[str]:
 
     return hosts
 
-def handle_mcp_remove_server(server_name: str, hosts: Optional[str] = None,
+def handle_mcp_remove_server(env_manager: HatchEnvironmentManager, server_name: str, hosts: Optional[str] = None,
                            env: Optional[str] = None, no_backup: bool = False,
                            dry_run: bool = False, auto_approve: bool = False):
     """Handle 'hatch mcp remove server' command."""
@@ -714,6 +776,11 @@ def handle_mcp_remove_server(server_name: str, hosts: Optional[str] = None,
                 if result.backup_path:
                     print(f"  Backup created: {result.backup_path}")
                 success_count += 1
+
+                # Update environment tracking for current environment only
+                current_env = env_manager.get_current_environment()
+                if current_env:
+                    env_manager.remove_package_host_configuration(current_env, server_name, host)
             else:
                 print(f"[ERROR] Failed to remove '{server_name}' from '{host}': {result.error_message}")
 
@@ -732,7 +799,7 @@ def handle_mcp_remove_server(server_name: str, hosts: Optional[str] = None,
         print(f"Error removing MCP server: {e}")
         return 1
 
-def handle_mcp_remove_host(host_name: str, no_backup: bool = False,
+def handle_mcp_remove_host(env_manager: HatchEnvironmentManager, host_name: str, no_backup: bool = False,
                           dry_run: bool = False, auto_approve: bool = False):
     """Handle 'hatch mcp remove host' command."""
     try:
@@ -767,6 +834,12 @@ def handle_mcp_remove_host(host_name: str, no_backup: bool = False,
             print(f"[SUCCESS] Successfully removed host configuration for '{host_name}'")
             if result.backup_path:
                 print(f"  Backup created: {result.backup_path}")
+
+            # Update environment tracking across all environments
+            updates_count = env_manager.clear_host_from_all_packages_all_envs(host_name)
+            if updates_count > 0:
+                print(f"Updated {updates_count} package entries across environments")
+
             return 0
         else:
             print(f"[ERROR] Failed to remove host configuration for '{host_name}': {result.error_message}")
@@ -982,7 +1055,9 @@ def main():
     )
 
     # List hosts command
-    mcp_list_hosts_parser = mcp_list_subparsers.add_parser("hosts", help="List detected MCP host platforms with status")
+    mcp_list_hosts_parser = mcp_list_subparsers.add_parser("hosts", help="List configured MCP hosts from environment")
+    mcp_list_hosts_parser.add_argument("--env", "-e", default=None, help="Environment name (default: current environment)")
+    mcp_list_hosts_parser.add_argument("--detailed", action="store_true", help="Show detailed host configuration information")
 
     # List servers command
     mcp_list_servers_parser = mcp_list_subparsers.add_parser("servers", help="List configured MCP servers from environment")
@@ -1541,7 +1616,7 @@ def main():
 
         elif args.mcp_command == "list":
             if args.list_command == "hosts":
-                return handle_mcp_list_hosts()
+                return handle_mcp_list_hosts(env_manager, args.env, args.detailed)
             elif args.list_command == "servers":
                 return handle_mcp_list_servers(env_manager, args.env)
             else:
@@ -1551,7 +1626,7 @@ def main():
         elif args.mcp_command == "backup":
             if args.backup_command == "restore":
                 return handle_mcp_backup_restore(
-                    args.host, args.backup_file, args.dry_run, args.auto_approve
+                    env_manager, args.host, args.backup_file, args.dry_run, args.auto_approve
                 )
             elif args.backup_command == "list":
                 return handle_mcp_backup_list(args.host, args.detailed)
@@ -1574,12 +1649,12 @@ def main():
         elif args.mcp_command == "remove":
             if args.remove_command == "server":
                 return handle_mcp_remove_server(
-                    args.server_name, args.host, args.env, args.no_backup,
+                    env_manager, args.server_name, args.host, args.env, args.no_backup,
                     args.dry_run, args.auto_approve
                 )
             elif args.remove_command == "host":
                 return handle_mcp_remove_host(
-                    args.host_name, args.no_backup,
+                    env_manager, args.host_name, args.no_backup,
                     args.dry_run, args.auto_approve
                 )
             else:

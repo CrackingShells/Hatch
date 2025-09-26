@@ -170,6 +170,20 @@ class HatchEnvironmentManager:
     def get_current_environment_data(self) -> Dict:
         """Get the data for the current environment."""
         return self._environments[self._current_env_name]
+
+    def get_environment_data(self, env_name: str) -> Dict:
+        """Get the data for a specific environment.
+
+        Args:
+            env_name: Name of the environment
+
+        Returns:
+            Dict: Environment data
+
+        Raises:
+            KeyError: If environment doesn't exist
+        """
+        return self._environments[env_name]
     
     def set_current_environment(self, env_name: str) -> bool:
         """
@@ -647,6 +661,118 @@ class HatchEnvironmentManager:
         except Exception as e:
             self.logger.error(f"Failed to update package host configuration: {e}")
             return False
+
+    def remove_package_host_configuration(self, env_name: str, package_name: str, hostname: str) -> bool:
+        """Remove host configuration tracking for a specific package.
+
+        Args:
+            env_name: Environment name
+            package_name: Package name (maps to server name in current 1:1 design)
+            hostname: Host identifier to remove
+
+        Returns:
+            bool: True if removal occurred, False if package/host not found
+        """
+        try:
+            if env_name not in self._environments:
+                self.logger.warning(f"Environment {env_name} does not exist")
+                return False
+
+            packages = self._environments[env_name].get("packages", [])
+            for pkg in packages:
+                if pkg.get("name") == package_name:
+                    configured_hosts = pkg.get("configured_hosts", {})
+                    if hostname in configured_hosts:
+                        del configured_hosts[hostname]
+                        self._save_environments()
+                        self.logger.info(f"Removed host {hostname} from package {package_name} in env {env_name}")
+                        return True
+
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Failed to remove package host configuration: {e}")
+            return False
+
+    def clear_host_from_all_packages_all_envs(self, hostname: str) -> int:
+        """Remove host from all packages across all environments.
+
+        Args:
+            hostname: Host identifier to remove globally
+
+        Returns:
+            int: Number of package entries updated
+        """
+        updates_count = 0
+
+        try:
+            for env_name, env_data in self._environments.items():
+                packages = env_data.get("packages", [])
+                for pkg in packages:
+                    configured_hosts = pkg.get("configured_hosts", {})
+                    if hostname in configured_hosts:
+                        del configured_hosts[hostname]
+                        updates_count += 1
+                        self.logger.info(f"Removed host {hostname} from package {pkg.get('name')} in env {env_name}")
+
+            if updates_count > 0:
+                self._save_environments()
+
+            return updates_count
+
+        except Exception as e:
+            self.logger.error(f"Failed to clear host from all packages: {e}")
+            return 0
+
+    def apply_restored_host_configuration_to_environments(self, hostname: str, restored_servers: dict) -> int:
+        """Update environment tracking to match restored host configuration.
+
+        Args:
+            hostname: Host that was restored
+            restored_servers: Dict mapping server_name -> server_config from restored host file
+
+        Returns:
+            int: Number of package entries updated across all environments
+        """
+        updates_count = 0
+
+        try:
+            from datetime import datetime
+            current_time = datetime.now().isoformat()
+
+            for env_name, env_data in self._environments.items():
+                packages = env_data.get("packages", [])
+                for pkg in packages:
+                    package_name = pkg.get("name")
+                    configured_hosts = pkg.get("configured_hosts", {})
+
+                    # Check if this package corresponds to a restored server
+                    if package_name in restored_servers:
+                        # Server exists in restored config - ensure tracking exists and is current
+                        server_config = restored_servers[package_name]
+                        configured_hosts[hostname] = {
+                            "config_path": self._get_host_config_path(hostname),
+                            "configured_at": configured_hosts.get(hostname, {}).get("configured_at", current_time),
+                            "last_synced": current_time,
+                            "server_config": server_config
+                        }
+                        updates_count += 1
+                        self.logger.info(f"Updated host {hostname} tracking for package {package_name} in env {env_name}")
+
+                    elif hostname in configured_hosts:
+                        # Server not in restored config but was previously tracked - remove stale tracking
+                        del configured_hosts[hostname]
+                        updates_count += 1
+                        self.logger.info(f"Removed stale host {hostname} tracking for package {package_name} in env {env_name}")
+
+            if updates_count > 0:
+                self._save_environments()
+
+            return updates_count
+
+        except Exception as e:
+            self.logger.error(f"Failed to apply restored host configuration: {e}")
+            return 0
 
     def _get_host_config_path(self, hostname: str) -> str:
         """Get configuration file path for a host.
