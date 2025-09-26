@@ -9,6 +9,8 @@ import unittest
 import sys
 from pathlib import Path
 from datetime import datetime
+from unittest.mock import MagicMock, patch
+import json
 
 # Add the parent directory to the path to import wobble
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -27,9 +29,10 @@ except ImportError:
 
 from test_data_utils import MCPHostConfigTestDataLoader
 from hatch.mcp_host_config.models import (
-    MCPServerConfig, EnvironmentData, EnvironmentPackageEntry, 
+    MCPServerConfig, EnvironmentData, EnvironmentPackageEntry,
     PackageHostConfiguration, MCPHostType
 )
+from hatch.environment_manager import HatchEnvironmentManager
 
 
 class TestMCPEnvironmentIntegration(unittest.TestCase):
@@ -275,6 +278,242 @@ class TestMCPHostTypeIntegration(unittest.TestCase):
         """Test MCP host type with invalid value."""
         with self.assertRaises(ValueError):
             MCPHostType("invalid-host")
+
+
+class TestEnvironmentManagerHostSync(unittest.TestCase):
+    """Test suite for EnvironmentManager host synchronization methods."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_env_manager = MagicMock(spec=HatchEnvironmentManager)
+
+        # Load test fixture data
+        fixture_path = Path(__file__).parent / "test_data" / "fixtures" / "host_sync_scenarios.json"
+        with open(fixture_path, 'r') as f:
+            self.test_data = json.load(f)
+
+    @regression_test
+    def test_remove_package_host_configuration_success(self):
+        """Test successful removal of host from package tracking.
+
+        Validates:
+        - Removes specified host from package's configured_hosts
+        - Updates environments.json file via _save_environments()
+        - Returns True when removal occurs
+        - Logs successful removal with package/host details
+        """
+        # Setup: Environment with package having configured_hosts for multiple hosts
+        env_manager = HatchEnvironmentManager()
+        env_manager._environments = {
+            "test-env": self.test_data["remove_server_scenario"]["before"]
+        }
+
+        with patch.object(env_manager, '_save_environments') as mock_save:
+            with patch.object(env_manager, 'logger') as mock_logger:
+                # Action: remove_package_host_configuration(env_name, package_name, hostname)
+                result = env_manager.remove_package_host_configuration("test-env", "weather-toolkit", "cursor")
+
+                # Assert: Host removed from package, environments.json updated, returns True
+                self.assertTrue(result)
+                mock_save.assert_called_once()
+                mock_logger.info.assert_called_with("Removed host cursor from package weather-toolkit in env test-env")
+
+                # Verify host was actually removed
+                packages = env_manager._environments["test-env"]["packages"]
+                weather_pkg = next(pkg for pkg in packages if pkg["name"] == "weather-toolkit")
+                self.assertNotIn("cursor", weather_pkg["configured_hosts"])
+                self.assertIn("claude-desktop", weather_pkg["configured_hosts"])
+
+    @regression_test
+    def test_remove_package_host_configuration_not_found(self):
+        """Test removal when package or host not found.
+
+        Validates:
+        - Returns False when environment doesn't exist
+        - Returns False when package not found in environment
+        - Returns False when host not in package's configured_hosts
+        - No changes to environments.json when nothing to remove
+        """
+        env_manager = HatchEnvironmentManager()
+        env_manager._environments = {
+            "test-env": self.test_data["remove_server_scenario"]["before"]
+        }
+
+        with patch.object(env_manager, '_save_environments') as mock_save:
+            # Test scenarios: missing env, missing package, missing host
+
+            # Missing environment
+            result = env_manager.remove_package_host_configuration("missing-env", "weather-toolkit", "cursor")
+            self.assertFalse(result)
+
+            # Missing package
+            result = env_manager.remove_package_host_configuration("test-env", "missing-package", "cursor")
+            self.assertFalse(result)
+
+            # Missing host
+            result = env_manager.remove_package_host_configuration("test-env", "weather-toolkit", "missing-host")
+            self.assertFalse(result)
+
+            # Assert: No file changes when nothing to remove
+            mock_save.assert_not_called()
+
+    @regression_test
+    def test_clear_host_from_all_packages_all_envs(self):
+        """Test host removal across multiple environments.
+
+        Validates:
+        - Iterates through all environments in _environments
+        - Removes hostname from all packages' configured_hosts
+        - Returns correct count of updated package entries
+        - Calls _save_environments() only once after all updates
+        """
+        # Setup: Multiple environments with packages using same host
+        env_manager = HatchEnvironmentManager()
+        env_manager._environments = self.test_data["remove_host_scenario"]["multi_environment_before"]
+
+        with patch.object(env_manager, '_save_environments') as mock_save:
+            with patch.object(env_manager, 'logger') as mock_logger:
+                # Action: clear_host_from_all_packages_all_envs(hostname)
+                updates_count = env_manager.clear_host_from_all_packages_all_envs("cursor")
+
+                # Assert: Host removed from all packages, correct count returned
+                self.assertEqual(updates_count, 2)  # 2 packages had cursor configured
+                mock_save.assert_called_once()
+
+                # Verify cursor was removed from all packages
+                for env_name, env_data in env_manager._environments.items():
+                    for pkg in env_data["packages"]:
+                        configured_hosts = pkg.get("configured_hosts", {})
+                        self.assertNotIn("cursor", configured_hosts)
+
+
+class TestEnvironmentManagerHostSyncErrorHandling(unittest.TestCase):
+    """Test suite for error handling and edge cases."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.env_manager = HatchEnvironmentManager()
+
+    @regression_test
+    def test_remove_operations_exception_handling(self):
+        """Test exception handling in remove operations.
+
+        Validates:
+        - Catches and logs exceptions during removal operations
+        - Returns False/0 on exceptions rather than crashing
+        - Provides meaningful error messages in logs
+        - Maintains environment file integrity on errors
+        """
+        # Setup: Mock scenarios that raise exceptions
+        # Create environment with package that has the host, so _save_environments will be called
+        self.env_manager._environments = {
+            "test-env": {
+                "packages": [
+                    {
+                        "name": "test-pkg",
+                        "configured_hosts": {
+                            "test-host": {"config_path": "test"}
+                        }
+                    }
+                ]
+            }
+        }
+
+        with patch.object(self.env_manager, '_save_environments', side_effect=Exception("File error")):
+            with patch.object(self.env_manager, 'logger') as mock_logger:
+                # Action: Call remove methods with exception-inducing conditions
+                result = self.env_manager.remove_package_host_configuration("test-env", "test-pkg", "test-host")
+
+                # Assert: Graceful error handling, no crashes, appropriate returns
+                self.assertFalse(result)
+                mock_logger.error.assert_called()
+
+
+class TestCLIHostMutationSync(unittest.TestCase):
+    """Test suite for CLI integration with environment tracking."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.mock_env_manager = MagicMock(spec=HatchEnvironmentManager)
+
+    @integration_test(scope="component")
+    def test_remove_server_updates_environment(self):
+        """Test that remove server updates current environment tracking.
+
+        Validates:
+        - CLI remove server calls environment manager update method
+        - Updates only current environment (not all environments)
+        - Passes correct parameters (env_name, server_name, hostname)
+        - Maintains existing CLI behavior and exit codes
+        """
+        from hatch.cli_hatch import handle_mcp_remove_server
+        from hatch.mcp_host_config import MCPHostConfigurationManager
+
+        # Setup: Environment with server configured on host
+        self.mock_env_manager.get_current_environment.return_value = "test-env"
+
+        with patch.object(MCPHostConfigurationManager, 'remove_server') as mock_remove:
+            mock_result = MagicMock()
+            mock_result.success = True
+            mock_result.backup_path = None
+            mock_remove.return_value = mock_result
+
+            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+                with patch('builtins.print'):
+                    # Action: hatch mcp remove server <server> --host <host>
+                    result = handle_mcp_remove_server(
+                        self.mock_env_manager, "test-server", "claude-desktop",
+                        None, False, False, True
+                    )
+
+                    # Assert: Environment manager method called with correct parameters
+                    self.mock_env_manager.get_current_environment.assert_called_once()
+                    self.mock_env_manager.remove_package_host_configuration.assert_called_with(
+                        "test-env", "test-server", "claude-desktop"
+                    )
+
+                    # Assert: Success exit code
+                    self.assertEqual(result, 0)
+
+    @integration_test(scope="component")
+    def test_remove_host_updates_all_environments(self):
+        """Test that remove host updates all environment tracking.
+
+        Validates:
+        - CLI remove host calls global environment update method
+        - Updates ALL environments (not just current)
+        - Passes correct hostname parameter
+        - Reports number of updates performed to user
+        """
+        from hatch.cli_hatch import handle_mcp_remove_host
+        from hatch.mcp_host_config import MCPHostConfigurationManager
+
+        # Setup: Multiple environments with packages using the host
+        with patch.object(MCPHostConfigurationManager, 'remove_host_configuration') as mock_remove:
+            mock_result = MagicMock()
+            mock_result.success = True
+            mock_result.backup_path = None
+            mock_remove.return_value = mock_result
+
+            self.mock_env_manager.clear_host_from_all_packages_all_envs.return_value = 3
+
+            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+                with patch('builtins.print') as mock_print:
+                    # Action: hatch mcp remove host <host>
+                    result = handle_mcp_remove_host(
+                        self.mock_env_manager, "cursor", False, False, True
+                    )
+
+                    # Assert: Global environment update method called
+                    self.mock_env_manager.clear_host_from_all_packages_all_envs.assert_called_with("cursor")
+
+                    # Assert: User informed of update count
+                    print_calls = [call[0][0] for call in mock_print.call_args_list]
+                    output = ' '.join(print_calls)
+                    self.assertIn("Updated 3 package entries across environments", output)
+
+                    # Assert: Success exit code
+                    self.assertEqual(result, 0)
 
 
 if __name__ == '__main__':
