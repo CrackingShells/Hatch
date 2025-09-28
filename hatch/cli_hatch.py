@@ -1453,38 +1453,111 @@ def main():
                         hosts = parse_host_list(args.host)
                         env_name = args.env or env_manager.get_current_environment()
 
-                        # Is it a path or a name?
+                        package_name = args.package_path_or_name
+                        package_service = None
+
+                        # Check if it's a local package path
                         pkg_path = Path(args.package_path_or_name)
                         if pkg_path.exists() and pkg_path.is_dir():
+                            # Local package - load metadata from directory
                             with open(pkg_path / "hatch_metadata.json", 'r') as f:
                                 metadata = json.load(f)
-                                package_name = metadata['name']
+                                package_service = PackageService(metadata)
+                            package_name = package_service.get_field('name')
                         else:
-                            package_name = args.package_path_or_name
+                            # Registry package - get metadata from environment manager
+                            try:
+                                env_data = env_manager.get_environment_data(env_name)
+                                if env_data:
+                                    # Find the package in the environment
+                                    for pkg in env_data.packages:
+                                        if pkg.name == package_name:
+                                            # Create a minimal metadata structure for PackageService
+                                            metadata = {
+                                                "name": pkg.name,
+                                                "version": pkg.version,
+                                                "dependencies": {}  # Will be populated if needed
+                                            }
+                                            package_service = PackageService(metadata)
+                                            break
 
-                        # Get MCP server configuration for the newly added package
-                        server_config = get_package_mcp_server_config(env_manager, env_name, package_name)
+                                if package_service is None:
+                                    print(f"Warning: Could not find package '{package_name}' in environment '{env_name}'. Skipping dependency analysis.")
+                                    package_service = None
+                            except Exception as e:
+                                print(f"Warning: Could not load package metadata for '{package_name}': {e}. Skipping dependency analysis.")
+                                package_service = None
+
+                        # Get dependency names if we have package service
+                        package_names = []
+                        if package_service:
+                            # Get Hatch dependencies
+                            dependencies = package_service.get_dependencies()
+                            hatch_deps = dependencies.get('hatch', [])
+                            package_names = [dep.get('name') for dep in hatch_deps if dep.get('name')]
+
+                            # Resolve local dependency paths to actual names
+                            for i in range(len(package_names)):
+                                dep_path = Path(package_names[i])
+                                if dep_path.exists() and dep_path.is_dir():
+                                    try:
+                                        with open(dep_path / "hatch_metadata.json", 'r') as f:
+                                            dep_metadata = json.load(f)
+                                            dep_service = PackageService(dep_metadata)
+                                        package_names[i] = dep_service.get_field('name')
+                                    except Exception as e:
+                                        print(f"Warning: Could not resolve dependency path '{package_names[i]}': {e}")
+
+                        # Add the main package to the list
+                        package_names.append(package_name)
+
+                        # Get MCP server configuration for all packages
+                        server_configs = [get_package_mcp_server_config(env_manager, env_name, pkg_name) for pkg_name in package_names]
 
                         print(f"Configuring MCP server for package '{package_name}' on {len(hosts)} host(s)...")
 
                         # Configure on each host
                         success_count = 0
                         for host in hosts: # 'host', here, is a string
-                            try:
-                                result = mcp_manager.configure_server(
-                                    hostname=host,
-                                    server_config=server_config,
-                                    no_backup=False  # Always backup when adding packages
-                                )
+                            host_success_count = 0
+                            for i, server_config in enumerate(server_configs):
+                                pkg_name = package_names[i]
+                                try:
+                                    result = mcp_manager.configure_server(
+                                        hostname=host,
+                                        server_config=server_config,
+                                        no_backup=False  # Always backup when adding packages
+                                    )
 
-                                if result.success:
-                                    print(f"✓ Configured {server_config.name} on {host}")
-                                    success_count += 1
-                                else:
-                                    print(f"✗ Failed to configure {server_config.name} on {host}: {result.error_message}")
+                                    if result.success:
+                                        print(f"✓ Configured {server_config.name} ({pkg_name}) on {host}")
+                                        host_success_count += 1
 
-                            except Exception as e:
-                                print(f"✗ Error configuring {server_config.name} on {host}: {e}")
+                                        # Update package metadata with host configuration tracking
+                                        try:
+                                            server_config_dict = {
+                                                "name": server_config.name,
+                                                "command": server_config.command,
+                                                "args": server_config.args
+                                            }
+
+                                            env_manager.update_package_host_configuration(
+                                                env_name=env_name,
+                                                package_name=pkg_name,
+                                                hostname=host,
+                                                server_config=server_config_dict
+                                            )
+                                        except Exception as e:
+                                            # Log but don't fail the configuration operation
+                                            print(f"[WARNING] Failed to update package metadata for {pkg_name}: {e}")
+                                    else:
+                                        print(f"✗ Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+
+                                except Exception as e:
+                                    print(f"✗ Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
+
+                            if host_success_count == len(server_configs):
+                                success_count += 1
 
                         if success_count > 0:
                             print(f"MCP configuration completed: {success_count}/{len(hosts)} hosts configured")
@@ -1526,68 +1599,122 @@ def main():
                 hosts = parse_host_list(args.host)
                 env_name = args.env or env_manager.get_current_environment()
 
-                # Get MCP server configuration for the package
-                server_config = get_package_mcp_server_config(env_manager, env_name, args.package_name)
+                # Get all packages to sync (main package + dependencies)
+                package_names = [args.package_name]
+
+                # Try to get dependencies for the main package
+                try:
+                    env_data = env_manager.get_environment_data(env_name)
+                    if env_data:
+                        # Find the main package in the environment
+                        main_package = None
+                        for pkg in env_data.packages:
+                            if pkg.name == args.package_name:
+                                main_package = pkg
+                                break
+
+                        if main_package:
+                            # Create a minimal metadata structure for PackageService
+                            metadata = {
+                                "name": main_package.name,
+                                "version": main_package.version,
+                                "dependencies": {}  # Will be populated if needed
+                            }
+                            package_service = PackageService(metadata)
+
+                            # Get Hatch dependencies
+                            dependencies = package_service.get_dependencies()
+                            hatch_deps = dependencies.get('hatch', [])
+                            dep_names = [dep.get('name') for dep in hatch_deps if dep.get('name')]
+
+                            # Add dependencies to the sync list (before main package)
+                            package_names = dep_names + [args.package_name]
+                        else:
+                            print(f"Warning: Package '{args.package_name}' not found in environment '{env_name}'. Syncing only the specified package.")
+                    else:
+                        print(f"Warning: Could not access environment '{env_name}'. Syncing only the specified package.")
+                except Exception as e:
+                    print(f"Warning: Could not analyze dependencies for '{args.package_name}': {e}. Syncing only the specified package.")
+
+                # Get MCP server configurations for all packages
+                server_configs = []
+                for pkg_name in package_names:
+                    try:
+                        config = get_package_mcp_server_config(env_manager, env_name, pkg_name)
+                        server_configs.append((pkg_name, config))
+                    except Exception as e:
+                        print(f"Warning: Could not get MCP configuration for package '{pkg_name}': {e}")
+
+                if not server_configs:
+                    print(f"Error: No MCP server configurations found for package '{args.package_name}' or its dependencies")
+                    return 1
 
                 if args.dry_run:
-                    print(f"[DRY RUN] Would synchronize MCP server for package '{args.package_name}' to hosts: {[h for h in hosts]}")
-                    print(f"[DRY RUN] Server config: {server_config.name} -> {' '.join(server_config.args)}")
+                    print(f"[DRY RUN] Would synchronize MCP servers for {len(server_configs)} package(s) to hosts: {[h for h in hosts]}")
+                    for pkg_name, config in server_configs:
+                        print(f"[DRY RUN] - {pkg_name}: {config.name} -> {' '.join(config.args)}")
                     return 0
 
                 # Confirm operation unless auto-approved
+                package_desc = f"package '{args.package_name}'" if len(server_configs) == 1 else f"{len(server_configs)} packages ('{args.package_name}' + dependencies)"
                 if not request_confirmation(
-                    f"Synchronize MCP server for package '{args.package_name}' to {len(hosts)} host(s)?",
+                    f"Synchronize MCP servers for {package_desc} to {len(hosts)} host(s)?",
                     args.auto_approve
                 ):
                     print("Operation cancelled.")
                     return 0
 
-                # Perform synchronization to each host
+                # Perform synchronization to each host for all packages
+                total_operations = len(server_configs) * len(hosts)
                 success_count = 0
-                for host in hosts: # 'host', here, is a string
-                    try:
-                        result = mcp_manager.configure_server(
-                            hostname=host,
-                            server_config=server_config,
-                            no_backup=args.no_backup
-                        )
 
-                        if result.success:
-                            print(f"[SUCCESS] Successfully configured {server_config.name} on {host}")
-                            success_count += 1
+                for host in hosts:
+                    for pkg_name, server_config in server_configs:
+                        try:
+                            result = mcp_manager.configure_server(
+                                hostname=host,
+                                server_config=server_config,
+                                no_backup=args.no_backup
+                            )
 
-                            # Update package metadata with host configuration tracking
-                            try:
-                                server_config_dict = {
-                                    "name": server_config.name,
-                                    "command": server_config.command,
-                                    "args": server_config.args
-                                }
+                            if result.success:
+                                print(f"[SUCCESS] Successfully configured {server_config.name} ({pkg_name}) on {host}")
+                                success_count += 1
 
-                                env_manager.update_package_host_configuration(
-                                    env_name=env_name,
-                                    package_name=args.package_name,
-                                    hostname=host,
-                                    server_config=server_config_dict
-                                )
-                            except Exception as e:
-                                # Log but don't fail the sync operation
-                                print(f"[WARNING] Failed to update package metadata: {e}")
-                        else:
-                            print(f"[ERROR] Failed to configure {server_config.name} on {host}: {result.error_message}")
+                                # Update package metadata with host configuration tracking
+                                try:
+                                    server_config_dict = {
+                                        "name": server_config.name,
+                                        "command": server_config.command,
+                                        "args": server_config.args
+                                    }
 
-                    except Exception as e:
-                        print(f"[ERROR] Error configuring {server_config.name} on {host}: {e}")
+                                    env_manager.update_package_host_configuration(
+                                        env_name=env_name,
+                                        package_name=pkg_name,
+                                        hostname=host,
+                                        server_config=server_config_dict
+                                    )
+                                except Exception as e:
+                                    # Log but don't fail the sync operation
+                                    print(f"[WARNING] Failed to update package metadata for {pkg_name}: {e}")
+                            else:
+                                print(f"[ERROR] Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+
+                        except Exception as e:
+                            print(f"[ERROR] Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
 
                 # Report results
-                if success_count == len(hosts):
-                    print(f"Successfully synchronized package '{args.package_name}' to all {len(hosts)} host(s)")
+                if success_count == total_operations:
+                    package_desc = f"package '{args.package_name}'" if len(server_configs) == 1 else f"{len(server_configs)} packages"
+                    print(f"Successfully synchronized {package_desc} to all {len(hosts)} host(s)")
                     return 0
                 elif success_count > 0:
-                    print(f"Partially synchronized package '{args.package_name}': {success_count}/{len(hosts)} hosts succeeded")
+                    print(f"Partially synchronized: {success_count}/{total_operations} operations succeeded")
                     return 1
                 else:
-                    print(f"Failed to synchronize package '{args.package_name}' to any hosts")
+                    package_desc = f"package '{args.package_name}'" if len(server_configs) == 1 else f"{len(server_configs)} packages"
+                    print(f"Failed to synchronize {package_desc} to any hosts")
                     return 1
 
             except ValueError as e:
