@@ -22,13 +22,31 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.environments_dir = Path(self.temp_dir) / "envs"
         self.environments_dir.mkdir(exist_ok=True)
-        
+
         # Create manager instance for testing
         self.manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
 
+        # Track environments created during this test for cleanup
+        self.created_environments = []
+
     def tearDown(self):
         """Clean up test environment."""
+        # Clean up any conda/mamba environments created during this test
+        if hasattr(self, 'manager') and self.manager.is_available():
+            for env_name in self.created_environments:
+                try:
+                    if self.manager.environment_exists(env_name):
+                        self.manager.remove_python_environment(env_name)
+                except Exception:
+                    pass  # Best effort cleanup
+
+        # Clean up temporary directory
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _track_environment(self, env_name):
+        """Track an environment for cleanup in tearDown."""
+        if env_name not in self.created_environments:
+            self.created_environments.append(env_name)
 
     @regression_test
     @patch('hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists', return_value=True)
@@ -349,26 +367,61 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
         cls.temp_dir = tempfile.mkdtemp()
         cls.environments_dir = Path(cls.temp_dir) / "envs"
         cls.environments_dir.mkdir(exist_ok=True)
-        
+
         # Create manager instance for integration testing
         cls.manager = PythonEnvironmentManager(environments_dir=cls.environments_dir)
+
+        # Track all environments created during integration tests
+        cls.all_created_environments = set()
 
         # Skip all tests if conda/mamba is not available
         if not cls.manager.is_available():
             raise unittest.SkipTest("Conda/mamba not available for integration tests")
 
+    def setUp(self):
+        """Set up individual test."""
+        # Track environments created during this specific test
+        self.test_environments = []
+
+    def tearDown(self):
+        """Clean up individual test."""
+        # Clean up environments created during this specific test
+        for env_name in self.test_environments:
+            try:
+                if self.manager.environment_exists(env_name):
+                    self.manager.remove_python_environment(env_name)
+                    self.all_created_environments.discard(env_name)
+            except Exception:
+                pass  # Best effort cleanup
+
+    def _track_environment(self, env_name):
+        """Track an environment for cleanup."""
+        if env_name not in self.test_environments:
+            self.test_environments.append(env_name)
+        self.all_created_environments.add(env_name)
+
     @classmethod
     def tearDownClass(cls):
         """Clean up class-level test environment."""
-        # Clean up any test environments that might have been created
+        # Clean up any remaining test environments
         try:
-            test_envs = ["test_integration_env", "test_python_311", "test_python_312", "test_diagnostics_env"]
-            for env_name in test_envs:
+            # Clean up tracked environments
+            for env_name in list(cls.all_created_environments):
+                if cls.manager.environment_exists(env_name):
+                    cls.manager.remove_python_environment(env_name)
+
+            # Clean up known test environment patterns (fallback)
+            known_patterns = [
+                "test_integration_env", "test_python_311", "test_python_312", "test_diagnostics_env",
+                "test_env_1", "test_env_2", "test_env_3", "test_env_4", "test_env_5",
+                "test_python_39", "test_python_310", "test_python_312", "test_cache_env1", "test_cache_env2"
+            ]
+            for env_name in known_patterns:
                 if cls.manager.environment_exists(env_name):
                     cls.manager.remove_python_environment(env_name)
         except Exception:
             pass  # Best effort cleanup
-        
+
         shutil.rmtree(cls.temp_dir, ignore_errors=True)
 
     @integration_test(scope="system")
@@ -418,11 +471,12 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
     def test_create_and_remove_python_environment_real(self):
         """Test real Python environment creation and removal."""
         env_name = "test_integration_env"
-        
+        self._track_environment(env_name)
+
         # Ensure environment doesn't exist initially
         if self.manager.environment_exists(env_name):
             self.manager.remove_python_environment(env_name)
-        
+
         # Create environment
         result = self.manager.create_python_environment(env_name)
         self.assertTrue(result, "Failed to create Python environment")
@@ -454,6 +508,7 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
     def test_create_python_environment_with_version_real(self):
         """Test real Python environment creation with specific version."""
         env_name = "test_python_311"
+        self._track_environment(env_name)
         python_version = "3.11"
 
         # Ensure environment doesn't exist initially
@@ -553,6 +608,10 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
         test_envs = ["test_env_1", "test_env_2"]
         final_names = ["hatch_test_env_1", "hatch_test_env_2"]
 
+        # Track environments for cleanup
+        for env_name in test_envs:
+            self._track_environment(env_name)
+
         # Clean up any existing test environments
         for env_name in test_envs:
             if self.manager.environment_exists(env_name):
@@ -645,13 +704,31 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.environments_dir = Path(self.temp_dir) / "envs"
         self.environments_dir.mkdir(exist_ok=True)
-        
+
         # Create manager instance for testing
         self.manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
 
+        # Track environments created during this test for cleanup
+        self.created_environments = []
+
     def tearDown(self):
         """Clean up test environment."""
+        # Clean up any conda/mamba environments created during this test
+        if hasattr(self, 'manager') and self.manager.is_available():
+            for env_name in self.created_environments:
+                try:
+                    if self.manager.environment_exists(env_name):
+                        self.manager.remove_python_environment(env_name)
+                except Exception:
+                    pass  # Best effort cleanup
+
+        # Clean up temporary directory
         shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def _track_environment(self, env_name):
+        """Track an environment for cleanup in tearDown."""
+        if env_name not in self.created_environments:
+            self.created_environments.append(env_name)
 
     @regression_test
     @patch('subprocess.run')
