@@ -298,21 +298,46 @@ class LMStudioHostStrategy(CursorBasedHostStrategy):
 
 @register_host_strategy(MCPHostType.VSCODE)
 class VSCodeHostStrategy(MCPHostStrategy):
-    """Configuration strategy for VS Code MCP extension."""
-    
+    """Configuration strategy for VS Code MCP extension with user-wide settings support."""
+
     def get_config_path(self) -> Optional[Path]:
-        """Get VS Code configuration path."""
-        return Path.cwd() / ".vscode" / "settings.json"
-    
+        """Get VS Code user settings configuration path (cross-platform)."""
+        try:
+            system = platform.system()
+            if system == "Windows":
+                # Windows: %APPDATA%\Code\User\settings.json
+                appdata = Path.home() / "AppData" / "Roaming"
+                return appdata / "Code" / "User" / "settings.json"
+            elif system == "Darwin":  # macOS
+                # macOS: $HOME/Library/Application Support/Code/User/settings.json
+                return Path.home() / "Library" / "Application Support" / "Code" / "User" / "settings.json"
+            elif system == "Linux":
+                # Linux: $HOME/.config/Code/User/settings.json
+                return Path.home() / ".config" / "Code" / "User" / "settings.json"
+            else:
+                logger.warning(f"Unsupported platform for VS Code: {system}")
+                return None
+        except Exception as e:
+            logger.error(f"Failed to determine VS Code user settings path: {e}")
+            return None
+
     def get_config_key(self) -> str:
         """VS Code uses nested configuration structure."""
         return "mcp.servers"  # VS Code specific nested key
-    
+
     def is_host_available(self) -> bool:
-        """Check if VS Code workspace exists."""
-        vscode_dir = Path.cwd() / ".vscode"
-        return vscode_dir.exists()
-    
+        """Check if VS Code is installed by checking for user settings directory."""
+        try:
+            config_path = self.get_config_path()
+            if not config_path:
+                return False
+
+            # Check if VS Code user directory exists (indicates VS Code installation)
+            user_dir = config_path.parent
+            return user_dir.exists()
+        except Exception:
+            return False
+
     def validate_server_config(self, server_config: MCPServerConfig) -> bool:
         """VS Code validation - flexible path handling."""
         return server_config.command is not None or server_config.url is not None
