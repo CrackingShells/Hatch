@@ -459,10 +459,10 @@ class HatchEnvironmentManager:
     def remove_environment(self, name: str) -> bool:
         """
         Remove an environment.
-        
+
         Args:
             name: Name of the environment to remove
-            
+
         Returns:
             bool: True if removed successfully, False otherwise
         """
@@ -470,28 +470,62 @@ class HatchEnvironmentManager:
         if name == "default":
             self.logger.error("Cannot remove default environment")
             return False
-        
+
         # Check if environment exists
         if name not in self._environments:
             self.logger.warning(f"Environment does not exist: {name}")
             return False
-        
+
         # If removing current environment, switch to default
         if name == self._current_env_name:
             self.set_current_environment("default")
-        
-        # Remove Python environment if it exists
+
+        # Clean up MCP server configurations for all packages in this environment
         env_data = self._environments[name]
+        packages = env_data.get("packages", [])
+        if packages:
+            self.logger.info(f"Cleaning up MCP server configurations for {len(packages)} packages in environment {name}")
+            try:
+                from .mcp_host_config.host_management import MCPHostConfigurationManager
+                mcp_manager = MCPHostConfigurationManager()
+
+                for pkg in packages:
+                    package_name = pkg.get("name")
+                    configured_hosts = pkg.get("configured_hosts", {})
+
+                    if configured_hosts and package_name:
+                        for hostname in configured_hosts.keys():
+                            try:
+                                # Remove server from host configuration file
+                                result = mcp_manager.remove_server(
+                                    server_name=package_name,  # In current 1:1 design, package name = server name
+                                    hostname=hostname,
+                                    no_backup=False  # Create backup for safety
+                                )
+
+                                if result.success:
+                                    self.logger.info(f"Removed MCP server '{package_name}' from host '{hostname}' (env removal)")
+                                else:
+                                    self.logger.warning(f"Failed to remove MCP server '{package_name}' from host '{hostname}': {result.error_message}")
+                            except Exception as e:
+                                self.logger.warning(f"Error removing MCP server '{package_name}' from host '{hostname}': {e}")
+
+            except ImportError:
+                self.logger.warning("MCP host configuration manager not available for cleanup")
+            except Exception as e:
+                self.logger.warning(f"Error during MCP server cleanup for environment removal: {e}")
+
+        # Remove Python environment if it exists
         if env_data.get("python_environment", False):
             try:
                 self.python_env_manager.remove_python_environment(name)
                 self.logger.info(f"Removed Python environment for {name}")
             except PythonEnvironmentError as e:
                 self.logger.warning(f"Failed to remove Python environment: {e}")
-        
+
         # Remove environment
         del self._environments[name]
-        
+
         # Save environments and update cache
         self._save_environments()
         self.logger.info(f"Removed environment: {name}")
@@ -855,11 +889,11 @@ class HatchEnvironmentManager:
     def remove_package(self, package_name: str, env_name: Optional[str] = None) -> bool:
         """
         Remove a package from an environment.
-        
+
         Args:
             package_name: Name of the package to remove
             env_name: Environment to remove from (uses current if None)
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -867,19 +901,50 @@ class HatchEnvironmentManager:
         if not self.environment_exists(env_name):
             self.logger.error(f"Environment {env_name} does not exist")
             return False
-        
+
         # Check if package exists in environment
         env_packages = self._environments[env_name].get("packages", [])
         pkg_index = None
+        package_to_remove = None
         for i, pkg in enumerate(env_packages):
             if pkg.get("name") == package_name:
                 pkg_index = i
+                package_to_remove = pkg
                 break
-        
+
         if pkg_index is None:
             self.logger.warning(f"Package {package_name} not found in environment {env_name}")
             return False
-        
+
+        # Clean up MCP server configurations from all configured hosts
+        configured_hosts = package_to_remove.get("configured_hosts", {})
+        if configured_hosts:
+            self.logger.info(f"Cleaning up MCP server configurations for package {package_name}")
+            try:
+                from .mcp_host_config.host_management import MCPHostConfigurationManager
+                mcp_manager = MCPHostConfigurationManager()
+
+                for hostname in configured_hosts.keys():
+                    try:
+                        # Remove server from host configuration file
+                        result = mcp_manager.remove_server(
+                            server_name=package_name,  # In current 1:1 design, package name = server name
+                            hostname=hostname,
+                            no_backup=False  # Create backup for safety
+                        )
+
+                        if result.success:
+                            self.logger.info(f"Removed MCP server '{package_name}' from host '{hostname}'")
+                        else:
+                            self.logger.warning(f"Failed to remove MCP server '{package_name}' from host '{hostname}': {result.error_message}")
+                    except Exception as e:
+                        self.logger.warning(f"Error removing MCP server '{package_name}' from host '{hostname}': {e}")
+
+            except ImportError:
+                self.logger.warning("MCP host configuration manager not available for cleanup")
+            except Exception as e:
+                self.logger.warning(f"Error during MCP server cleanup: {e}")
+
         # Remove package from filesystem
         pkg_path = self.get_environment_path(env_name) / package_name
         try:
@@ -889,11 +954,11 @@ class HatchEnvironmentManager:
         except Exception as e:
             self.logger.error(f"Failed to remove package files for {package_name}: {e}")
             return False
-        
+
         # Remove package from environment data
         env_packages.pop(pkg_index)
         self._save_environments()
-        
+
         self.logger.info(f"Removed package {package_name} from environment {env_name}")
         return True
 
