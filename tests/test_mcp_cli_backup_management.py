@@ -11,7 +11,7 @@ and error handling scenarios.
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, ANY
 import sys
 from pathlib import Path
 from datetime import datetime
@@ -40,7 +40,7 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
                     try:
                         main()
                         mock_handler.assert_called_once_with(
-                            'claude-desktop', 'test.backup', False, False
+                            ANY, 'claude-desktop', 'test.backup', False, False
                         )
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
@@ -56,7 +56,7 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
                     try:
                         main()
                         mock_handler.assert_called_once_with(
-                            'cursor', None, True, True
+                            ANY, 'cursor', None, True, True
                         )
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
@@ -64,10 +64,11 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
     @integration_test(scope="component")
     def test_backup_restore_invalid_host(self):
         """Test backup restore with invalid host type."""
-        with patch('builtins.print') as mock_print:
-            result = handle_mcp_backup_restore('invalid-host')
-            
-            self.assertEqual(result, 1)
+        with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+            with patch('builtins.print') as mock_print:
+                result = handle_mcp_backup_restore(mock_env_manager.return_value, 'invalid-host')
+
+                self.assertEqual(result, 1)
             
             # Verify error message
             print_calls = [call[0][0] for call in mock_print.call_args_list]
@@ -81,10 +82,11 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
             mock_backup_manager._get_latest_backup.return_value = None
             mock_backup_class.return_value = mock_backup_manager
 
-            with patch('builtins.print') as mock_print:
-                result = handle_mcp_backup_restore('claude-desktop')
+            with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+                with patch('builtins.print') as mock_print:
+                    result = handle_mcp_backup_restore(mock_env_manager.return_value, 'claude-desktop')
 
-                self.assertEqual(result, 1)
+                    self.assertEqual(result, 1)
 
                 # Verify error message
                 print_calls = [call[0][0] for call in mock_print.call_args_list]
@@ -99,10 +101,11 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
             mock_backup_manager._get_latest_backup.return_value = mock_backup_path
             mock_backup_class.return_value = mock_backup_manager
 
-            with patch('builtins.print') as mock_print:
-                result = handle_mcp_backup_restore('claude-desktop', dry_run=True)
+            with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+                with patch('builtins.print') as mock_print:
+                    result = handle_mcp_backup_restore(mock_env_manager.return_value, 'claude-desktop', dry_run=True)
 
-                self.assertEqual(result, 0)
+                    self.assertEqual(result, 0)
 
                 # Verify dry run output
                 print_calls = [call[0][0] for call in mock_print.call_args_list]
@@ -119,10 +122,11 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
             mock_backup_class.return_value = mock_backup_manager
 
             with patch('hatch.cli_hatch.request_confirmation', return_value=True):
-                with patch('builtins.print') as mock_print:
-                    result = handle_mcp_backup_restore('claude-desktop', auto_approve=True)
+                with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+                    with patch('builtins.print') as mock_print:
+                        result = handle_mcp_backup_restore(mock_env_manager.return_value, 'claude-desktop', auto_approve=True)
 
-                    self.assertEqual(result, 0)
+                        self.assertEqual(result, 0)
                     mock_backup_manager.restore_backup.assert_called_once()
 
                     # Verify success message

@@ -115,23 +115,26 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
     @regression_test
     def test_request_confirmation_user_no(self):
         """Test confirmation with user saying no."""
-        with patch('builtins.input', return_value='n'):
-            result = request_confirmation("Test message?", auto_approve=False)
-            self.assertFalse(result)
+        with patch.dict('os.environ', {'HATCH_AUTO_APPROVE': ''}, clear=False):
+            with patch('builtins.input', return_value='n'):
+                result = request_confirmation("Test message?", auto_approve=False)
+                self.assertFalse(result)
 
     @regression_test
     def test_request_confirmation_user_no_full(self):
         """Test confirmation with user saying 'no'."""
-        with patch('builtins.input', return_value='no'):
-            result = request_confirmation("Test message?", auto_approve=False)
-            self.assertFalse(result)
+        with patch.dict('os.environ', {'HATCH_AUTO_APPROVE': ''}, clear=False):
+            with patch('builtins.input', return_value='no'):
+                result = request_confirmation("Test message?", auto_approve=False)
+                self.assertFalse(result)
 
     @regression_test
     def test_request_confirmation_user_empty(self):
         """Test confirmation with user pressing enter (default no)."""
-        with patch('builtins.input', return_value=''):
-            result = request_confirmation("Test message?", auto_approve=False)
-            self.assertFalse(result)
+        with patch.dict('os.environ', {'HATCH_AUTO_APPROVE': ''}, clear=False):
+            with patch('builtins.input', return_value=''):
+                result = request_confirmation("Test message?", auto_approve=False)
+                self.assertFalse(result)
 
     @integration_test(scope="component")
     def test_package_add_argument_parsing(self):
@@ -208,8 +211,8 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
                             # Should succeed
                             self.assertEqual(result, 0)
 
-                            # Should print dry run message
-                            mock_print.assert_any_call("[DRY RUN] Would synchronize MCP server for package 'test-package' to hosts: ['claude-desktop', 'cursor']")
+                            # Should print dry run message (new format includes dependency info)
+                            mock_print.assert_any_call("[DRY RUN] Would synchronize MCP servers for 1 package(s) to hosts: ['claude-desktop', 'cursor']")
 
     @integration_test(scope="component")
     def test_package_sync_package_not_found(self):
@@ -244,8 +247,8 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
                         # Should fail
                         self.assertEqual(result, 1)
 
-                        # Should print error message
-                        mock_print.assert_any_call("Error: Package 'nonexistent-package' not found in environment 'default'")
+                        # Should print error message (new format)
+                        mock_print.assert_any_call("Error: No MCP server configurations found for package 'nonexistent-package' or its dependencies")
 
     @regression_test
     def test_get_package_mcp_server_config_success(self):
