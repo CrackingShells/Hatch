@@ -16,6 +16,7 @@ from typing import Optional, List
 
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch_validator import HatchPackageValidator
+from hatch_validator.package.package_service import PackageService
 from hatch.template_generator import create_package_template
 from hatch.mcp_host_config import MCPHostConfigurationManager, MCPHostType, MCPHostRegistry, MCPServerConfig
 
@@ -1462,11 +1463,14 @@ def main():
                         hosts = parse_host_list(args.host)
                         env_name = args.env or env_manager.get_current_environment()
 
-                        # Get the package name from the path/name argument
-                        package_name = args.package_path_or_name
-                        if '/' in package_name or '\\' in package_name:
-                            # Extract package name from path
-                            package_name = Path(package_name).name
+                        # Is it a path or a name?
+                        pkg_path = Path(args.package_path_or_name)
+                        if pkg_path.exists() and pkg_path.is_dir():
+                            with open(pkg_path / "hatch_metadata.json", 'r') as f:
+                                metadata = json.load(f)
+                                package_name = metadata['name']
+                        else:
+                            package_name = args.package_path_or_name
 
                         # Get MCP server configuration for the newly added package
                         server_config = get_package_mcp_server_config(env_manager, env_name, package_name)
