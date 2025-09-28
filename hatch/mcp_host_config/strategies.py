@@ -444,12 +444,12 @@ class GeminiHostStrategy(MCPHostStrategy):
         config_path = self.get_config_path()
         if not config_path:
             return False
-        
+
         try:
             # Ensure parent directory exists
             config_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Read existing configuration to preserve other settings
+
+            # Read existing configuration to preserve non-MCP settings
             existing_config = {}
             if config_path.exists():
                 try:
@@ -457,16 +457,14 @@ class GeminiHostStrategy(MCPHostStrategy):
                         existing_config = json.load(f)
                 except Exception:
                     pass
-            
-            # Preserve existing servers and add/update new ones
-            existing_servers = existing_config.get(self.get_config_key(), {})
 
-            # Convert MCPServerConfig objects to dict and merge with existing
+            # Convert MCPServerConfig objects to dict (REPLACE, don't merge)
+            servers_dict = {}
             for name, server_config in config.servers.items():
-                existing_servers[name] = server_config.model_dump(exclude_none=True)
+                servers_dict[name] = server_config.model_dump(exclude_none=True)
 
-            # Update configuration with merged servers
-            existing_config[self.get_config_key()] = existing_servers
+            # Update configuration with new servers (preserves non-MCP settings)
+            existing_config[self.get_config_key()] = servers_dict
             
             # Write atomically with enhanced error handling
             temp_path = config_path.with_suffix('.tmp')
