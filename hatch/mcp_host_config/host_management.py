@@ -337,8 +337,10 @@ class MCPHostConfigurationManager:
                 if backup_result.success:
                     backup_path = backup_result.backup_path
 
-            # Remove configuration file
-            config_path.unlink()
+            # Remove configuration
+            # Create Empty HostConfiguration
+            empty_config = HostConfiguration()
+            strategy.write_configuration(empty_config, no_backup=no_backup)
 
             return ConfigurationResult(
                 success=True,
