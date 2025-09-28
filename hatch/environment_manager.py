@@ -17,6 +17,7 @@ from hatch.package_loader import HatchPackageLoader
 from hatch.installers.dependency_installation_orchestrator import DependencyInstallerOrchestrator
 from hatch.installers.installation_context import InstallationContext
 from hatch.python_environment_manager import PythonEnvironmentManager, PythonEnvironmentError
+from hatch.mcp_host_config.models import MCPServerConfig
 
 class HatchEnvironmentError(Exception):
     """Exception raised for environment-related errors."""
@@ -724,7 +725,7 @@ class HatchEnvironmentManager:
             self.logger.error(f"Failed to clear host from all packages: {e}")
             return 0
 
-    def apply_restored_host_configuration_to_environments(self, hostname: str, restored_servers: dict) -> int:
+    def apply_restored_host_configuration_to_environments(self, hostname: str, restored_servers: Dict[str, MCPServerConfig]) -> int:
         """Update environment tracking to match restored host configuration.
 
         Args:
@@ -754,7 +755,7 @@ class HatchEnvironmentManager:
                             "config_path": self._get_host_config_path(hostname),
                             "configured_at": configured_hosts.get(hostname, {}).get("configured_at", current_time),
                             "last_synced": current_time,
-                            "server_config": server_config
+                            "server_config": server_config.model_dump(exclude_none=True)
                         }
                         updates_count += 1
                         self.logger.info(f"Updated host {hostname} tracking for package {package_name} in env {env_name}")
