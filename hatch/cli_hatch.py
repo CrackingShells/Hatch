@@ -394,18 +394,8 @@ def handle_mcp_backup_restore(env_manager: HatchEnvironmentManager, host: str, b
                 strategy = MCPHostRegistry.get_strategy(host_type)
                 restored_config = strategy.read_configuration()
 
-                # Get servers dict from restored configuration
-                if hasattr(restored_config, 'get_servers_dict'):
-                    restored_servers = restored_config.get_servers_dict()
-                elif hasattr(restored_config, 'mcpServers'):
-                    # Handle Claude Desktop format
-                    restored_servers = restored_config.mcpServers or {}
-                else:
-                    # Fallback - try to get servers as dict
-                    restored_servers = getattr(restored_config, 'servers', {})
-
                 # Update environment tracking to match restored state
-                updates_count = env_manager.apply_restored_host_configuration_to_environments(host, restored_servers)
+                updates_count = env_manager.apply_restored_host_configuration_to_environments(host, restored_config.servers)
                 if updates_count > 0:
                     print(f"Synchronized {updates_count} package entries with restored configuration")
 
