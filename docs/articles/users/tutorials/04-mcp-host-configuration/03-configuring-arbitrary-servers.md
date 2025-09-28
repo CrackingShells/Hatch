@@ -44,7 +44,6 @@ This article covers the **advanced method** for configuring MCP servers that are
 - ✅ No packaging requirements
 - ❌ Manual dependency management
 - ❌ No automatic compatibility checking
-- ❌ Limited rollback capabilities
 
 **Package Deployment**:
 - ✅ Automatic dependency resolution
@@ -220,21 +219,21 @@ hatch mcp configure data-processor \
 ### Environment-Specific Configuration
 
 ```bash
-# Development configuration
-hatch env use development
-hatch mcp configure dev-server \
+# Testing configuration
+hatch env use package-testing
+hatch mcp configure test-server \
   --host claude-desktop \
   --command python \
-  --args /path/to/dev_server.py \
+  --args /path/to/test_server.py \
   --env DEBUG=true \
   --env LOG_LEVEL=debug
 
-# Production configuration
-hatch env use production
-hatch mcp configure prod-server \
+# Team standard configuration
+hatch env use team-standard-2024q4
+hatch mcp configure team-server \
   --host claude-desktop \
   --command python \
-  --args /path/to/prod_server.py \
+  --args /path/to/team_server.py \
   --env DEBUG=false \
   --env LOG_LEVEL=info
 ```

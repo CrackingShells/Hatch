@@ -1,46 +1,56 @@
-# 05: Advanced Synchronization
+# 05: Advanced Multi-Host Patterns
 
 ---
 **Concepts covered:**
 
-- Host-to-host configuration synchronization
-- Server filtering and pattern matching
-- Batch operations and automation
-- Complex synchronization workflows
+- Host-to-host copying within project contexts
+- Advanced filtering and pattern-based selection
+- Safe automation for project workflows
+- Team standardization patterns
 
 **Skills you will practice:**
 
-- Complex synchronization workflows
-- Using regular expressions for server selection
-- Automating configuration management
-- Multi-host deployment strategies
+- Host-to-host copying for project configurations
+- Using regular expressions for selective deployment
+- Creating safe automation scripts for projects
+- Establishing team standards without lifecycle complexity
 
 ---
 
-This article covers advanced synchronization patterns for managing MCP configurations across multiple host platforms, including host-to-host copying, complex filtering, and automation strategies for enterprise deployment scenarios.
+This tutorial covers advanced synchronization and multi-host patterns for project-scoped environments. You'll learn to apply host-to-host copying, advanced filtering, and safe automation within the project isolation framework established in Tutorial 04-04.
 
-## Host-to-Host Synchronization
+## Prerequisites
 
-### Basic Host-to-Host Copying
+Before starting this tutorial, complete [Tutorial 04-04: Multi-Host Package Deployment](04-environment-synchronization.md) to understand project isolation concepts and basic multi-host deployment.
 
-Copy MCP server configurations directly between host platforms:
+## Host-to-Host Copying (Project Context)
+
+### When to Use Host-to-Host Copying
+
+Host-to-host copying is useful for cloning a known-good host setup within the same project environment:
+
+- Replicating a working configuration to additional hosts
+- Standardizing project setups across team members
+- Quick deployment when environment sync isn't needed
+
+### Copy Project Configuration Between Hosts
+
+Copy all servers from one host to another for the current project:
 
 ```bash
-# Copy all servers from Claude Desktop to Cursor
+# Copy all servers from claude-desktop to cursor for current project
 hatch mcp sync --from-host claude-desktop --to-host cursor
 
-# Copy configuration to multiple target hosts
-hatch mcp sync --from-host claude-desktop --to-host cursor,vscode,lmstudio
-
-# Replicate configuration across all hosts
-hatch mcp sync --from-host claude-desktop --to-host all
+# Copy to multiple targets
+hatch mcp sync --from-host claude-desktop --to-host cursor,vscode
 ```
 
 **Expected Output**:
-```
+
+```text
 Synchronizing from host: claude-desktop
-Target hosts: cursor, vscode, lmstudio
-Found servers: weather-api, news-aggregator, file-manager, monitoring-tools
+Target hosts: cursor, vscode
+Found servers: weather-toolkit, team-utilities
 
 Preparing synchronization...
 ✓ Reading source configuration
@@ -48,369 +58,253 @@ Preparing synchronization...
 ✓ Creating backups for all target hosts
 
 Synchronizing servers...
-✓ cursor: 4 servers configured
-✓ vscode: 4 servers configured  
-✓ lmstudio: 4 servers configured
+✓ cursor: 2 servers configured
+✓ vscode: 2 servers configured
 
 Host-to-host synchronization completed successfully!
-12 total server configurations synchronized
+4 total server configurations synchronized
 ```
 
-### Use Cases for Host-to-Host Sync
+### Project-Scoped Host Copying Constraints
 
-**Configuration Replication**:
-- Set up one host completely, then replicate to others
-- Maintain consistent configurations across development tools
-- Quickly deploy tested configurations to new hosts
+When using host-to-host copying, remember:
 
-**Migration Scenarios**:
-- Moving from one development environment to another
-- Backing up configurations before major changes
-- Standardizing team development environments
+- Operates within the current environment context
+- Copies only servers relevant to the current project
+- Maintains project isolation principles
+- Does not cross project boundaries
 
-## Advanced Filtering Patterns
+## Advanced Filtering and Selection
 
 ### Regular Expression Filtering
 
-Use powerful pattern matching for precise server selection:
+Use pattern matching for selective deployment within projects:
 
 ```bash
-# All API-related servers
-hatch mcp sync --from-host claude-desktop \
-  --to-host cursor \
-  --pattern ".*api.*"
+# API-related servers only from project-alpha
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha --to-host cursor --pattern ".*api.*"
 
-# Development tools only
-hatch mcp sync --from-host claude-desktop \
-  --to-host vscode \
-  --pattern "^dev-.*"
-
-# Production servers (excluding development and testing)
-hatch mcp sync --from-host production-host \
-  --to-host claude-desktop \
-  --pattern "^(?!dev-|test-).*"
+# Utility tools from project-beta
+hatch env use project-beta
+hatch mcp sync --from-env project-beta --to-host claude-desktop --pattern ".*util.*"
 ```
 
-### Complex Pattern Examples
+### Combining Explicit Selection with Patterns
 
-**Version-Specific Filtering**:
+Mix explicit server names with pattern matching:
+
 ```bash
-# Only stable versions (no beta, alpha, dev)
-hatch mcp sync --from-env production \
-  --to-host all \
-  --pattern "^(?!.*-(beta|alpha|dev)).*"
+# Subset by explicit names for project-alpha
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha --to-host claude-desktop \
+  --servers weather-toolkit,team-utilities
 
-# Only latest versions (v2.x, v3.x, etc.)
-hatch mcp sync --from-host staging \
-  --to-host production-host \
-  --pattern ".*-v[2-9]\..*"
+# Pattern-based selection for specific functionality
+hatch mcp sync --from-env project-alpha --to-host cursor \
+  --pattern ".*tool.*"
 ```
+
+### Advanced Pattern Examples
 
 **Functional Filtering**:
 ```bash
-# All monitoring and logging tools
-hatch mcp sync --from-env production \
+# All monitoring and analytics tools for project-alpha
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha \
   --to-host claude-desktop \
-  --pattern ".*(monitor|log|metric|trace).*"
+  --pattern ".*(monitor|analytic|metric).*"
 
-# Database and storage related servers
-hatch mcp sync --from-host development \
+# Utility and helper tools for project-beta
+hatch env use project-beta
+hatch mcp sync --from-env project-beta \
   --to-host cursor \
-  --pattern ".*(db|database|storage|cache|redis|postgres).*"
+  --pattern ".*(util|helper|tool).*"
 ```
 
-### Multi-Criteria Filtering
+## Safe Automation for Project Workflows
 
-Combine multiple filtering approaches:
+### Local Scripting for Project Deployment
+
+Create scripts to coordinate repeated project deployments:
 
 ```bash
-# Specific servers with pattern validation
-hatch mcp sync --from-env development \
-  --to-host claude-desktop \
-  --servers weather-api,news-api,file-api \
-  --pattern ".*api.*"  # Additional validation
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Environment-specific pattern filtering
-hatch env use production
-hatch mcp sync --from-env production \
-  --to-host all \
-  --pattern "^prod-.*"
+project_env="project-alpha"
+target_hosts="claude-desktop,cursor"
+
+echo "Deploying $project_env to $target_hosts (preview)"
+hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --dry-run
+
+echo "Applying changes"
+hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --auto-approve
 ```
 
-## Batch Operations and Automation
+### Project Validation Script
 
-### Automated Deployment Scripts
+Ensure project configurations are consistent before deployment:
 
-Create scripts for complex deployment scenarios:
-
-**Development to Staging Pipeline**:
 ```bash
-#!/bin/bash
-# deploy-to-staging.sh
+#!/usr/bin/env bash
+set -euo pipefail
 
-echo "Deploying development environment to staging hosts..."
-
-# Sync development tools to development hosts
-hatch mcp sync --from-env development \
-  --to-host cursor,vscode \
-  --pattern "^dev-.*" \
-  --auto-approve
-
-# Sync stable tools to staging hosts
-hatch mcp sync --from-env development \
-  --to-host claude-desktop \
-  --pattern "^(?!dev-).*" \
-  --auto-approve
-
-echo "Staging deployment completed!"
-```
-
-**Production Deployment Pipeline**:
-```bash
-#!/bin/bash
-# deploy-to-production.sh
-
-echo "Deploying to production hosts..."
-
-# Preview production deployment
-echo "Preview of changes:"
-hatch mcp sync --from-env production --to-host all --dry-run
-
-# Confirm deployment
-read -p "Proceed with production deployment? (y/N): " confirm
-if [[ $confirm == [yY] ]]; then
-    hatch mcp sync --from-env production --to-host all
-    echo "Production deployment completed!"
-else
-    echo "Production deployment cancelled."
+project_env="$1"
+if [ -z "$project_env" ]; then
+    echo "Usage: $0 <project-environment>"
+    exit 1
 fi
+
+echo "Validating project environment: $project_env"
+
+# Verify environment exists
+if ! hatch env list | grep -q "^$project_env$"; then
+    echo "Error: Environment $project_env not found"
+    exit 1
+fi
+
+# Check project servers
+hatch env use "$project_env"
+server_count=$(hatch mcp list servers | wc -l)
+
+if [ "$server_count" -eq 0 ]; then
+    echo "Warning: No servers configured in $project_env"
+    exit 1
+fi
+
+echo "✓ Project $project_env validated ($server_count servers)"
 ```
 
-### CI/CD Integration
+### Team Standardization Patterns
 
-**GitHub Actions Example**:
-```yaml
-name: Deploy MCP Servers
-on:
-  push:
-    branches: [main]
+Establish standard host configurations for new team members:
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Setup Hatch
-        run: pip install hatch
-      
-      - name: Deploy to Staging
-        run: |
-          hatch env use staging
-          hatch mcp sync --from-env staging --to-host staging-hosts --auto-approve
-      
-      - name: Deploy to Production
-        if: github.ref == 'refs/heads/main'
-        run: |
-          hatch env use production
-          hatch mcp sync --from-env production --to-host production-hosts --auto-approve
-```
-
-### Bulk Configuration Management
-
-**Multi-Environment Sync**:
 ```bash
-# Sync multiple environments to different host groups
-for env in development staging production; do
-    echo "Syncing $env environment..."
-    hatch env use $env
-    hatch mcp sync --from-env $env --to-host ${env}-hosts --auto-approve
-done
+# Seed a standard host config from the project lead's machine
+echo "Setting up standard project-alpha configuration for new team member"
+hatch mcp sync --from-host claude-desktop --to-host teammate1-claude,teammate2-claude
 ```
 
-**Host Standardization**:
+## Operational Guardrails
+
+### Preview Before Deployment
+
+Always use `--dry-run` before large operations:
+
 ```bash
-# Standardize all hosts to match primary configuration
-primary_host="claude-desktop"
-target_hosts="cursor,vscode,lmstudio"
+# Preview project deployment
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha --to-host all --dry-run
 
-hatch mcp sync --from-host $primary_host --to-host $target_hosts --auto-approve
+# Review changes, then apply
+hatch mcp sync --from-env project-alpha --to-host all --auto-approve
 ```
 
-## Complex Synchronization Workflows
+### Backup Management
 
-### Multi-Stage Deployment
+Ensure backups are created and can be restored:
 
-**Development → Staging → Production**:
 ```bash
-# Stage 1: Development to Staging
-hatch mcp sync --from-env development \
-  --to-host staging-claude \
-  --pattern "^(?!experimental-).*" \
-  --dry-run
+# Create manual backup before major changes
+hatch mcp backup create --host claude-desktop --name "project-alpha-stable"
 
-# Stage 2: Staging Validation
-# (Manual testing in staging environment)
+# List available backups
+hatch mcp backup list --host claude-desktop
 
-# Stage 3: Staging to Production
-hatch mcp sync --from-host staging-claude \
-  --to-host production-hosts \
-  --auto-approve
+# Restore if needed
+hatch mcp backup restore claude-desktop project-alpha-stable
 ```
 
-### Selective Environment Promotion
+### Conflict Avoidance
 
-**Feature-Specific Promotion**:
+Keep server names unique per project to avoid conflicts:
+
 ```bash
-# Promote specific features from development to production
-hatch mcp sync --from-env development \
-  --to-host production-claude \
-  --servers weather-api-v2,news-api-v3 \
-  --dry-run
+# Good: project-specific naming
+hatch env use project-alpha
+hatch package add weather-toolkit-alpha
 
-# Promote all stable APIs
-hatch mcp sync --from-env development \
-  --to-host production-claude \
-  --pattern ".*api-v[2-9].*"
+hatch env use project-beta
+hatch package add weather-toolkit-beta
+
+# Avoid: generic names that conflict across projects
+# hatch package add weather-toolkit  # Could conflict
 ```
 
-### Cross-Environment Synchronization
+## Troubleshooting Advanced Patterns
 
-**Environment Mirroring**:
+### Verify Project Deployments
+
+Check that project configurations are correctly deployed:
+
 ```bash
-# Mirror production environment to development for debugging
-hatch mcp sync --from-env production \
-  --to-host development-hosts \
-  --pattern "^(?!prod-secrets).*"  # Exclude sensitive configs
+# Verify project-alpha deployments
+hatch env use project-alpha
+hatch mcp list servers
 
-# Create testing environment from staging
-hatch mcp sync --from-env staging \
-  --to-host testing-hosts \
-  --auto-approve
+# Check which hosts have project-alpha servers
+hatch mcp list hosts
 ```
 
-## Enterprise Deployment Patterns
+### Common Issues and Solutions
 
-### Team Environment Management
+**Pattern Matching Problems**:
 
-**Team Lead Workflow**:
 ```bash
-# Standardize team development environments
-team_config_host="team-standard"
-team_members="dev1-claude,dev2-cursor,dev3-vscode"
+# Test patterns before applying
+hatch mcp sync --from-env project-alpha --to-host claude-desktop \
+  --pattern ".*util.*" --dry-run
 
-hatch mcp sync --from-host $team_config_host \
-  --to-host $team_members \
-  --auto-approve
+# Verify pattern matches expected servers
 ```
 
-**Project-Specific Deployments**:
+**Host Configuration Conflicts**:
+
 ```bash
-# Deploy project-specific tools to team
-project="weather-dashboard"
-hatch mcp sync --from-env $project \
-  --to-host team-hosts \
-  --pattern ".*$project.*" \
-  --auto-approve
+# Clear host before project deployment
+hatch mcp remove host claude-desktop
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha --to-host claude-desktop
 ```
 
-### Infrastructure as Code
+**Environment Confusion**:
 
-**Configuration Templates**:
 ```bash
-# Apply infrastructure templates
-template_env="infrastructure-template"
-target_environments="dev,staging,prod"
-
-for env in $target_environments; do
-    hatch env use $env
-    hatch mcp sync --from-env $template_env \
-      --to-host ${env}-infrastructure \
-      --pattern "^infra-.*" \
-      --auto-approve
-done
+# Always verify current environment
+hatch env list
+hatch env use project-alpha  # Explicitly set environment
 ```
 
-### Disaster Recovery
+## Best Practices for Advanced Patterns
 
-**Configuration Backup Strategy**:
-```bash
-# Create comprehensive backup of all host configurations
-backup_date=$(date +%Y%m%d)
-for host in claude-desktop cursor vscode lmstudio; do
-    hatch mcp backup create --host $host --name "disaster-recovery-$backup_date"
-done
-```
+### Project Organization
 
-**Recovery Procedures**:
-```bash
-# Restore from known good configuration
-recovery_env="last-known-good"
-affected_hosts="all"
+1. **Consistent Naming**: Use project-focused environment names
+2. **Server Uniqueness**: Keep server names unique across projects
+3. **Documentation**: Document project purposes and server roles
 
-hatch mcp sync --from-env $recovery_env \
-  --to-host $affected_hosts \
-  --auto-approve
-```
+### Automation Guidelines
 
-## Monitoring and Validation
+1. **Preview First**: Always use `--dry-run` for complex operations
+2. **Error Handling**: Include proper error checking in scripts
+3. **Backup Strategy**: Create backups before major changes
+4. **Team Coordination**: Communicate automation scripts with team
 
-### Synchronization Verification
+### Operational Safety
 
-**Post-Sync Validation**:
-```bash
-# Verify synchronization results
-for host in claude-desktop cursor vscode; do
-    echo "Checking $host configuration:"
-    hatch mcp list servers --host $host
-done
-
-# Compare configurations across hosts
-hatch mcp list servers --host claude-desktop > claude-config.txt
-hatch mcp list servers --host cursor > cursor-config.txt
-diff claude-config.txt cursor-config.txt
-```
-
-### Automated Testing
-
-**Configuration Testing**:
-```bash
-# Test all configured servers
-for host in claude-desktop cursor vscode; do
-    echo "Testing $host servers..."
-    # Add host-specific testing commands
-done
-```
-
-## Best Practices for Advanced Synchronization
-
-### Pattern Design
-
-1. **Consistent Naming**: Use consistent server naming conventions
-2. **Environment Prefixes**: Use prefixes like `dev-`, `staging-`, `prod-`
-3. **Version Suffixes**: Include version information in server names
-4. **Functional Grouping**: Group related servers with common patterns
-
-### Automation Safety
-
-1. **Dry-Run First**: Always preview complex synchronizations
-2. **Backup Verification**: Ensure backups are created before major changes
-3. **Rollback Planning**: Maintain clear rollback procedures
-4. **Monitoring**: Implement monitoring for automated deployments
-
-### Performance Optimization
-
-1. **Selective Sync**: Use filtering to sync only necessary servers
-2. **Batch Operations**: Group related synchronizations together
-3. **Parallel Processing**: Use multiple terminals for independent operations
-4. **Resource Management**: Monitor system resources during large syncs
+1. **Incremental Changes**: Make small, focused deployments
+2. **Rollback Plans**: Maintain clear recovery procedures
+3. **Testing**: Validate configurations in non-production environments
+4. **Monitoring**: Verify deployments after completion
 
 ## Next Steps
 
-You now understand advanced synchronization patterns for managing complex MCP deployment scenarios. These techniques enable enterprise-scale configuration management with automation, safety, and efficiency.
-
-**Continue to**: [Tutorial 04-06: Checkpoint](06-checkpoint.md) to review your complete MCP host configuration mastery and explore next steps for advanced usage.
+You now understand advanced multi-host patterns for project-scoped environments. These techniques enable sophisticated deployment strategies while maintaining the project isolation principles that keep configurations clean and manageable.
 
 **Related Documentation**:
-- [MCP Host Configuration Guide](../../MCPHostConfiguration.md#advanced-patterns) - Comprehensive advanced patterns reference
-- [MCP Sync Commands Reference](../../CLIReference.md#mcp-sync) - Complete command syntax and options
-- [Automation and Scripting Guide](../../Troubleshooting/CICDIntegration.md) - CI/CD integration patterns
+
+- [MCP Host Configuration Guide](../../MCPHostConfiguration.md#advanced-patterns) - Comprehensive pattern reference
+- [MCP CLI Commands Reference](../../CLIReference.md#mcp-sync) - Complete command syntax
+- [Environment Management Tutorial](../02-environments/) - Advanced environment operations
+- [Tutorial 04-04: Multi-Host Package Deployment](04-environment-synchronization.md) - Foundation concepts

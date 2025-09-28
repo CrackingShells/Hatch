@@ -1,121 +1,129 @@
-# 04: Environment Synchronization
+# 04: Multi-Host Package Deployment
 
 ---
 **Concepts covered:**
 
-- Hatch environment integration with host configuration
-- Cross-environment server deployment
-- Backup and recovery workflows
-- Environment-specific configuration management
+- Using environments as project isolation containers
+- Deploying MCP servers to multiple host platforms
+- Project-specific configuration management
+- Selective deployment patterns
 
 **Skills you will practice:**
 
-- Synchronizing servers from environments to hosts
-- Managing development vs. production configurations
-- Using backup features for safety
-- Environment-specific deployment strategies
+- Creating project-isolated environments
+- Synchronizing project servers to multiple hosts
+- Managing project-specific host configurations
+- Using selective deployment for partial rollouts
 
 ---
 
-This article covers synchronizing MCP configurations between Hatch environments and host platforms, enabling you to maintain separate development, testing, and production configurations while deploying them efficiently to host applications.
+This tutorial teaches you how to deploy MCP servers to multiple host platforms using environments as project isolation containers. You'll learn to maintain clean separation between different projects while efficiently deploying their servers to host applications like Claude Desktop, Cursor, and VS Code.
 
-## Understanding Environment Synchronization
+## Understanding Project Isolation with Environments
 
-### Environment-to-Host Workflow
+### Environments as Project Containers
 
-Environment synchronization allows you to:
+Hatch environments serve as isolated containers for different projects, not development lifecycle stages. This approach provides:
 
-1. **Develop** MCP servers in isolated Hatch environments
-2. **Test** configurations in development environments
-3. **Deploy** to host platforms when ready
-4. **Maintain** separate configurations for different purposes
+1. **Project Separation**: Keep project-alpha servers separate from project-beta servers
+2. **Configuration Isolation**: Avoid naming conflicts between projects
+3. **Selective Deployment**: Deploy only relevant servers to specific hosts
+4. **Clean Management**: Maintain project-specific configurations independently
 
-### Synchronization vs. Direct Configuration
+### Project Isolation vs. Direct Configuration
 
-**Environment Synchronization**:
-- ✅ Leverages Hatch environment isolation
-- ✅ Maintains configuration consistency
-- ✅ Supports environment-specific settings
-- ✅ Enables batch deployment operations
+**Project-Isolated Environments**:
+- ✅ Clean separation between projects
+- ✅ Batch deployment of project servers
+- ✅ Consistent project-specific configurations
+- ✅ Reduced configuration conflicts
 
 **Direct Configuration** (from previous tutorials):
 - ✅ Immediate deployment to hosts
 - ✅ Maximum control over individual servers
-- ❌ No environment isolation benefits
+- ❌ No project isolation benefits
 - ❌ Manual configuration management
 
-## Step 1: Prepare Environment Configurations
+## Step 1: Create Project Environments
 
-### Set Up Development Environment
+### Create Domain-Neutral Project Environments
+
+Create environments using project-focused naming (not lifecycle stages):
 
 ```bash
-# Create and switch to development environment
-hatch env create development
-hatch env use development
+# Create project environments
+hatch env create project-alpha
+hatch env create project-beta
 
-# Add packages to development environment
+# Verify environments were created
+hatch env list
+```
+
+### Configure Project-Alpha Servers
+
+Add MCP servers to your first project environment:
+
+```bash
+# Activate project-alpha environment
+hatch env use project-alpha
+
+# Add servers via packages (recommended approach)
 hatch package add weather-toolkit
-hatch package add news-aggregator
-hatch package add file-manager
+hatch package add team-utilities
 
-# Verify environment contents
-hatch package list
+# Verify project-alpha configuration
+hatch mcp list servers
 ```
 
-### Set Up Production Environment
+### Configure Project-Beta Servers
+
+Set up a different project with its own server set:
 
 ```bash
-# Create production environment with different packages
-hatch env create production
-hatch env use production
+# Activate project-beta environment
+hatch env use project-beta
 
-# Add production-ready packages
-hatch package add weather-toolkit-pro
-hatch package add news-aggregator-stable
-hatch package add monitoring-tools
+# Add different servers for this project
+hatch package add analytics-suite
 
-# Verify production environment
-hatch package list
+# Verify project-beta configuration
+hatch mcp list servers
 ```
 
-### Environment-Specific Configurations
+### Verify Project Isolation
 
-Each environment can have different MCP server configurations:
+Confirm that environments maintain separate configurations:
 
 ```bash
-# Development environment - verbose logging
-hatch env use development
-hatch mcp configure dev-logger \
-  --host claude-desktop \
-  --command python \
-  --args /path/to/logger.py \
-  --env LOG_LEVEL=debug \
-  --env DEBUG=true
+# Check project-alpha servers
+hatch env use project-alpha
+hatch mcp list servers
+# Should show: weather-toolkit, team-utilities
 
-# Production environment - minimal logging
-hatch env use production
-hatch mcp configure prod-logger \
-  --host claude-desktop \
-  --command python \
-  --args /path/to/logger.py \
-  --env LOG_LEVEL=info \
-  --env DEBUG=false
+# Check project-beta servers
+hatch env use project-beta
+hatch mcp list servers
+# Should show: analytics-suite
 ```
 
-## Step 2: Basic Environment-to-Host Synchronization
+## Step 2: Deploy Project Servers to Hosts
 
-### Sync All Servers from Environment
+### Deploy Project-Alpha to Multiple Hosts
+
+Deploy all servers from project-alpha to your target host platforms:
 
 ```bash
-# Sync all servers from development environment to Claude Desktop
-hatch mcp sync --from-env development --to-host claude-desktop
+# Deploy project-alpha servers to Claude Desktop and Cursor
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha --to-host claude-desktop,cursor
 ```
 
 **Expected Output**:
-```
-Synchronizing from environment: development
-Target host: claude-desktop
-Found servers: weather-toolkit, news-aggregator, file-manager, dev-logger
+
+```text
+Synchronizing from environment: project-alpha
+Target hosts: claude-desktop, cursor
+Found servers: weather-toolkit, team-utilities
 
 Preparing synchronization...
 ✓ Analyzing server configurations
@@ -123,258 +131,202 @@ Preparing synchronization...
 ✓ Creating backup: ~/.hatch/mcp_backups/claude-desktop_20231201_150000.json
 
 Synchronizing servers...
-✓ weather-toolkit configured
-✓ news-aggregator configured  
-✓ file-manager configured
-✓ dev-logger configured
+✓ weather-toolkit configured on claude-desktop
+✓ weather-toolkit configured on cursor
+✓ team-utilities configured on claude-desktop
+✓ team-utilities configured on cursor
 
 Synchronization completed successfully!
-4 servers synchronized to claude-desktop
+2 servers synchronized to 2 hosts
 ```
 
-### Sync to Multiple Hosts
+### Deploy Project-Beta to All Hosts
+
+Deploy project-beta servers to all detected host platforms:
 
 ```bash
-# Sync development environment to multiple hosts
-hatch mcp sync --from-env development --to-host claude-desktop,cursor,vscode
-
-# Sync to all available hosts
-hatch mcp sync --from-env production --to-host all
+# Deploy project-beta servers to all detected hosts
+hatch env use project-beta
+hatch mcp sync --from-env project-beta --to-host all
 ```
 
-### Verify Synchronization
+### Verify Project Deployments
+
+Check what was deployed to each host for each project:
 
 ```bash
-# Check what was synchronized to each host
-hatch mcp list servers --host claude-desktop
-hatch mcp list servers --host cursor
+# Check project-alpha deployments
+hatch env use project-alpha
+hatch mcp list servers
 
-# Compare with environment contents
-hatch env use development
-hatch package list
+# Check project-beta deployments
+hatch env use project-beta
+hatch mcp list servers
 ```
 
-## Step 3: Selective Synchronization
+## Step 3: Selective Deployment Patterns
 
-### Sync Specific Servers
+### Deploy Specific Servers
+
+Deploy only a subset of servers from a project environment:
 
 ```bash
-# Sync only specific servers from environment
-hatch mcp sync --from-env development \
+# Deploy only weather-toolkit from project-alpha to Claude Desktop
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha \
   --to-host claude-desktop \
-  --servers weather-toolkit,news-aggregator
+  --servers weather-toolkit
 ```
 
-### Pattern-Based Synchronization
+### Pattern-Based Deployment
+
+Use regular expressions for selective deployment:
 
 ```bash
-# Sync servers matching a pattern
-hatch mcp sync --from-env development \
-  --to-host claude-desktop \
-  --pattern ".*tool.*"
-
-# Sync development-specific servers
-hatch mcp sync --from-env development \
+# Deploy servers matching a pattern from project-alpha
+hatch mcp sync --from-env project-alpha \
   --to-host cursor \
-  --pattern "^dev-"
+  --pattern ".*util.*"
+
+# Deploy API-related servers from project-beta
+hatch env use project-beta
+hatch mcp sync --from-env project-beta \
+  --to-host claude-desktop \
+  --pattern ".*api.*"
 ```
 
-## Step 4: Environment Switching Workflows
+## Step 4: Project Maintenance Workflows
 
-### Development Workflow
+### Remove Server from Host
+
+Remove a specific server from a host for the current project:
 
 ```bash
-# Switch to development environment and sync
-hatch env use development
-hatch mcp sync --from-env development --to-host claude-desktop
-
-# Work on development...
-# Test changes in Claude Desktop
-
-# When ready, switch to production
-hatch env use production
-hatch mcp sync --from-env production --to-host claude-desktop
+# Remove weather-toolkit from Cursor for project-alpha
+hatch env use project-alpha
+hatch mcp remove server weather-toolkit --host cursor
 ```
 
-### Testing Workflow
+### Remove All Project Servers from Host
+
+Remove all servers for the current project from a host:
 
 ```bash
-# Create testing environment
-hatch env create testing
-hatch env use testing
-
-# Add packages for testing
-hatch package add weather-toolkit-beta
-hatch package add test-utilities
-
-# Sync testing configuration to dedicated host
-hatch mcp sync --from-env testing --to-host cursor
+# Remove all project-alpha configurations from Claude Desktop
+hatch env use project-alpha
+hatch mcp remove host claude-desktop
 ```
 
-### Staging and Production Workflow
+### Restore Host Configuration
 
 ```bash
-# Staging deployment
-hatch env use staging
-hatch mcp sync --from-env staging --to-host claude-desktop --dry-run
-hatch mcp sync --from-env staging --to-host claude-desktop
-
-# Production deployment (after staging validation)
-hatch env use production
-hatch mcp sync --from-env production --to-host all
+# Restore a previous host configuration (then continue with project workflow)
+hatch mcp backup restore claude-desktop <backup-id>
 ```
 
-## Step 5: Backup and Recovery
+## Step 5: Validation and Troubleshooting
 
-### Understanding Automatic Backups
+### Verify Project Deployments
 
-Every synchronization operation creates automatic backups:
+Use environment-scoped commands to verify your project configurations:
 
 ```bash
-# Backups are stored in ~/.hatch/mcp_backups/
-# Format: <hostname>_<timestamp>.json
+# Check project-alpha server deployments
+hatch env use project-alpha
+hatch mcp list servers
+
+# Check which hosts have project-alpha servers configured
+hatch mcp list hosts
 ```
 
-### Manual Backup Creation
+### Common Project Isolation Issues
+
+**Server Name Conflicts**:
 
 ```bash
-# Create manual backup before major changes
-hatch mcp backup create --host claude-desktop --name "before-production-sync"
+# If projects have conflicting server names, rename them
+hatch env use project-alpha
+hatch mcp remove server conflicting-name --host claude-desktop
+hatch package add unique-server-name
+```
+
+**Environment Confusion**:
+
+```bash
+# Always verify current environment before operations
+hatch env list
+hatch env use project-alpha  # Explicitly set environment
+```
+
+### Backup and Recovery for Projects
+
+**Create Project Backup**:
+
+```bash
+# Create backup before major project changes
+hatch mcp backup create --host claude-desktop --name "project-alpha-stable"
 
 # List available backups
 hatch mcp backup list --host claude-desktop
 ```
 
-### Recovery Procedures
+**Restore Project Configuration**:
 
-**Rollback Recent Changes**:
 ```bash
-# Remove current configuration
-hatch mcp remove host claude-desktop
-
 # Restore from specific backup
-hatch mcp backup restore --host claude-desktop --backup claude-desktop_20231201_150000.json
+hatch mcp backup restore claude-desktop project-alpha-stable
+
+# Then re-sync current project if needed
+hatch env use project-alpha
+hatch mcp sync --from-env project-alpha --to-host claude-desktop
 ```
 
-**Environment Recovery**:
-```bash
-# If environment synchronization fails, restore previous state
-hatch mcp remove host claude-desktop
-hatch mcp sync --from-env previous-working-env --to-host claude-desktop
-```
+## Step 6: Best Practices for Project Isolation
 
-## Step 6: Advanced Environment Patterns
+### Project Environment Organization
 
-### Multi-Environment Host Management
+1. **Clear Naming**: Use project-focused names (`project-alpha`, `project-beta`) not lifecycle stages
+2. **Purpose Separation**: Keep each project's servers in separate environments
+3. **Documentation**: Document what each project environment contains and its purpose
 
-```bash
-# Different environments for different hosts
-hatch mcp sync --from-env development --to-host cursor
-hatch mcp sync --from-env production --to-host claude-desktop
-hatch mcp sync --from-env testing --to-host vscode
-```
+### Deployment Strategy
 
-### Environment-Specific Host Configurations
-
-```bash
-# Development: sync to development-friendly hosts
-hatch env use development
-hatch mcp sync --from-env development --to-host cursor,vscode
-
-# Production: sync to production hosts
-hatch env use production  
-hatch mcp sync --from-env production --to-host claude-desktop,lmstudio
-```
-
-### Conditional Synchronization
-
-```bash
-# Preview changes before synchronizing
-hatch mcp sync --from-env production --to-host all --dry-run
-
-# Sync with automatic approval (for automation)
-hatch mcp sync --from-env production --to-host all --auto-approve
-
-# Sync without creating backups (advanced)
-hatch mcp sync --from-env development --to-host cursor --no-backup
-```
-
-## Step 7: Troubleshooting Environment Synchronization
-
-### Common Synchronization Issues
-
-**Environment Not Found**:
-```bash
-# List available environments
-hatch env list
-
-# Create missing environment
-hatch env create missing-environment
-```
-
-**Host Configuration Conflicts**:
-```bash
-# Check current host configuration
-hatch mcp list servers --host claude-desktop
-
-# Clear host configuration before sync
-hatch mcp remove host claude-desktop
-hatch mcp sync --from-env development --to-host claude-desktop
-```
-
-**Package Dependency Issues**:
-```bash
-# Verify environment packages
-hatch env use development
-hatch package list
-
-# Validate package configurations
-hatch validate package-name
-```
-
-### Synchronization Validation
-
-```bash
-# Verify synchronization results
-hatch mcp list servers --host claude-desktop
-
-# Test synchronized servers
-# (Open host application and test functionality)
-
-# Compare with source environment
-hatch env use development
-hatch package list
-```
-
-## Best Practices for Environment Synchronization
-
-### Environment Organization
-
-1. **Clear Naming**: Use descriptive environment names (development, staging, production)
-2. **Purpose Separation**: Maintain distinct environments for different purposes
-3. **Documentation**: Document what each environment contains and its purpose
-
-### Synchronization Strategy
-
-1. **Test First**: Always use `--dry-run` for production synchronizations
-2. **Incremental Sync**: Sync specific servers when making targeted changes
+1. **Test First**: Always use `--dry-run` before large deployments
+2. **Selective Deployment**: Use `--servers` or `--pattern` for partial rollouts
 3. **Backup Verification**: Verify backups are created before major changes
-4. **Environment Validation**: Test in development before production sync
+4. **Environment Validation**: Test project configurations before deployment
 
-### Workflow Integration
+### Project Workflow Integration
 
-1. **Development Cycle**: Develop → Test → Stage → Production
-2. **Host Specialization**: Use different hosts for different environments
-3. **Automation**: Use `--auto-approve` for automated deployment scripts
-4. **Recovery Planning**: Maintain clear rollback procedures
+1. **Environment Switching**: Always verify current environment before operations
+2. **Host Specialization**: Deploy different projects to appropriate hosts
+3. **Automation**: Use `--auto-approve` for scripted project deployments
+4. **Recovery Planning**: Maintain clear rollback procedures for each project
+
+### Safe Automation Example
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+project_env="project-alpha"
+target_hosts="claude-desktop,cursor"
+
+echo "Deploying $project_env to $target_hosts (preview)"
+hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --dry-run
+
+echo "Applying changes"
+hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --auto-approve
+```
 
 ## Next Steps
 
-You now understand how to synchronize MCP configurations between Hatch environments and host platforms. This enables you to maintain clean separation between development, testing, and production configurations while efficiently deploying them to host applications.
+You now understand how to deploy MCP servers to multiple host platforms using environments as project isolation containers. This approach provides clean separation between projects while enabling efficient deployment to host applications like Claude Desktop, Cursor, and VS Code.
 
-**Continue to**: [Tutorial 04-05: Advanced Synchronization](05-advanced-synchronization.md) to learn advanced synchronization patterns including host-to-host copying and complex filtering scenarios.
+**Continue to**: [Tutorial 04-05: Advanced Synchronization](05-advanced-synchronization.md) to learn advanced multi-host patterns including host-to-host copying and complex filtering scenarios within the project isolation framework.
 
 **Related Documentation**:
-- [MCP Host Configuration Guide](../../MCPHostConfiguration.md#advanced-synchronization) - Comprehensive synchronization reference
+
+- [MCP Host Configuration Guide](../../MCPHostConfiguration.md#multi-host-deployment) - Comprehensive deployment reference
 - [MCP Sync Commands Reference](../../CLIReference.md#mcp-sync) - Complete command syntax
 - [Environment Management Tutorial](../02-environments/) - Advanced environment operations
