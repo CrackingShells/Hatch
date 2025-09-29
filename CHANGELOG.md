@@ -1,3 +1,46 @@
+## [0.7.0-dev.2](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.1...v0.7.0-dev.2) (2025-09-29)
+
+
+### Features
+
+* **cli:** enhance mcp configure command argument structure ([bc89077](https://github.com/CrackingShells/Hatch/commit/bc89077bacb668b3d3b7899bddbd6abea6a1f37b))
+* implement environment-scoped list hosts command ([06daf51](https://github.com/CrackingShells/Hatch/commit/06daf51de179c01f09d343193ef69edf861e3e55))
+* **tutorials:** add complete MCP Host Configuration tutorial series ([00bad1c](https://github.com/CrackingShells/Hatch/commit/00bad1cc51483b254353f94f34db27e1d208d11e))
+
+
+### Bug Fixes
+
+* **ci:** Discord pre-release notification should happen when on `dev` ([c41c027](https://github.com/CrackingShells/Hatch/commit/c41c027d2b4f9006239cd122c3275f0d3880bc78))
+* **cli:** mcp host configuration would failed when using paths to add hatch packages ([701c93c](https://github.com/CrackingShells/Hatch/commit/701c93c6549c702d0ce6c880c7983446c7ba7bd2))
+* **cli:** pass in expected mcp server configuration ([1f2b7cb](https://github.com/CrackingShells/Hatch/commit/1f2b7cb25fbce2897f4edfa29f3e81787e94e7ef))
+* **cli:** resolve critical UnboundLocalError in hatch package add command ([f03b472](https://github.com/CrackingShells/Hatch/commit/f03b472206542f45c470d8b7356d73f3fd9a6f80))
+* **dev:** overwrite server configuration in mcp host configs rather than merging ([324ec69](https://github.com/CrackingShells/Hatch/commit/324ec69e8991429feffa49f27418269680e3f8df))
+* **dev:** remove host configuration only clears MCP servers configuration ([0f5b943](https://github.com/CrackingShells/Hatch/commit/0f5b943adc5203fa21c940d28d8ee11b71b86df2))
+* **docs:** Tutorial 04-01 ([86d17b6](https://github.com/CrackingShells/Hatch/commit/86d17b6a7d5a79625b36cd24d5a179f8c104e0f3))
+* **host:** configuration cleanup after package and environment removal ([96d9e3e](https://github.com/CrackingShells/Hatch/commit/96d9e3ef9b14b33a8b5cb569fe8305f5e94508be))
+* **host:** multi-environment mcp configuration conflict resolution ([a3f46be](https://github.com/CrackingShells/Hatch/commit/a3f46be11b06f2da50dc22723a75ac786caeb572))
+* **serialization:** explicit model dump of server configuration ([1019953](https://github.com/CrackingShells/Hatch/commit/1019953e69898c870cf240c85947fa927dafdf39))
+* **test:** function signatures and environment variable interference ([9c7a738](https://github.com/CrackingShells/Hatch/commit/9c7a738a1ca6f02097796054b5b22da858e813ef))
+* **vscode:** replace broken workspace-only strategy with user-wide settings support ([3c452d4](https://github.com/CrackingShells/Hatch/commit/3c452d4bcaabd9cdd3944b543036930baf04b1e0))
+* **vscode:** update configuration format from settings.json to mcp.json ([7cc0d0a](https://github.com/CrackingShells/Hatch/commit/7cc0d0ad4cbdef85c5cbe7a719659540a8410512))
+* **workaround:** relax Pydantic data model constraint ([5820ab1](https://github.com/CrackingShells/Hatch/commit/5820ab17c287f60c5d3c0c91f8badc7185eb9580))
+
+
+### Documentation
+
+* consolidate MCP/ subdirectory into MCPHostConfiguration.md ([f2e58c5](https://github.com/CrackingShells/Hatch/commit/f2e58c5e0efba28a9286e64b550bb988ced84620))
+* fix critical CLI command inaccuracies across documentation ([f6fffe7](https://github.com/CrackingShells/Hatch/commit/f6fffe7274134d47d0782262e1e6ac89f5943ffb))
+* **mcp:** correct command examples and enhance configuration guidance ([163a1ed](https://github.com/CrackingShells/Hatch/commit/163a1ed8c36cc4d0d205920c5ae2d14b93e1d7dd))
+* minor legacy typos ([bc5df04](https://github.com/CrackingShells/Hatch/commit/bc5df04a40b97bdaa203bf03a4286858a7988b7d))
+* **tutorials:** update MCP host configuration tutorial content ([9cef886](https://github.com/CrackingShells/Hatch/commit/9cef886f1a6cc04884b960aec71904bd0ca0a788))
+* update CLI reference for environment-scoped list hosts ([7838781](https://github.com/CrackingShells/Hatch/commit/7838781809219da065ee8491a6b112f9a484ab76))
+* update cross-references following corrected alignment strategy ([3b3eeea](https://github.com/CrackingShells/Hatch/commit/3b3eeea3e91d677296ddaae1727b2ceca835feaa))
+
+
+### Code Refactoring
+
+* **cli:** replace --env with --env-var for environment variables in mcp configure ([82ddabd](https://github.com/CrackingShells/Hatch/commit/82ddabd042c1163326deb706c71699634c5bc095))
+
 ## [0.7.0-dev.1](https://github.com/CrackingShells/Hatch/compare/v0.6.3...v0.7.0-dev.1) (2025-09-23)
 
 
