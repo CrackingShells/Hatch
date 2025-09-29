@@ -29,7 +29,7 @@ class MCPHostType(str, Enum):
 class MCPServerConfig(BaseModel):
     """Consolidated MCP server configuration supporting local and remote servers."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="allow")
 
     # Server identification
     name: Optional[str] = Field(None, description="Server name for identification")
