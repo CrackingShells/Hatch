@@ -652,6 +652,9 @@ class HatchEnvironmentManager:
                                         hostname: str, server_config: dict) -> bool:
         """Update package metadata with host configuration tracking.
 
+        Enforces constraint: Only one environment can control a package-host combination.
+        Automatically cleans up conflicting configurations from other environments.
+
         Args:
             env_name (str): Environment name
             package_name (str): Package name
@@ -666,36 +669,117 @@ class HatchEnvironmentManager:
                 self.logger.error(f"Environment {env_name} does not exist")
                 return False
 
-            # Find the package in the environment
-            packages = self._environments[env_name].get("packages", [])
-            for i, pkg in enumerate(packages):
-                if pkg.get("name") == package_name:
-                    # Initialize configured_hosts if it doesn't exist
-                    if "configured_hosts" not in pkg:
-                        pkg["configured_hosts"] = {}
+            # Step 1: Clean up conflicting configurations from other environments
+            conflicts_removed = self._cleanup_package_host_conflicts(
+                target_env=env_name,
+                package_name=package_name,
+                hostname=hostname
+            )
 
-                    # Add or update host configuration
-                    from datetime import datetime
-                    pkg["configured_hosts"][hostname] = {
-                        "config_path": self._get_host_config_path(hostname),
-                        "configured_at": datetime.now().isoformat(),
-                        "last_synced": datetime.now().isoformat(),
-                        "server_config": server_config
-                    }
+            # Step 2: Update target environment configuration
+            success = self._update_target_environment_configuration(
+                env_name, package_name, hostname, server_config
+            )
 
-                    # Update the package in the environment
-                    self._environments[env_name]["packages"][i] = pkg
-                    self._save_environments()
+            # Step 3: User notification for conflict resolution
+            if conflicts_removed > 0 and success:
+                self.logger.warning(
+                    f"Package '{package_name}' host configuration for '{hostname}' "
+                    f"transferred from {conflicts_removed} other environment(s) to '{env_name}'"
+                )
 
-                    self.logger.info(f"Updated host configuration for package {package_name} on {hostname}")
-                    return True
-
-            self.logger.error(f"Package {package_name} not found in environment {env_name}")
-            return False
+            return success
 
         except Exception as e:
             self.logger.error(f"Failed to update package host configuration: {e}")
             return False
+
+    def _cleanup_package_host_conflicts(self, target_env: str, package_name: str, hostname: str) -> int:
+        """Remove conflicting package-host configurations from other environments.
+
+        This method enforces the constraint that only one environment can control
+        a package-host combination by removing conflicting configurations from
+        all environments except the target environment.
+
+        Args:
+            target_env (str): Environment that should control the configuration
+            package_name (str): Package name
+            hostname (str): Host identifier
+
+        Returns:
+            int: Number of conflicting configurations removed
+        """
+        conflicts_removed = 0
+
+        for env_name, env_data in self._environments.items():
+            if env_name == target_env:
+                continue  # Skip target environment
+
+            packages = env_data.get("packages", [])
+            for i, pkg in enumerate(packages):
+                if pkg.get("name") == package_name:
+                    configured_hosts = pkg.get("configured_hosts", {})
+                    if hostname in configured_hosts:
+                        # Remove the conflicting host configuration
+                        del configured_hosts[hostname]
+                        conflicts_removed += 1
+
+                        # Update package metadata
+                        pkg["configured_hosts"] = configured_hosts
+                        self._environments[env_name]["packages"][i] = pkg
+
+                        self.logger.info(
+                            f"Removed conflicting '{hostname}' configuration for package '{package_name}' "
+                            f"from environment '{env_name}'"
+                        )
+
+        if conflicts_removed > 0:
+            self._save_environments()
+
+        return conflicts_removed
+
+    def _update_target_environment_configuration(self, env_name: str, package_name: str,
+                                               hostname: str, server_config: dict) -> bool:
+        """Update the target environment's package host configuration.
+
+        This method handles the actual configuration update for the target environment
+        after conflicts have been cleaned up.
+
+        Args:
+            env_name (str): Environment name
+            package_name (str): Package name
+            hostname (str): Host identifier
+            server_config (dict): Server configuration data
+
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        # Find the package in the environment
+        packages = self._environments[env_name].get("packages", [])
+        for i, pkg in enumerate(packages):
+            if pkg.get("name") == package_name:
+                # Initialize configured_hosts if it doesn't exist
+                if "configured_hosts" not in pkg:
+                    pkg["configured_hosts"] = {}
+
+                # Add or update host configuration
+                from datetime import datetime
+                pkg["configured_hosts"][hostname] = {
+                    "config_path": self._get_host_config_path(hostname),
+                    "configured_at": datetime.now().isoformat(),
+                    "last_synced": datetime.now().isoformat(),
+                    "server_config": server_config
+                }
+
+                # Update the package in the environment
+                self._environments[env_name]["packages"][i] = pkg
+                self._save_environments()
+
+                self.logger.info(f"Updated host configuration for package {package_name} on {hostname}")
+                return True
+
+        self.logger.error(f"Package {package_name} not found in environment {env_name}")
+        return False
 
     def remove_package_host_configuration(self, env_name: str, package_name: str, hostname: str) -> bool:
         """Remove host configuration tracking for a specific package.
