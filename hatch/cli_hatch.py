@@ -1090,7 +1090,7 @@ def main():
     server_type_group.add_argument("--url", help="Server URL for remote MCP servers")
 
     mcp_configure_parser.add_argument("--args", nargs="*", help="Arguments for the MCP server command (only with --command)")
-    mcp_configure_parser.add_argument("--env", "-e", action="append", help="Environment variables (format: KEY=VALUE)")
+    mcp_configure_parser.add_argument("--env-var", action="append", help="Environment variables (format: KEY=VALUE)")
     mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
     mcp_configure_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before configuration")
     mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
@@ -1763,7 +1763,7 @@ def main():
         elif args.mcp_command == "configure":
             return handle_mcp_configure(
                 args.host, args.server_name, args.command, args.args,
-                args.env, args.url, args.headers, args.no_backup,
+                getattr(args, 'env_var', None), args.url, args.headers, args.no_backup,
                 args.dry_run, args.auto_approve
             )
 
