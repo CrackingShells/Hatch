@@ -278,22 +278,12 @@ class LMStudioHostStrategy(CursorBasedHostStrategy):
     
     def get_config_path(self) -> Optional[Path]:
         """Get LM Studio configuration path."""
-        # LM Studio uses application-managed configuration
-        # Path would be determined by LM Studio's internal structure
-        system = platform.system()
-        
-        if system == "Darwin":  # macOS
-            return Path.home() / "Library" / "Application Support" / "LMStudio" / "mcp.json"
-        elif system == "Windows":
-            return Path.home() / "AppData" / "Roaming" / "LMStudio" / "mcp.json"
-        elif system == "Linux":
-            return Path.home() / ".config" / "LMStudio" / "mcp.json"
-        return None
+        return Path.home() / ".lmstudio" / "mcp.json"
     
     def is_host_available(self) -> bool:
         """Check if LM Studio is installed."""
         config_path = self.get_config_path()
-        return config_path is not None and config_path.parent.exists()
+        return self.get_config_path().parent.exists()
 
 
 @register_host_strategy(MCPHostType.VSCODE)
