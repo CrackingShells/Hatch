@@ -1,3 +1,11 @@
+## [0.7.0-dev.3](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.2...v0.7.0-dev.3) (2025-10-01)
+
+
+### Bug Fixes
+
+* **claude-code:** user-wide config file of the mcp ([4b5d2d9](https://github.com/CrackingShells/Hatch/commit/4b5d2d9981135e747a2f51651a85aef47ad60292))
+* **lmstudio:** user-wide config file of the mcp ([5035b88](https://github.com/CrackingShells/Hatch/commit/5035b88eb916cce498a82dedbb1552c0d052b6c6))
+
 ## [0.7.0-dev.2](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.1...v0.7.0-dev.2) (2025-09-29)
 
 
