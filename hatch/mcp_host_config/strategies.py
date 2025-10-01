@@ -142,12 +142,12 @@ class ClaudeCodeStrategy(ClaudeHostStrategy):
         """Get Claude Code configuration path (workspace-specific)."""
         # Claude Code uses workspace-specific configuration
         # This would be determined at runtime based on current workspace
-        return Path.cwd() / ".claude" / "mcp_config.json"
+        return Path.home() / ".claude.json"
     
     def is_host_available(self) -> bool:
-        """Check if Claude for VS Code extension is available."""
-        # Check for VS Code workspace and Claude extension
-        vscode_dir = Path.cwd() / ".vscode"
+        """Check if Claude Code is available."""
+        # Check for Claude Code user configuration file
+        vscode_dir = Path.home() / ".claude.json"
         return vscode_dir.exists()
 
 
