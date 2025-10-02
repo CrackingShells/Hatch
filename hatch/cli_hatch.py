@@ -13,12 +13,27 @@ import logging
 import sys
 from pathlib import Path
 from typing import Optional, List
+from importlib.metadata import version, PackageNotFoundError
 
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch_validator import HatchPackageValidator
 from hatch_validator.package.package_service import PackageService
 from hatch.template_generator import create_package_template
 from hatch.mcp_host_config import MCPHostConfigurationManager, MCPHostType, MCPHostRegistry, MCPServerConfig
+
+
+def get_hatch_version() -> str:
+    """Get Hatch version from package metadata.
+
+    Returns:
+        str: Version string from package metadata, or 'unknown (development mode)'
+             if package is not installed.
+    """
+    try:
+        return version('hatch')
+    except PackageNotFoundError:
+        return 'unknown (development mode)'
+
 
 def parse_host_list(host_arg: str):
     """Parse comma-separated host list or 'all'."""
@@ -944,6 +959,14 @@ def main():
     
     # Create argument parser
     parser = argparse.ArgumentParser(description="Hatch package manager CLI")
+
+    # Add version argument
+    parser.add_argument(
+        '--version',
+        action='version',
+        version=f'%(prog)s {get_hatch_version()}'
+    )
+
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
     
     # Create template command
