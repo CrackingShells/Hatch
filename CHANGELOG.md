@@ -1,3 +1,27 @@
+## [0.7.0-dev.4](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.3...v0.7.0-dev.4) (2025-10-02)
+
+
+### ⚠ BREAKING CHANGES
+
+* Code that relied on hatch.__version__ will need to use
+importlib.metadata.version('hatch') instead.
+
+Related to: Phase 1 analysis (version_command_analysis_v1.md)
+
+### Features
+
+* add --version flag to CLI argument parser ([d1a0e2d](https://github.com/CrackingShells/Hatch/commit/d1a0e2dfb5963724294b3e0c84e0b7f96aefbe61))
+
+
+### Documentation
+
+* add --version flag documentation and installation verification ([ac326e0](https://github.com/CrackingShells/Hatch/commit/ac326e0a5bed84f9ce8d38976cd9dbfafdc24685))
+
+
+### Code Refactoring
+
+* remove outdated __version__ from hatch/__init__.py ([9f0aad3](https://github.com/CrackingShells/Hatch/commit/9f0aad3684a794019aa1b6033ac4b9645a92d6af))
+
 ## [0.7.0-dev.3](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.2...v0.7.0-dev.3) (2025-10-01)
 
 
