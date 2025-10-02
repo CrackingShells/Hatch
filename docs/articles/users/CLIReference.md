@@ -30,9 +30,17 @@ These flags are accepted by the top-level parser and apply to all commands unles
 
 | Flag | Type | Description | Default |
 |------|------|-------------|---------|
+| `--version` | flag | Show program version and exit | n/a |
 | `--envs-dir` | path | Directory to store environments | `~/.hatch/envs` |
 | `--cache-ttl` | int | Cache time-to-live in seconds | `86400` (1 day) |
 | `--cache-dir` | path | Directory to store cached packages | `~/.hatch/cache` |
+
+Example:
+
+```bash
+hatch --version
+# Output: hatch 0.6.1
+```
 
 ## Commands
 

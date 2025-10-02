@@ -105,10 +105,14 @@ pip install -e .
 Test that Hatch is working:
 
 ```bash
-hatch --help
+hatch --version
 ```
 
-You should see available commands.
+You should see the installed version (e.g., `hatch 0.6.1`). You can also view available commands:
+
+```bash
+hatch --help
+```
 
 ## First Steps
 

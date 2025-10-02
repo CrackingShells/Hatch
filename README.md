@@ -25,6 +25,12 @@ cd Hatch
 pip install -e .
 ```
 
+Verify installation:
+
+```bash
+hatch --version
+```
+
 ### Create a package template
 
 ```bash
