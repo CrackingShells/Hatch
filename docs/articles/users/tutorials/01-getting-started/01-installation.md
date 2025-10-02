@@ -28,7 +28,13 @@ This article covers the installation of Hatch, a package manager for Model Conte
    pip install -e .
    ```
 
-3. Verify the installation by checking the available commands:
+3. Verify the installation by checking the version:
+
+   ```bash
+   hatch --version
+   ```
+
+   You should see output like `hatch 0.6.1`. You can also view available commands:
 
    ```bash
    hatch --help
