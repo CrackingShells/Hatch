@@ -31,38 +31,46 @@ class TestMCPConfigureCommand(unittest.TestCase):
     @regression_test
     def test_configure_argument_parsing_basic(self):
         """Test basic argument parsing for 'hatch mcp configure' command."""
-        test_args = ['hatch', 'mcp', 'configure', 'claude-desktop', 'weather-server', 'python', 'weather.py']
-        
+        # Updated to match current CLI: server_name is positional, --host is required, --command/--url are mutually exclusive
+        test_args = ['hatch', 'mcp', 'configure', 'weather-server', '--host', 'claude-desktop', '--command', 'python', '--args', 'weather.py']
+
         with patch('sys.argv', test_args):
             with patch('hatch.cli_hatch.HatchEnvironmentManager'):
                 with patch('hatch.cli_hatch.handle_mcp_configure', return_value=0) as mock_handler:
                     try:
-                        main()
+                        result = main()
+                        # If main() returns without SystemExit, check the handler was called
                         mock_handler.assert_called_once_with(
                             'claude-desktop', 'weather-server', 'python', ['weather.py'],
                             None, None, None, False, False, False
                         )
                     except SystemExit as e:
-                        self.assertEqual(e.code, 0)
+                        # If SystemExit is raised, it should be 0 (success) and handler should have been called
+                        if e.code == 0:
+                            mock_handler.assert_called_once_with(
+                                'claude-desktop', 'weather-server', 'python', ['weather.py'],
+                                None, None, None, False, False, False
+                            )
+                        else:
+                            self.fail(f"main() exited with code {e.code}, expected 0")
     
     @regression_test
     def test_configure_argument_parsing_with_options(self):
         """Test argument parsing with environment variables and options."""
         test_args = [
-            'hatch', 'mcp', 'configure', 'cursor', 'file-server', 'node', 'server.js', 'arg1', 'arg2',
-            '--env', 'API_KEY=secret', '--env', 'DEBUG=true',
-            '--url', 'http://localhost:8080',
+            'hatch', 'mcp', 'configure', 'file-server', '--host', 'cursor', '--url', 'http://localhost:8080',
+            '--env-var', 'API_KEY=secret', '--env-var', 'DEBUG=true',
             '--headers', 'Authorization=Bearer token',
             '--no-backup', '--dry-run', '--auto-approve'
         ]
-        
+
         with patch('sys.argv', test_args):
             with patch('hatch.cli_hatch.HatchEnvironmentManager'):
                 with patch('hatch.cli_hatch.handle_mcp_configure', return_value=0) as mock_handler:
                     try:
                         main()
                         mock_handler.assert_called_once_with(
-                            'cursor', 'file-server', 'node', ['server.js', 'arg1', 'arg2'],
+                            'cursor', 'file-server', None, None,
                             ['API_KEY=secret', 'DEBUG=true'], 'http://localhost:8080',
                             ['Authorization=Bearer token'], True, True, True
                         )
@@ -397,6 +405,9 @@ class TestMCPRemoveHostCommand(unittest.TestCase):
             mock_manager_class.return_value = mock_manager
 
             with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+                # Mock the clear_host_from_all_packages_all_envs method
+                mock_env_manager.return_value.clear_host_from_all_packages_all_envs.return_value = 2
+
                 with patch('builtins.print') as mock_print:
                     result = handle_mcp_remove_host(mock_env_manager.return_value, 'claude-desktop', auto_approve=True)
 
