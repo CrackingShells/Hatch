@@ -7,7 +7,7 @@ the v2 design specification with consolidated MCPServerConfig model.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Literal
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
@@ -34,12 +34,18 @@ class MCPServerConfig(BaseModel):
     # Server identification
     name: Optional[str] = Field(None, description="Server name for identification")
 
-    # Local server configuration (Pattern A: Command-Based)
+    # Transport type (PRIMARY DISCRIMINATOR)
+    type: Optional[Literal["stdio", "sse", "http"]] = Field(
+        None,
+        description="Transport type (stdio for local, sse/http for remote)"
+    )
+
+    # Local server configuration (Pattern A: Command-Based / stdio transport)
     command: Optional[str] = Field(None, description="Executable path/name for local servers")
     args: Optional[List[str]] = Field(None, description="Command arguments for local servers")
-    env: Optional[Dict[str, str]] = Field(None, description="Environment variables for local servers")
+    env: Optional[Dict[str, str]] = Field(None, description="Environment variables for all transports")
 
-    # Remote server configuration (Pattern B: URL-Based)
+    # Remote server configuration (Pattern B: URL-Based / sse/http transports)
     url: Optional[str] = Field(None, description="Server endpoint URL for remote servers")
     headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers for remote servers")
     
@@ -81,24 +87,46 @@ class MCPServerConfig(BaseModel):
         if self.args is not None and self.command is None:
             raise ValueError("'args' can only be specified with 'command' for local servers")
 
-        # Validate env is only provided with command
-        if self.env is not None and self.command is None:
-            raise ValueError("'env' can only be specified with 'command' for local servers")
-
         # Validate headers are only provided with URL
         if self.headers is not None and self.url is None:
             raise ValueError("'headers' can only be specified with 'url' for remote servers")
 
         return self
-    
+
+    @model_validator(mode='after')
+    def validate_type_field(self):
+        """Validate type field consistency with command/url fields."""
+        # Only validate if type field is explicitly set
+        if self.type is not None:
+            if self.type == "stdio":
+                if not self.command:
+                    raise ValueError("'type=stdio' requires 'command' field")
+                if self.url:
+                    raise ValueError("'type=stdio' cannot be used with 'url' field")
+            elif self.type in ("sse", "http"):
+                if not self.url:
+                    raise ValueError(f"'type={self.type}' requires 'url' field")
+                if self.command:
+                    raise ValueError(f"'type={self.type}' cannot be used with 'command' field")
+
+        return self
+
     @property
     def is_local_server(self) -> bool:
         """Check if this is a local server configuration."""
+        # Prioritize type field if present
+        if self.type is not None:
+            return self.type == "stdio"
+        # Fall back to command detection for backward compatibility
         return self.command is not None
-    
+
     @property
     def is_remote_server(self) -> bool:
         """Check if this is a remote server configuration."""
+        # Prioritize type field if present
+        if self.type is not None:
+            return self.type in ("sse", "http")
+        # Fall back to url detection for backward compatibility
         return self.url is not None
     
 
@@ -294,3 +322,226 @@ class SyncResult(BaseModel):
             return 0.0
         successful = len([r for r in self.results if r.success])
         return (successful / len(self.results)) * 100.0
+
+
+# ============================================================================
+# MCP Host-Specific Configuration Models
+# ============================================================================
+
+
+class MCPServerConfigBase(BaseModel):
+    """Base class for MCP server configurations with universal fields.
+
+    This model contains fields supported by ALL MCP hosts and provides
+    transport validation logic. Host-specific models inherit from this base.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Hatch-specific field
+    name: Optional[str] = Field(None, description="Server name for identification")
+
+    # Transport type (PRIMARY DISCRIMINATOR)
+    type: Optional[Literal["stdio", "sse", "http"]] = Field(
+        None,
+        description="Transport type (stdio for local, sse/http for remote)"
+    )
+
+    # stdio transport fields
+    command: Optional[str] = Field(None, description="Server executable command")
+    args: Optional[List[str]] = Field(None, description="Command arguments")
+
+    # All transports
+    env: Optional[Dict[str, str]] = Field(None, description="Environment variables")
+
+    # Remote transport fields (sse/http)
+    url: Optional[str] = Field(None, description="Remote server endpoint")
+    headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers")
+
+    @model_validator(mode='after')
+    def validate_transport(self) -> 'MCPServerConfigBase':
+        """Validate transport configuration using type field."""
+        # Check mutual exclusion - command and url cannot both be set
+        if self.command is not None and self.url is not None:
+            raise ValueError(
+                "Cannot specify both 'command' and 'url' - use 'type' field to specify transport"
+            )
+
+        # Validate based on type
+        if self.type == "stdio":
+            if not self.command:
+                raise ValueError("'command' is required for stdio transport")
+        elif self.type in ("sse", "http"):
+            if not self.url:
+                raise ValueError("'url' is required for sse/http transports")
+        elif self.type is None:
+            # Infer type from fields if not specified
+            if self.command:
+                self.type = "stdio"
+            elif self.url:
+                self.type = "sse"  # default to sse for remote
+            else:
+                raise ValueError("Either 'command' or 'url' must be provided")
+
+        return self
+
+
+class MCPServerConfigGemini(MCPServerConfigBase):
+    """Gemini CLI-specific MCP server configuration.
+
+    Extends base model with Gemini-specific fields including working directory,
+    timeout, trust mode, tool filtering, and OAuth configuration.
+    """
+
+    # Gemini-specific fields
+    cwd: Optional[str] = Field(None, description="Working directory for stdio transport")
+    timeout: Optional[int] = Field(None, description="Request timeout in milliseconds")
+    trust: Optional[bool] = Field(None, description="Bypass tool call confirmations")
+    httpUrl: Optional[str] = Field(None, description="HTTP streaming endpoint URL")
+    includeTools: Optional[List[str]] = Field(None, description="Tools to include (allowlist)")
+    excludeTools: Optional[List[str]] = Field(None, description="Tools to exclude (blocklist)")
+
+    # OAuth configuration (simplified - nested object would be better but keeping flat for now)
+    oauth_enabled: Optional[bool] = Field(None, description="Enable OAuth for this server")
+    oauth_clientId: Optional[str] = Field(None, description="OAuth client identifier")
+    oauth_clientSecret: Optional[str] = Field(None, description="OAuth client secret")
+    oauth_authorizationUrl: Optional[str] = Field(None, description="OAuth authorization endpoint")
+    oauth_tokenUrl: Optional[str] = Field(None, description="OAuth token endpoint")
+    oauth_scopes: Optional[List[str]] = Field(None, description="Required OAuth scopes")
+    oauth_redirectUri: Optional[str] = Field(None, description="Custom redirect URI")
+    oauth_tokenParamName: Optional[str] = Field(None, description="Query parameter name for tokens")
+    oauth_audiences: Optional[List[str]] = Field(None, description="OAuth audiences")
+    authProviderType: Optional[str] = Field(None, description="Authentication provider type")
+
+    @classmethod
+    def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigGemini':
+        """Convert Omni model to Gemini-specific model using Pydantic APIs."""
+        # Get supported fields dynamically from model definition
+        supported_fields = set(cls.model_fields.keys())
+
+        # Use Pydantic's model_dump with include and exclude_unset
+        gemini_data = omni.model_dump(include=supported_fields, exclude_unset=True)
+
+        # Use Pydantic's model_validate for type-safe creation
+        return cls.model_validate(gemini_data)
+
+
+class MCPServerConfigVSCode(MCPServerConfigBase):
+    """VS Code-specific MCP server configuration.
+
+    Extends base model with VS Code-specific fields including environment file
+    path and input variable definitions.
+    """
+
+    # VS Code-specific fields
+    envFile: Optional[str] = Field(None, description="Path to environment file")
+    inputs: Optional[List[Dict]] = Field(None, description="Input variable definitions")
+
+    @classmethod
+    def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigVSCode':
+        """Convert Omni model to VS Code-specific model."""
+        # Get supported fields dynamically
+        supported_fields = set(cls.model_fields.keys())
+
+        # Single-call field filtering
+        vscode_data = omni.model_dump(include=supported_fields, exclude_unset=True)
+
+        return cls.model_validate(vscode_data)
+
+
+class MCPServerConfigCursor(MCPServerConfigBase):
+    """Cursor/LM Studio-specific MCP server configuration.
+
+    Extends base model with Cursor-specific fields including environment file path.
+    Cursor handles config interpolation (${env:NAME}, ${userHome}, etc.) at runtime.
+    """
+
+    # Cursor-specific fields
+    envFile: Optional[str] = Field(None, description="Path to environment file")
+
+    @classmethod
+    def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigCursor':
+        """Convert Omni model to Cursor-specific model."""
+        # Get supported fields dynamically
+        supported_fields = set(cls.model_fields.keys())
+
+        # Single-call field filtering
+        cursor_data = omni.model_dump(include=supported_fields, exclude_unset=True)
+
+        return cls.model_validate(cursor_data)
+
+
+class MCPServerConfigClaude(MCPServerConfigBase):
+    """Claude Desktop/Code-specific MCP server configuration.
+
+    Uses only universal fields from base model. Supports all transport types
+    (stdio, sse, http). Claude handles environment variable expansion at runtime.
+    """
+
+    # No host-specific fields - uses universal fields only
+
+    @classmethod
+    def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigClaude':
+        """Convert Omni model to Claude-specific model."""
+        # Get supported fields dynamically
+        supported_fields = set(cls.model_fields.keys())
+
+        # Single-call field filtering
+        claude_data = omni.model_dump(include=supported_fields, exclude_unset=True)
+
+        return cls.model_validate(claude_data)
+
+
+class MCPServerConfigOmni(BaseModel):
+    """Omni configuration supporting all host-specific fields.
+
+    This is the primary API interface for MCP server configuration. It contains
+    all possible fields from all hosts. Use host-specific models' from_omni()
+    methods to convert to host-specific configurations.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Hatch-specific
+    name: Optional[str] = None
+
+    # Universal fields (all hosts)
+    type: Optional[Literal["stdio", "sse", "http"]] = None
+    command: Optional[str] = None
+    args: Optional[List[str]] = None
+    env: Optional[Dict[str, str]] = None
+    url: Optional[str] = None
+    headers: Optional[Dict[str, str]] = None
+
+    # Gemini CLI specific
+    cwd: Optional[str] = None
+    timeout: Optional[int] = None
+    trust: Optional[bool] = None
+    httpUrl: Optional[str] = None
+    includeTools: Optional[List[str]] = None
+    excludeTools: Optional[List[str]] = None
+    oauth_enabled: Optional[bool] = None
+    oauth_clientId: Optional[str] = None
+    oauth_clientSecret: Optional[str] = None
+    oauth_authorizationUrl: Optional[str] = None
+    oauth_tokenUrl: Optional[str] = None
+    oauth_scopes: Optional[List[str]] = None
+    oauth_redirectUri: Optional[str] = None
+    oauth_tokenParamName: Optional[str] = None
+    oauth_audiences: Optional[List[str]] = None
+    authProviderType: Optional[str] = None
+
+    # VS Code specific
+    envFile: Optional[str] = None
+    inputs: Optional[List[Dict]] = None
+
+
+# HOST_MODEL_REGISTRY: Dictionary dispatch for host-specific models
+HOST_MODEL_REGISTRY: Dict[MCPHostType, type[MCPServerConfigBase]] = {
+    MCPHostType.GEMINI: MCPServerConfigGemini,
+    MCPHostType.CLAUDE_DESKTOP: MCPServerConfigClaude,
+    MCPHostType.CLAUDE_CODE: MCPServerConfigClaude,  # Same as CLAUDE_DESKTOP
+    MCPHostType.VSCODE: MCPServerConfigVSCode,
+    MCPHostType.CURSOR: MCPServerConfigCursor,
+    MCPHostType.LMSTUDIO: MCPServerConfigCursor,  # Same as CURSOR
+}
