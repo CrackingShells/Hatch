@@ -1109,7 +1109,7 @@ def main():
 
     # Create mutually exclusive group for server type
     server_type_group = mcp_configure_parser.add_mutually_exclusive_group(required=True)
-    server_type_group.add_argument("--command", help="Command to execute the MCP server (for local servers)")
+    server_type_group.add_argument("--command", dest="server_command", help="Command to execute the MCP server (for local servers)")
     server_type_group.add_argument("--url", help="Server URL for remote MCP servers")
 
     mcp_configure_parser.add_argument("--args", nargs="*", help="Arguments for the MCP server command (only with --command)")
@@ -1785,7 +1785,7 @@ def main():
 
         elif args.mcp_command == "configure":
             return handle_mcp_configure(
-                args.host, args.server_name, args.command, args.args,
+                args.host, args.server_name, args.server_command, args.args,
                 getattr(args, 'env_var', None), args.url, args.headers, args.no_backup,
                 args.dry_run, args.auto_approve
             )
