@@ -17,6 +17,9 @@ from .models import (
 from .host_management import (
     MCPHostRegistry, MCPHostStrategy, MCPHostConfigurationManager, register_host_strategy
 )
+from .reporting import (
+    FieldOperation, ConversionReport, generate_conversion_report, display_report
+)
 
 # Import strategies to trigger decorator registration
 from . import strategies
@@ -29,5 +32,7 @@ __all__ = [
     'MCPServerConfigBase', 'MCPServerConfigGemini', 'MCPServerConfigVSCode',
     'MCPServerConfigCursor', 'MCPServerConfigClaude', 'MCPServerConfigOmni',
     'HOST_MODEL_REGISTRY',
+    # User feedback reporting
+    'FieldOperation', 'ConversionReport', 'generate_conversion_report', 'display_report',
     'MCPHostRegistry', 'MCPHostStrategy', 'MCPHostConfigurationManager', 'register_host_strategy'
 ]
