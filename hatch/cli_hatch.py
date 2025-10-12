@@ -582,13 +582,53 @@ def parse_headers(headers_list: Optional[list]) -> dict:
 
     return headers_dict
 
+def parse_inputs(inputs_list: Optional[list]) -> Optional[list]:
+    """Parse VS Code input variable definitions from command line format.
+
+    Format: type,id,description[,password=true]
+    Example: promptString,api-key,GitHub Personal Access Token,password=true
+
+    Returns:
+        List of input variable definition dictionaries, or None if no inputs provided.
+    """
+    if not inputs_list:
+        return None
+
+    parsed_inputs = []
+    for input_str in inputs_list:
+        parts = [p.strip() for p in input_str.split(',')]
+        if len(parts) < 3:
+            print(f"Warning: Invalid input format '{input_str}'. Expected: type,id,description[,password=true]")
+            continue
+
+        input_def = {
+            'type': parts[0],
+            'id': parts[1],
+            'description': parts[2]
+        }
+
+        # Check for optional password flag
+        if len(parts) > 3 and parts[3].lower() == 'password=true':
+            input_def['password'] = True
+
+        parsed_inputs.append(input_def)
+
+    return parsed_inputs if parsed_inputs else None
+
 def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
                         env: Optional[list] = None, url: Optional[str] = None,
                         headers: Optional[list] = None, timeout: Optional[int] = None,
                         trust: bool = False, cwd: Optional[str] = None,
-                        env_file: Optional[str] = None, no_backup: bool = False,
+                        env_file: Optional[str] = None, http_url: Optional[str] = None,
+                        include_tools: Optional[list] = None, exclude_tools: Optional[list] = None,
+                        inputs: Optional[list] = None, no_backup: bool = False,
                         dry_run: bool = False, auto_approve: bool = False):
-    """Handle 'hatch mcp configure' command with host-specific arguments."""
+    """Handle 'hatch mcp configure' command with ALL host-specific arguments.
+
+    Host-specific arguments are accepted for all hosts. The reporting system will
+    show unsupported fields as "UNSUPPORTED" in the conversion report rather than
+    rejecting them upfront.
+    """
     try:
         # Validate host type
         try:
@@ -606,26 +646,14 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             print("Error: --args can only be used with --command (local servers), not with --url (remote servers)")
             return 1
 
-        # Validate host-specific arguments
-        if timeout is not None and host_type != MCPHostType.GEMINI:
-            print(f"Error: --timeout is only supported for Gemini host, not '{host}'")
-            return 1
+        # NOTE: We do NOT validate host-specific arguments here.
+        # The reporting system will show unsupported fields as "UNSUPPORTED" in the conversion report.
+        # This allows users to see which fields are not supported by their target host without blocking the operation.
 
-        if trust and host_type != MCPHostType.GEMINI:
-            print(f"Error: --trust is only supported for Gemini host, not '{host}'")
-            return 1
-
-        if cwd is not None and host_type != MCPHostType.GEMINI:
-            print(f"Error: --cwd is only supported for Gemini host, not '{host}'")
-            return 1
-
-        if env_file is not None and host_type not in (MCPHostType.CURSOR, MCPHostType.VSCODE, MCPHostType.LMSTUDIO):
-            print(f"Error: --env-file is only supported for Cursor, VS Code, and LM Studio hosts, not '{host}'")
-            return 1
-
-        # Parse environment variables and headers
+        # Parse environment variables, headers, and inputs
         env_dict = parse_env_vars(env)
         headers_dict = parse_headers(headers)
+        inputs_list = parse_inputs(inputs)
 
         # Create Omni configuration (universal model)
         # Only include fields that have actual values to ensure model_dump(exclude_unset=True) works correctly
@@ -642,15 +670,27 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         if url and headers_dict:
             omni_config_data['headers'] = headers_dict
 
-        # Host-specific fields
+        # Host-specific fields (Gemini)
         if timeout is not None:
             omni_config_data['timeout'] = timeout
         if trust:
             omni_config_data['trust'] = trust
         if cwd is not None:
             omni_config_data['cwd'] = cwd
+        if http_url is not None:
+            omni_config_data['httpUrl'] = http_url
+        if include_tools is not None:
+            omni_config_data['includeTools'] = include_tools
+        if exclude_tools is not None:
+            omni_config_data['excludeTools'] = exclude_tools
+
+        # Host-specific fields (Cursor/VS Code/LM Studio)
         if env_file is not None:
             omni_config_data['envFile'] = env_file
+
+        # Host-specific fields (VS Code)
+        if inputs_list is not None:
+            omni_config_data['inputs'] = inputs_list
 
         # Create Omni model
         omni_config = MCPServerConfigOmni(**omni_config_data)
@@ -1174,11 +1214,19 @@ def main():
     mcp_configure_parser.add_argument("--env-var", action="append", help="Environment variables (format: KEY=VALUE)")
     mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
 
-    # Host-specific arguments
-    mcp_configure_parser.add_argument("--timeout", type=int, help="Request timeout in milliseconds (Gemini only)")
-    mcp_configure_parser.add_argument("--trust", action="store_true", help="Bypass tool call confirmations (Gemini only)")
-    mcp_configure_parser.add_argument("--cwd", help="Working directory for stdio transport (Gemini only)")
-    mcp_configure_parser.add_argument("--env-file", help="Path to environment file (Cursor, VS Code only)")
+    # Host-specific arguments (Gemini)
+    mcp_configure_parser.add_argument("--timeout", type=int, help="Request timeout in milliseconds (Gemini)")
+    mcp_configure_parser.add_argument("--trust", action="store_true", help="Bypass tool call confirmations (Gemini)")
+    mcp_configure_parser.add_argument("--cwd", help="Working directory for stdio transport (Gemini)")
+    mcp_configure_parser.add_argument("--http-url", help="HTTP streaming endpoint URL (Gemini)")
+    mcp_configure_parser.add_argument("--include-tools", nargs="*", help="Tool allowlist - only these tools will be available (Gemini)")
+    mcp_configure_parser.add_argument("--exclude-tools", nargs="*", help="Tool blocklist - these tools will be excluded (Gemini)")
+
+    # Host-specific arguments (Cursor/VS Code/LM Studio)
+    mcp_configure_parser.add_argument("--env-file", help="Path to environment file (Cursor, VS Code, LM Studio)")
+
+    # Host-specific arguments (VS Code)
+    mcp_configure_parser.add_argument("--inputs", action="append", help="Input variable definitions in format: type,id,description[,password=true] (VS Code)")
 
     mcp_configure_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before configuration")
     mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
@@ -1977,6 +2025,8 @@ def main():
                 getattr(args, 'env_var', None), args.url, args.headers,
                 getattr(args, 'timeout', None), getattr(args, 'trust', False),
                 getattr(args, 'cwd', None), getattr(args, 'env_file', None),
+                getattr(args, 'http_url', None), getattr(args, 'include_tools', None),
+                getattr(args, 'exclude_tools', None), getattr(args, 'inputs', None),
                 args.no_backup, args.dry_run, args.auto_approve
             )
 
