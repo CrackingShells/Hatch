@@ -1569,45 +1569,80 @@ def main():
                         # Configure on each host
                         success_count = 0
                         for host in hosts: # 'host', here, is a string
-                            host_success_count = 0
-                            for i, server_config in enumerate(server_configs):
-                                pkg_name = package_names[i]
-                                try:
-                                    result = mcp_manager.configure_server(
-                                        hostname=host,
-                                        server_config=server_config,
-                                        no_backup=False  # Always backup when adding packages
-                                    )
+                            try:
+                                # Convert string to MCPHostType enum
+                                host_type = MCPHostType(host)
+                                host_model_class = HOST_MODEL_REGISTRY.get(host_type)
+                                if not host_model_class:
+                                    print(f"✗ Error: No model registered for host '{host}'")
+                                    continue
 
-                                    if result.success:
-                                        print(f"✓ Configured {server_config.name} ({pkg_name}) on {host}")
-                                        host_success_count += 1
+                                host_success_count = 0
+                                for i, server_config in enumerate(server_configs):
+                                    pkg_name = package_names[i]
+                                    try:
+                                        # Convert MCPServerConfig to Omni model
+                                        omni_config = MCPServerConfigOmni(
+                                            name=server_config.name,
+                                            command=server_config.command,
+                                            args=server_config.args,
+                                            env=server_config.env,
+                                            url=server_config.url,
+                                            headers=getattr(server_config, 'headers', None)
+                                        )
 
-                                        # Update package metadata with host configuration tracking
-                                        try:
-                                            server_config_dict = {
-                                                "name": server_config.name,
-                                                "command": server_config.command,
-                                                "args": server_config.args
-                                            }
+                                        # Convert to host-specific model
+                                        host_config = host_model_class.from_omni(omni_config)
 
-                                            env_manager.update_package_host_configuration(
-                                                env_name=env_name,
-                                                package_name=pkg_name,
-                                                hostname=host,
-                                                server_config=server_config_dict
-                                            )
-                                        except Exception as e:
-                                            # Log but don't fail the configuration operation
-                                            print(f"[WARNING] Failed to update package metadata for {pkg_name}: {e}")
-                                    else:
-                                        print(f"✗ Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+                                        # Generate and display conversion report
+                                        report = generate_conversion_report(
+                                            operation='create',
+                                            server_name=server_config.name,
+                                            target_host=host_type,
+                                            omni=omni_config,
+                                            dry_run=False
+                                        )
+                                        display_report(report)
 
-                                except Exception as e:
-                                    print(f"✗ Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
+                                        result = mcp_manager.configure_server(
+                                            hostname=host,
+                                            server_config=host_config,
+                                            no_backup=False  # Always backup when adding packages
+                                        )
 
-                            if host_success_count == len(server_configs):
-                                success_count += 1
+                                        if result.success:
+                                            print(f"✓ Configured {server_config.name} ({pkg_name}) on {host}")
+                                            host_success_count += 1
+
+                                            # Update package metadata with host configuration tracking
+                                            try:
+                                                server_config_dict = {
+                                                    "name": server_config.name,
+                                                    "command": server_config.command,
+                                                    "args": server_config.args
+                                                }
+
+                                                env_manager.update_package_host_configuration(
+                                                    env_name=env_name,
+                                                    package_name=pkg_name,
+                                                    hostname=host,
+                                                    server_config=server_config_dict
+                                                )
+                                            except Exception as e:
+                                                # Log but don't fail the configuration operation
+                                                print(f"[WARNING] Failed to update package metadata for {pkg_name}: {e}")
+                                        else:
+                                            print(f"✗ Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+
+                                    except Exception as e:
+                                        print(f"✗ Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
+
+                                if host_success_count == len(server_configs):
+                                    success_count += 1
+
+                            except ValueError as e:
+                                print(f"✗ Invalid host '{host}': {e}")
+                                continue
 
                         if success_count > 0:
                             print(f"MCP configuration completed: {success_count}/{len(hosts)} hosts configured")
@@ -1703,6 +1738,38 @@ def main():
                     print(f"[DRY RUN] Would synchronize MCP servers for {len(server_configs)} package(s) to hosts: {[h for h in hosts]}")
                     for pkg_name, config in server_configs:
                         print(f"[DRY RUN] - {pkg_name}: {config.name} -> {' '.join(config.args)}")
+
+                        # Generate and display conversion reports for dry-run mode
+                        for host in hosts:
+                            try:
+                                host_type = MCPHostType(host)
+                                host_model_class = HOST_MODEL_REGISTRY.get(host_type)
+                                if not host_model_class:
+                                    print(f"[DRY RUN] ✗ Error: No model registered for host '{host}'")
+                                    continue
+
+                                # Convert to Omni model
+                                omni_config = MCPServerConfigOmni(
+                                    name=config.name,
+                                    command=config.command,
+                                    args=config.args,
+                                    env=config.env,
+                                    url=config.url,
+                                    headers=getattr(config, 'headers', None)
+                                )
+
+                                # Generate report
+                                report = generate_conversion_report(
+                                    operation='create',
+                                    server_name=config.name,
+                                    target_host=host_type,
+                                    omni=omni_config,
+                                    dry_run=True
+                                )
+                                print(f"[DRY RUN] Preview for {pkg_name} on {host}:")
+                                display_report(report)
+                            except ValueError as e:
+                                print(f"[DRY RUN] ✗ Invalid host '{host}': {e}")
                     return 0
 
                 # Confirm operation unless auto-approved
@@ -1719,40 +1786,75 @@ def main():
                 success_count = 0
 
                 for host in hosts:
-                    for pkg_name, server_config in server_configs:
-                        try:
-                            result = mcp_manager.configure_server(
-                                hostname=host,
-                                server_config=server_config,
-                                no_backup=args.no_backup
-                            )
+                    try:
+                        # Convert string to MCPHostType enum
+                        host_type = MCPHostType(host)
+                        host_model_class = HOST_MODEL_REGISTRY.get(host_type)
+                        if not host_model_class:
+                            print(f"✗ Error: No model registered for host '{host}'")
+                            continue
 
-                            if result.success:
-                                print(f"[SUCCESS] Successfully configured {server_config.name} ({pkg_name}) on {host}")
-                                success_count += 1
+                        for pkg_name, server_config in server_configs:
+                            try:
+                                # Convert MCPServerConfig to Omni model
+                                omni_config = MCPServerConfigOmni(
+                                    name=server_config.name,
+                                    command=server_config.command,
+                                    args=server_config.args,
+                                    env=server_config.env,
+                                    url=server_config.url,
+                                    headers=getattr(server_config, 'headers', None)
+                                )
 
-                                # Update package metadata with host configuration tracking
-                                try:
-                                    server_config_dict = {
-                                        "name": server_config.name,
-                                        "command": server_config.command,
-                                        "args": server_config.args
-                                    }
+                                # Convert to host-specific model
+                                host_config = host_model_class.from_omni(omni_config)
 
-                                    env_manager.update_package_host_configuration(
-                                        env_name=env_name,
-                                        package_name=pkg_name,
-                                        hostname=host,
-                                        server_config=server_config_dict
-                                    )
-                                except Exception as e:
-                                    # Log but don't fail the sync operation
-                                    print(f"[WARNING] Failed to update package metadata for {pkg_name}: {e}")
-                            else:
-                                print(f"[ERROR] Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+                                # Generate and display conversion report
+                                report = generate_conversion_report(
+                                    operation='create',
+                                    server_name=server_config.name,
+                                    target_host=host_type,
+                                    omni=omni_config,
+                                    dry_run=False
+                                )
+                                display_report(report)
 
-                        except Exception as e:
-                            print(f"[ERROR] Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
+                                result = mcp_manager.configure_server(
+                                    hostname=host,
+                                    server_config=host_config,
+                                    no_backup=args.no_backup
+                                )
+
+                                if result.success:
+                                    print(f"[SUCCESS] Successfully configured {server_config.name} ({pkg_name}) on {host}")
+                                    success_count += 1
+
+                                    # Update package metadata with host configuration tracking
+                                    try:
+                                        server_config_dict = {
+                                            "name": server_config.name,
+                                            "command": server_config.command,
+                                            "args": server_config.args
+                                        }
+
+                                        env_manager.update_package_host_configuration(
+                                            env_name=env_name,
+                                            package_name=pkg_name,
+                                            hostname=host,
+                                            server_config=server_config_dict
+                                        )
+                                    except Exception as e:
+                                        # Log but don't fail the sync operation
+                                        print(f"[WARNING] Failed to update package metadata for {pkg_name}: {e}")
+                                else:
+                                    print(f"[ERROR] Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+
+                            except Exception as e:
+                                print(f"[ERROR] Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
+
+                    except ValueError as e:
+                        print(f"✗ Invalid host '{host}': {e}")
+                        continue
 
                 # Report results
                 if success_count == total_operations:
