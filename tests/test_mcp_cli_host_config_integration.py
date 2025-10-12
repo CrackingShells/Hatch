@@ -102,50 +102,44 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
     @regression_test
     def test_configure_creates_omni_with_headers(self):
         """Test that headers are parsed correctly into Omni model."""
-        # NOTE: This test currently fails due to bug in handle_mcp_configure (line 613)
-        # The implementation uses `args or []` which converts None to empty list,
-        # causing validation error. This will be fixed in Phase 4.
-        # For now, test that the error is caught properly.
-        result = handle_mcp_configure(
-            host='claude-desktop',
-            server_name='test-server',
-            command=None,
-            args=None,  # Will be converted to [] by current implementation (bug)
-            env=None,
-            url='https://api.example.com',
-            headers=['Authorization=Bearer token', 'Content-Type=application/json'],
-            no_backup=True,
-            dry_run=False,
-            auto_approve=False
-        )
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command=None,
+                    args=None,
+                    env=None,
+                    url='https://api.example.com',
+                    headers=['Authorization=Bearer token', 'Content-Type=application/json'],
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
 
-        # Current implementation returns error due to args validation bug
-        # This will be fixed in Phase 4 to return 0
-        self.assertEqual(result, 1)
+                # Verify the function executed without errors (bug fixed in Phase 4)
+                self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_creates_omni_remote_server(self):
         """Test that remote server arguments create correct Omni model."""
-        # NOTE: This test currently fails due to bug in handle_mcp_configure (line 613)
-        # The implementation uses `args or []` which converts None to empty list,
-        # causing validation error. This will be fixed in Phase 4.
-        # For now, test that the error is caught properly.
-        result = handle_mcp_configure(
-            host='claude-desktop',
-            server_name='remote-server',
-            command=None,
-            args=None,  # Will be converted to [] by current implementation (bug)
-            env=None,
-            url='https://api.example.com',
-            headers=['Auth=token'],
-            no_backup=True,
-            dry_run=False,
-            auto_approve=False
-        )
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='remote-server',
+                    command=None,
+                    args=None,
+                    env=None,
+                    url='https://api.example.com',
+                    headers=['Auth=token'],
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
 
-        # Current implementation returns error due to args validation bug
-        # This will be fixed in Phase 4 to return 0
-        self.assertEqual(result, 1)
+                # Verify the function executed without errors (bug fixed in Phase 4)
+                self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_omni_with_all_universal_fields(self):
@@ -246,7 +240,7 @@ class TestModelIntegration(unittest.TestCase):
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.configure_server.return_value = MagicMock(success=True, backup_path=None)
-            
+
             with patch('hatch.cli_hatch.request_confirmation', return_value=True):
                 # Call configure command
                 result = handle_mcp_configure(
@@ -261,15 +255,16 @@ class TestModelIntegration(unittest.TestCase):
                     dry_run=False,
                     auto_approve=False
                 )
-                
+
                 # Verify configure_server was called
                 self.assertEqual(result, 0)
                 mock_manager.configure_server.assert_called_once()
-                
-                # Verify the server_config argument is an MCPServerConfig instance
+
+                # Verify the server_config argument is a host-specific model instance
+                # (MCPServerConfigClaude for claude-desktop host)
                 call_args = mock_manager.configure_server.call_args
                 server_config = call_args.kwargs['server_config']
-                self.assertIsInstance(server_config, MCPServerConfig)
+                self.assertIsInstance(server_config, MCPServerConfigClaude)
 
 
 class TestReportingIntegration(unittest.TestCase):

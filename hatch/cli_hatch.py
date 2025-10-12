@@ -20,6 +20,8 @@ from hatch_validator import HatchPackageValidator
 from hatch_validator.package.package_service import PackageService
 from hatch.template_generator import create_package_template
 from hatch.mcp_host_config import MCPHostConfigurationManager, MCPHostType, MCPHostRegistry, MCPServerConfig
+from hatch.mcp_host_config.models import MCPServerConfigOmni, HOST_MODEL_REGISTRY
+from hatch.mcp_host_config.reporting import generate_conversion_report, display_report
 
 
 def get_hatch_version() -> str:
@@ -606,21 +608,41 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         env_dict = parse_env_vars(env)
         headers_dict = parse_headers(headers)
 
-        # Create server configuration (only include headers if URL is provided)
-        config_data = {
+        # Create Omni configuration (universal model)
+        omni_config_data = {
             'name': server_name,
             'command': command,
-            'args': args or [],
+            'args': args,  # Fixed: Don't convert None to [] - let Pydantic handle it
             'env': env_dict,
             'url': url
         }
 
-        # Only add headers if URL is provided (per MCPServerConfig validation)
+        # Only add headers if URL is provided
         if url and headers_dict:
-            config_data['headers'] = headers_dict
+            omni_config_data['headers'] = headers_dict
 
-        server_config = MCPServerConfig(**config_data)
+        # Create Omni model
+        omni_config = MCPServerConfigOmni(**omni_config_data)
 
+        # Convert to host-specific model using HOST_MODEL_REGISTRY
+        host_model_class = HOST_MODEL_REGISTRY.get(host_type)
+        if not host_model_class:
+            print(f"Error: No model registered for host '{host}'")
+            return 1
+
+        # Convert Omni to host-specific model
+        server_config = host_model_class.from_omni(omni_config)
+
+        # Generate conversion report
+        report = generate_conversion_report(
+            operation='create',
+            server_name=server_name,
+            target_host=host_type,
+            omni=omni_config,
+            dry_run=dry_run
+        )
+
+        # Display conversion report
         if dry_run:
             print(f"[DRY RUN] Would configure MCP server '{server_name}' on host '{host}':")
             print(f"[DRY RUN] Command: {command}")
@@ -633,7 +655,12 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             if headers_dict:
                 print(f"[DRY RUN] Headers: {headers_dict}")
             print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            # Display report in dry-run mode
+            display_report(report)
             return 0
+
+        # Display report before confirmation
+        display_report(report)
 
         # Confirm operation unless auto-approved
         if not request_confirmation(
