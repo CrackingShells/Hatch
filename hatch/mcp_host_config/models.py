@@ -535,6 +535,15 @@ class MCPServerConfigOmni(BaseModel):
     envFile: Optional[str] = None
     inputs: Optional[List[Dict]] = None
 
+    @field_validator('url')
+    @classmethod
+    def validate_url_format(cls, v):
+        """Validate URL format when provided."""
+        if v is not None:
+            if not v.startswith(('http://', 'https://')):
+                raise ValueError("URL must start with http:// or https://")
+        return v
+
 
 # HOST_MODEL_REGISTRY: Dictionary dispatch for host-specific models
 HOST_MODEL_REGISTRY: Dict[MCPHostType, type[MCPServerConfigBase]] = {
