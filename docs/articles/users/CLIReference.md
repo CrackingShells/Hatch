@@ -361,6 +361,78 @@ Syntax:
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 | `--no-backup` | flag | Skip backup creation before configuration | false |
 
+**Behavior**:
+
+The command now displays a **conversion report** showing exactly what fields will be configured on the target host. This provides transparency about which fields are supported by the host and what values will be set.
+
+The conversion report shows:
+- **UPDATED** fields: Fields being set with their new values (shown as `None --> value`)
+- **UNSUPPORTED** fields: Fields not supported by the target host (automatically filtered out)
+- **UNCHANGED** fields: Fields that already have the specified value (update operations only)
+
+**Example - Local Server Configuration**:
+
+```bash
+$ hatch mcp configure my-server --host claude-desktop --command python --args server.py --env API_KEY=secret
+
+Server 'my-server' created for host 'claude-desktop':
+  name: UPDATED None --> 'my-server'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['server.py']
+  env: UPDATED None --> {'API_KEY': 'secret'}
+  url: UPDATED None --> None
+
+Configure MCP server 'my-server' on host 'claude-desktop'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'my-server' on host 'claude-desktop'
+```
+
+**Example - Remote Server Configuration**:
+
+```bash
+$ hatch mcp configure api-server --host claude-desktop --url https://api.example.com --headers Auth=token
+
+Server 'api-server' created for host 'claude-desktop':
+  name: UPDATED None --> 'api-server'
+  command: UPDATED None --> None
+  args: UPDATED None --> None
+  env: UPDATED None --> {}
+  url: UPDATED None --> 'https://api.example.com'
+  headers: UPDATED None --> {'Auth': 'token'}
+
+Configure MCP server 'api-server' on host 'claude-desktop'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'api-server' on host 'claude-desktop'
+```
+
+**Example - Dry Run Mode**:
+
+```bash
+$ hatch mcp configure my-server --host gemini --command python --args server.py --dry-run
+
+[DRY RUN] Would configure MCP server 'my-server' on host 'gemini':
+[DRY RUN] Command: python
+[DRY RUN] Args: ['server.py']
+[DRY RUN] Backup: Enabled
+[DRY RUN] Preview of changes for server 'my-server':
+  name: UPDATED None --> 'my-server'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['server.py']
+  env: UPDATED None --> {}
+  url: UPDATED None --> None
+
+No changes were made.
+```
+
+**Host-Specific Field Support**:
+
+Different MCP hosts support different configuration fields. The conversion report automatically filters unsupported fields:
+
+- **Claude Desktop / Claude Code**: Supports universal fields only (command, args, env, url, headers, type)
+- **Cursor / LM Studio**: Supports universal fields + envFile
+- **VS Code**: Supports universal fields + envFile, inputs
+- **Gemini CLI**: Supports universal fields + 14 additional fields (cwd, timeout, trust, OAuth settings, etc.)
+
+When configuring a server with fields not supported by the target host, those fields are marked as UNSUPPORTED in the report and automatically excluded from the configuration.
+
 ### `hatch mcp sync`
 
 Synchronize MCP configurations across environments and hosts.
