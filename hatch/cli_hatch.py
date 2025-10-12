@@ -609,15 +609,17 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         headers_dict = parse_headers(headers)
 
         # Create Omni configuration (universal model)
-        omni_config_data = {
-            'name': server_name,
-            'command': command,
-            'args': args,  # Fixed: Don't convert None to [] - let Pydantic handle it
-            'env': env_dict,
-            'url': url
-        }
+        # Only include fields that have actual values to ensure model_dump(exclude_unset=True) works correctly
+        omni_config_data = {'name': server_name}
 
-        # Only add headers if URL is provided
+        if command is not None:
+            omni_config_data['command'] = command
+        if args is not None:
+            omni_config_data['args'] = args
+        if env_dict:
+            omni_config_data['env'] = env_dict
+        if url is not None:
+            omni_config_data['url'] = url
         if url and headers_dict:
             omni_config_data['headers'] = headers_dict
 
@@ -1582,14 +1584,21 @@ def main():
                                     pkg_name = package_names[i]
                                     try:
                                         # Convert MCPServerConfig to Omni model
-                                        omni_config = MCPServerConfigOmni(
-                                            name=server_config.name,
-                                            command=server_config.command,
-                                            args=server_config.args,
-                                            env=server_config.env,
-                                            url=server_config.url,
-                                            headers=getattr(server_config, 'headers', None)
-                                        )
+                                        # Only include fields that have actual values
+                                        omni_config_data = {'name': server_config.name}
+                                        if server_config.command is not None:
+                                            omni_config_data['command'] = server_config.command
+                                        if server_config.args is not None:
+                                            omni_config_data['args'] = server_config.args
+                                        if server_config.env:
+                                            omni_config_data['env'] = server_config.env
+                                        if server_config.url is not None:
+                                            omni_config_data['url'] = server_config.url
+                                        headers = getattr(server_config, 'headers', None)
+                                        if headers is not None:
+                                            omni_config_data['headers'] = headers
+
+                                        omni_config = MCPServerConfigOmni(**omni_config_data)
 
                                         # Convert to host-specific model
                                         host_config = host_model_class.from_omni(omni_config)
@@ -1749,14 +1758,21 @@ def main():
                                     continue
 
                                 # Convert to Omni model
-                                omni_config = MCPServerConfigOmni(
-                                    name=config.name,
-                                    command=config.command,
-                                    args=config.args,
-                                    env=config.env,
-                                    url=config.url,
-                                    headers=getattr(config, 'headers', None)
-                                )
+                                # Only include fields that have actual values
+                                omni_config_data = {'name': config.name}
+                                if config.command is not None:
+                                    omni_config_data['command'] = config.command
+                                if config.args is not None:
+                                    omni_config_data['args'] = config.args
+                                if config.env:
+                                    omni_config_data['env'] = config.env
+                                if config.url is not None:
+                                    omni_config_data['url'] = config.url
+                                headers = getattr(config, 'headers', None)
+                                if headers is not None:
+                                    omni_config_data['headers'] = headers
+
+                                omni_config = MCPServerConfigOmni(**omni_config_data)
 
                                 # Generate report
                                 report = generate_conversion_report(
@@ -1797,14 +1813,21 @@ def main():
                         for pkg_name, server_config in server_configs:
                             try:
                                 # Convert MCPServerConfig to Omni model
-                                omni_config = MCPServerConfigOmni(
-                                    name=server_config.name,
-                                    command=server_config.command,
-                                    args=server_config.args,
-                                    env=server_config.env,
-                                    url=server_config.url,
-                                    headers=getattr(server_config, 'headers', None)
-                                )
+                                # Only include fields that have actual values
+                                omni_config_data = {'name': server_config.name}
+                                if server_config.command is not None:
+                                    omni_config_data['command'] = server_config.command
+                                if server_config.args is not None:
+                                    omni_config_data['args'] = server_config.args
+                                if server_config.env:
+                                    omni_config_data['env'] = server_config.env
+                                if server_config.url is not None:
+                                    omni_config_data['url'] = server_config.url
+                                headers = getattr(server_config, 'headers', None)
+                                if headers is not None:
+                                    omni_config_data['headers'] = headers
+
+                                omni_config = MCPServerConfigOmni(**omni_config_data)
 
                                 # Convert to host-specific model
                                 host_config = host_model_class.from_omni(omni_config)
