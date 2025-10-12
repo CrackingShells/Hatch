@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "existing-server": {
+      "command": "python",
+      "args": ["server.py"],
+      "env": {
+        "API_KEY": "secret"
+      },
+      "timeout": 30,
+      "trust": true,
+      "cwd": "/path/to/server"
+    }
+  }
+}
+
