@@ -584,9 +584,11 @@ def parse_headers(headers_list: Optional[list]) -> dict:
 
 def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
                         env: Optional[list] = None, url: Optional[str] = None,
-                        headers: Optional[list] = None, no_backup: bool = False,
+                        headers: Optional[list] = None, timeout: Optional[int] = None,
+                        trust: bool = False, cwd: Optional[str] = None,
+                        env_file: Optional[str] = None, no_backup: bool = False,
                         dry_run: bool = False, auto_approve: bool = False):
-    """Handle 'hatch mcp configure' command."""
+    """Handle 'hatch mcp configure' command with host-specific arguments."""
     try:
         # Validate host type
         try:
@@ -602,6 +604,23 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
 
         if url and args:
             print("Error: --args can only be used with --command (local servers), not with --url (remote servers)")
+            return 1
+
+        # Validate host-specific arguments
+        if timeout is not None and host_type != MCPHostType.GEMINI:
+            print(f"Error: --timeout is only supported for Gemini host, not '{host}'")
+            return 1
+
+        if trust and host_type != MCPHostType.GEMINI:
+            print(f"Error: --trust is only supported for Gemini host, not '{host}'")
+            return 1
+
+        if cwd is not None and host_type != MCPHostType.GEMINI:
+            print(f"Error: --cwd is only supported for Gemini host, not '{host}'")
+            return 1
+
+        if env_file is not None and host_type not in (MCPHostType.CURSOR, MCPHostType.VSCODE, MCPHostType.LMSTUDIO):
+            print(f"Error: --env-file is only supported for Cursor, VS Code, and LM Studio hosts, not '{host}'")
             return 1
 
         # Parse environment variables and headers
@@ -622,6 +641,16 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             omni_config_data['url'] = url
         if url and headers_dict:
             omni_config_data['headers'] = headers_dict
+
+        # Host-specific fields
+        if timeout is not None:
+            omni_config_data['timeout'] = timeout
+        if trust:
+            omni_config_data['trust'] = trust
+        if cwd is not None:
+            omni_config_data['cwd'] = cwd
+        if env_file is not None:
+            omni_config_data['envFile'] = env_file
 
         # Create Omni model
         omni_config = MCPServerConfigOmni(**omni_config_data)
@@ -1144,6 +1173,13 @@ def main():
     mcp_configure_parser.add_argument("--args", nargs="*", help="Arguments for the MCP server command (only with --command)")
     mcp_configure_parser.add_argument("--env-var", action="append", help="Environment variables (format: KEY=VALUE)")
     mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
+
+    # Host-specific arguments
+    mcp_configure_parser.add_argument("--timeout", type=int, help="Request timeout in milliseconds (Gemini only)")
+    mcp_configure_parser.add_argument("--trust", action="store_true", help="Bypass tool call confirmations (Gemini only)")
+    mcp_configure_parser.add_argument("--cwd", help="Working directory for stdio transport (Gemini only)")
+    mcp_configure_parser.add_argument("--env-file", help="Path to environment file (Cursor, VS Code only)")
+
     mcp_configure_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before configuration")
     mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
     mcp_configure_parser.add_argument("--auto-approve", action="store_true", help="Skip confirmation prompts")
@@ -1938,8 +1974,10 @@ def main():
         elif args.mcp_command == "configure":
             return handle_mcp_configure(
                 args.host, args.server_name, args.server_command, args.args,
-                getattr(args, 'env_var', None), args.url, args.headers, args.no_backup,
-                args.dry_run, args.auto_approve
+                getattr(args, 'env_var', None), args.url, args.headers,
+                getattr(args, 'timeout', None), getattr(args, 'trust', False),
+                getattr(args, 'cwd', None), getattr(args, 'env_file', None),
+                args.no_backup, args.dry_run, args.auto_approve
             )
 
         elif args.mcp_command == "remove":

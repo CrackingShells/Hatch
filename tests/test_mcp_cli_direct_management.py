@@ -40,16 +40,17 @@ class TestMCPConfigureCommand(unittest.TestCase):
                     try:
                         result = main()
                         # If main() returns without SystemExit, check the handler was called
+                        # Updated to include new host-specific parameters: timeout, trust, cwd, env_file
                         mock_handler.assert_called_once_with(
                             'claude-desktop', 'weather-server', 'python', ['weather.py'],
-                            None, None, None, False, False, False
+                            None, None, None, None, False, None, None, False, False, False
                         )
                     except SystemExit as e:
                         # If SystemExit is raised, it should be 0 (success) and handler should have been called
                         if e.code == 0:
                             mock_handler.assert_called_once_with(
                                 'claude-desktop', 'weather-server', 'python', ['weather.py'],
-                                None, None, None, False, False, False
+                                None, None, None, None, False, None, None, False, False, False
                             )
                         else:
                             self.fail(f"main() exited with code {e.code}, expected 0")
@@ -69,10 +70,11 @@ class TestMCPConfigureCommand(unittest.TestCase):
                 with patch('hatch.cli_hatch.handle_mcp_configure', return_value=0) as mock_handler:
                     try:
                         main()
+                        # Updated to include new host-specific parameters: timeout, trust, cwd, env_file
                         mock_handler.assert_called_once_with(
                             'cursor', 'file-server', None, None,
                             ['API_KEY=secret', 'DEBUG=true'], 'http://localhost:8080',
-                            ['Authorization=Bearer token'], True, True, True
+                            ['Authorization=Bearer token'], None, False, None, None, True, True, True
                         )
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
