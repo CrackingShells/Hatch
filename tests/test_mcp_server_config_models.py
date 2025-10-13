@@ -124,20 +124,23 @@ class TestMCPServerConfigModels(unittest.TestCase):
     
     @regression_test
     def test_mcp_server_config_no_future_extension_fields(self):
-        """Test that future extension fields are not present."""
-        # These fields should not be accepted (removed in v2)
+        """Test that extra fields are allowed for host-specific extensions."""
+        # Current design allows extra fields to support host-specific configurations
+        # (e.g., Gemini's timeout, VS Code's envFile, etc.)
         config_data = {
             "command": "python",
-            "timeout": 30,  # Should be rejected
-            "retry_attempts": 3,  # Should be rejected
-            "ssl_verify": True  # Should be rejected
+            "timeout": 30,  # Allowed (host-specific field)
+            "retry_attempts": 3,  # Allowed (host-specific field)
+            "ssl_verify": True  # Allowed (host-specific field)
         }
-        
-        with self.assertRaises(ValidationError) as context:
-            MCPServerConfig(**config_data)
-        
-        # Should fail due to extra fields being forbidden
-        self.assertIn("Extra inputs are not permitted", str(context.exception))
+
+        # Should NOT raise ValidationError (extra="allow")
+        config = MCPServerConfig(**config_data)
+
+        # Verify core fields are set correctly
+        self.assertEqual(config.command, "python")
+
+        # Note: In Phase 3B, strict validation will be enforced in host-specific models
     
     @regression_test
     def test_mcp_server_config_command_empty_validation(self):

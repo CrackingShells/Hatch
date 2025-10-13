@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "existing-server": {
+      "command": "python",
+      "args": ["server.py"],
+      "env": {
+        "API_KEY": "secret"
+      }
+    }
+  }
+}
+

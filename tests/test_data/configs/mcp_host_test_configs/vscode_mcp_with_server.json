@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "existing-server": {
+      "command": "python",
+      "args": ["-m", "server"],
+      "env": {
+        "DEBUG": "true"
+      },
+      "envFile": ".env"
+    }
+  }
+}
+

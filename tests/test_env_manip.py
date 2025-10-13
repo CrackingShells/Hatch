@@ -113,14 +113,14 @@ class PackageEnvironmentTests(unittest.TestCase):
                                         {
                                             "name": dep["name"],
                                             "version_constraint": dep.get("version_constraint", "")
-                                        } for dep in metadata.get("hatch_dependencies", [])
+                                        } for dep in metadata.get("dependencies", {}).get("hatch", [])
                                     ],
                                     "python_dependencies_added": [
                                         {
                                             "name": dep["name"],
                                             "version_constraint": dep.get("version_constraint", ""),
                                             "package_manager": dep.get("package_manager", "pip")
-                                        } for dep in metadata.get("python_dependencies", [])
+                                        } for dep in metadata.get("dependencies", {}).get("python", [])
                                     ],
                                     "hatch_dependencies_removed": [],
                                     "hatch_dependencies_modified": [],
