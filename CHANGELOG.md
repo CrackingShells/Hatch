@@ -1,3 +1,29 @@
+## [0.7.0-dev.5](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.4...v0.7.0-dev.5) (2025-10-13)
+
+
+### Features
+
+* add host-specific CLI arguments for MCP configure command ([a0e840d](https://github.com/CrackingShells/Hatch/commit/a0e840d00db94018fed6f8e22c6f39985b5a7506))
+* add host-specific MCP configuration models with type field ([63e78ed](https://github.com/CrackingShells/Hatch/commit/63e78ede4cdad66f8f4a5c1682835e55232f6f26))
+* add user feedback reporting system for MCP configuration ([b15d48a](https://github.com/CrackingShells/Hatch/commit/b15d48a95f62dca6d66b10ee9a64b9015d62526e))
+* add user feedback reporting to package add/sync commands ([a6ad932](https://github.com/CrackingShells/Hatch/commit/a6ad932b894f519d71472b0032c7f19b50979177))
+* implement ALL host-specific CLI arguments with new reporting ([75943b9](https://github.com/CrackingShells/Hatch/commit/75943b98454c35f196e01f1a3fa0b1ed995ab940))
+* integrate Pydantic model hierarchy into CLI handlers ([eca730a](https://github.com/CrackingShells/Hatch/commit/eca730a6b632eab7dd40379eeed67f8f5f390297))
+
+
+### Bug Fixes
+
+* **cli:** resolve argparse naming conflict ([83ab933](https://github.com/CrackingShells/Hatch/commit/83ab933e12a8d8051538eac9812c8f1a3ef3b64d))
+* correct report display logic to exclude unset fields ([5ba2076](https://github.com/CrackingShells/Hatch/commit/5ba2076ea0df6dfb21536dddee712089fd2e18bd))
+* **tests:** add missing mock ([78cd421](https://github.com/CrackingShells/Hatch/commit/78cd4215960b3270ed2f9767dc96bd1522a03f45))
+* **tests:** correct dependency dummy metadata extraction ([9573e45](https://github.com/CrackingShells/Hatch/commit/9573e452be9ff8b1669ff5e1d85bf40aff29ae29))
+* **tests:** update simple_dep_pkg to use local base_pkg ([b1bf8bd](https://github.com/CrackingShells/Hatch/commit/b1bf8bddcdc7c00df082a55b71db39de5c9a7954))
+
+
+### Documentation
+
+* update CLI reference for MCP host configuration integration ([ef1b7ca](https://github.com/CrackingShells/Hatch/commit/ef1b7ca8765dd8d983f634d4789a37d9855b443c))
+
 ## [0.7.0-dev.4](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.3...v0.7.0-dev.4) (2025-10-02)
 
 
