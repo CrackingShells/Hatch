@@ -1,5 +1,7 @@
 # For this project
 envs/
+.augment/
+.github/instructions/
 
 # vvvvvvv  Default Python Ignore vvvvvvvv
 # Byte-compiled / optimized / DLL files
