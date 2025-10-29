@@ -650,6 +650,18 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         # The reporting system will show unsupported fields as "UNSUPPORTED" in the conversion report.
         # This allows users to see which fields are not supported by their target host without blocking the operation.
 
+        # Check if server exists (for partial update support)
+        manager = MCPHostConfigurationManager()
+        existing_config = manager.get_server_config(host, server_name)
+        is_update = existing_config is not None
+
+        # Conditional validation: Create requires command OR url, update does not
+        if not is_update:
+            # Create operation: require command or url
+            if not command and not url:
+                print(f"Error: When creating a new server, you must provide either --command (for local servers) or --url (for remote servers)")
+                return 1
+
         # Parse environment variables, headers, and inputs
         env_dict = parse_env_vars(env)
         headers_dict = parse_headers(headers)
@@ -667,7 +679,7 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             omni_config_data['env'] = env_dict
         if url is not None:
             omni_config_data['url'] = url
-        if url and headers_dict:
+        if headers_dict:
             omni_config_data['headers'] = headers_dict
 
         # Host-specific fields (Gemini)
@@ -692,6 +704,26 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         if inputs_list is not None:
             omni_config_data['inputs'] = inputs_list
 
+        # Partial update merge logic
+        if is_update:
+            # Merge with existing configuration
+            existing_data = existing_config.model_dump(exclude_unset=True, exclude={'name'})
+
+            # Handle command/URL switching behavior
+            # If switching from command to URL: clear command-based fields
+            if url is not None and existing_config.command is not None:
+                existing_data.pop('command', None)
+                existing_data.pop('args', None)
+
+            # If switching from URL to command: clear URL-based fields
+            if command is not None and existing_config.url is not None:
+                existing_data.pop('url', None)
+                existing_data.pop('headers', None)
+
+            # Merge: new values override existing values
+            merged_data = {**existing_data, **omni_config_data}
+            omni_config_data = merged_data
+
         # Create Omni model
         omni_config = MCPServerConfigOmni(**omni_config_data)
 
@@ -706,10 +738,11 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
 
         # Generate conversion report
         report = generate_conversion_report(
-            operation='create',
+            operation='update' if is_update else 'create',
             server_name=server_name,
             target_host=host_type,
             omni=omni_config,
+            old_config=existing_config if is_update else None,
             dry_run=dry_run
         )
 
