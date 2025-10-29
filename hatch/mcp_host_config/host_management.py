@@ -180,8 +180,32 @@ class MCPHostConfigurationManager:
                 hostname=hostname,
                 error_message=str(e)
             )
-    
-    def remove_server(self, server_name: str, hostname: str, 
+
+    def get_server_config(self, hostname: str, server_name: str) -> Optional[MCPServerConfig]:
+        """
+        Get existing server configuration from host.
+
+        Args:
+            hostname: The MCP host to query (e.g., 'claude-desktop', 'cursor')
+            server_name: Name of the server to retrieve
+
+        Returns:
+            MCPServerConfig if server exists, None otherwise
+        """
+        try:
+            host_type = MCPHostType(hostname)
+            strategy = self.host_registry.get_strategy(host_type)
+            current_config = strategy.read_configuration()
+
+            if server_name in current_config.servers:
+                return current_config.servers[server_name]
+            return None
+
+        except Exception as e:
+            logger.debug(f"Failed to retrieve server config for {server_name} on {hostname}: {e}")
+            return None
+
+    def remove_server(self, server_name: str, hostname: str,
                      no_backup: bool = False) -> ConfigurationResult:
         """Remove MCP server from specified host."""
         try:
