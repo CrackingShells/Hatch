@@ -568,13 +568,13 @@ def parse_env_vars(env_list: Optional[list]) -> dict:
 
     return env_dict
 
-def parse_headers(headers_list: Optional[list]) -> dict:
+def parse_header(header_list: Optional[list]) -> dict:
     """Parse HTTP headers from command line format."""
-    if not headers_list:
+    if not header_list:
         return {}
 
     headers_dict = {}
-    for header in headers_list:
+    for header in header_list:
         if '=' not in header:
             print(f"Warning: Invalid header format '{header}'. Expected KEY=VALUE")
             continue
@@ -618,7 +618,7 @@ def parse_inputs(inputs_list: Optional[list]) -> Optional[list]:
 
 def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
                         env: Optional[list] = None, url: Optional[str] = None,
-                        headers: Optional[list] = None, timeout: Optional[int] = None,
+                        header: Optional[list] = None, timeout: Optional[int] = None,
                         trust: bool = False, cwd: Optional[str] = None,
                         env_file: Optional[str] = None, http_url: Optional[str] = None,
                         include_tools: Optional[list] = None, exclude_tools: Optional[list] = None,
@@ -645,8 +645,8 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
                 return 1
 
         # Validate argument dependencies
-        if command and headers:
-            print("Error: --headers can only be used with --url or --http-url (remote servers), not with --command (local servers)")
+        if command and header:
+            print("Error: --header can only be used with --url or --http-url (remote servers), not with --command (local servers)")
             return 1
 
         if (url or http_url) and args:
@@ -671,7 +671,7 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
 
         # Parse environment variables, headers, and inputs
         env_dict = parse_env_vars(env)
-        headers_dict = parse_headers(headers)
+        headers_dict = parse_header(header)
         inputs_list = parse_inputs(inputs)
 
         # Create Omni configuration (universal model)
@@ -1268,7 +1268,7 @@ def main():
 
     mcp_configure_parser.add_argument("--args", nargs="*", help="Arguments for the MCP server command (only with --command)")
     mcp_configure_parser.add_argument("--env-var", action="append", help="Environment variables (format: KEY=VALUE)")
-    mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
+    mcp_configure_parser.add_argument("--header", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
 
     # Host-specific arguments (Gemini)
     mcp_configure_parser.add_argument("--timeout", type=int, help="Request timeout in milliseconds (Gemini)")
@@ -2077,7 +2077,7 @@ def main():
         elif args.mcp_command == "configure":
             return handle_mcp_configure(
                 args.host, args.server_name, args.server_command, args.args,
-                getattr(args, 'env_var', None), args.url, args.headers,
+                getattr(args, 'env_var', None), args.url, args.header,
                 getattr(args, 'timeout', None), getattr(args, 'trust', False),
                 getattr(args, 'cwd', None), getattr(args, 'env_file', None),
                 getattr(args, 'http_url', None), getattr(args, 'include_tools', None),
