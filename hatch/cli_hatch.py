@@ -10,6 +10,7 @@ This module provides the CLI functionality for Hatch, allowing users to:
 import argparse
 import json
 import logging
+import shlex
 import sys
 from pathlib import Path
 from typing import Optional, List
@@ -680,7 +681,19 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         if command is not None:
             omni_config_data['command'] = command
         if args is not None:
-            omni_config_data['args'] = args
+            # Process args with shlex.split() to handle quoted strings (Issue 4)
+            processed_args = []
+            for arg in args:
+                if arg:  # Skip empty strings
+                    try:
+                        # Split quoted strings into individual arguments
+                        split_args = shlex.split(arg)
+                        processed_args.extend(split_args)
+                    except ValueError as e:
+                        # Handle invalid quotes gracefully
+                        print(f"Warning: Invalid quote in argument '{arg}': {e}")
+                        processed_args.append(arg)
+            omni_config_data['args'] = processed_args if processed_args else None
         if env_dict:
             omni_config_data['env'] = env_dict
         if url is not None:
