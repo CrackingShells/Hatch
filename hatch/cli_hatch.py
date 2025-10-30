@@ -646,11 +646,11 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
 
         # Validate argument dependencies
         if command and headers:
-            print("Error: --headers can only be used with --url (remote servers), not with --command (local servers)")
+            print("Error: --headers can only be used with --url or --http-url (remote servers), not with --command (local servers)")
             return 1
 
-        if url and args:
-            print("Error: --args can only be used with --command (local servers), not with --url (remote servers)")
+        if (url or http_url) and args:
+            print("Error: --args can only be used with --command (local servers), not with --url or --http-url (remote servers)")
             return 1
 
         # NOTE: We do NOT validate host-specific arguments here.
@@ -662,11 +662,11 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         existing_config = manager.get_server_config(host, server_name)
         is_update = existing_config is not None
 
-        # Conditional validation: Create requires command OR url, update does not
+        # Conditional validation: Create requires command OR url OR http_url, update does not
         if not is_update:
-            # Create operation: require command or url
-            if not command and not url:
-                print(f"Error: When creating a new server, you must provide either --command (for local servers) or --url (for remote servers)")
+            # Create operation: require command, url, or http_url
+            if not command and not url and not http_url:
+                print(f"Error: When creating a new server, you must provide either --command (for local servers), --url (for SSE remote servers), or --http-url (for HTTP remote servers, Gemini only)")
                 return 1
 
         # Parse environment variables, headers, and inputs
@@ -728,16 +728,17 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             # Merge with existing configuration
             existing_data = existing_config.model_dump(exclude_unset=True, exclude={'name'})
 
-            # Handle command/URL switching behavior
-            # If switching from command to URL: clear command-based fields
-            if url is not None and existing_config.command is not None:
+            # Handle command/URL/httpUrl switching behavior
+            # If switching from command to URL or httpUrl: clear command-based fields
+            if (url is not None or http_url is not None) and existing_config.command is not None:
                 existing_data.pop('command', None)
                 existing_data.pop('args', None)
                 existing_data.pop('type', None)  # Clear type field when switching transports (Issue 1)
 
-            # If switching from URL to command: clear URL-based fields
-            if command is not None and existing_config.url is not None:
+            # If switching from URL/httpUrl to command: clear URL-based fields
+            if command is not None and (existing_config.url is not None or getattr(existing_config, 'httpUrl', None) is not None):
                 existing_data.pop('url', None)
+                existing_data.pop('httpUrl', None)
                 existing_data.pop('headers', None)
                 existing_data.pop('type', None)  # Clear type field when switching transports (Issue 1)
 
@@ -1262,7 +1263,8 @@ def main():
     # Create mutually exclusive group for server type
     server_type_group = mcp_configure_parser.add_mutually_exclusive_group(required=True)
     server_type_group.add_argument("--command", dest="server_command", help="Command to execute the MCP server (for local servers)")
-    server_type_group.add_argument("--url", help="Server URL for remote MCP servers")
+    server_type_group.add_argument("--url", help="Server URL for remote MCP servers (SSE transport)")
+    server_type_group.add_argument("--http-url", help="HTTP streaming endpoint URL (Gemini only)")
 
     mcp_configure_parser.add_argument("--args", nargs="*", help="Arguments for the MCP server command (only with --command)")
     mcp_configure_parser.add_argument("--env-var", action="append", help="Environment variables (format: KEY=VALUE)")
@@ -1272,7 +1274,6 @@ def main():
     mcp_configure_parser.add_argument("--timeout", type=int, help="Request timeout in milliseconds (Gemini)")
     mcp_configure_parser.add_argument("--trust", action="store_true", help="Bypass tool call confirmations (Gemini)")
     mcp_configure_parser.add_argument("--cwd", help="Working directory for stdio transport (Gemini)")
-    mcp_configure_parser.add_argument("--http-url", help="HTTP streaming endpoint URL (Gemini)")
     mcp_configure_parser.add_argument("--include-tools", nargs="*", help="Tool allowlist - only these tools will be available (Gemini)")
     mcp_configure_parser.add_argument("--exclude-tools", nargs="*", help="Tool blocklist - these tools will be excluded (Gemini)")
 
