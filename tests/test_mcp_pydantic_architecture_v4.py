@@ -556,6 +556,48 @@ class TestFromOmniConversion(unittest.TestCase):
         self.assertEqual(claude.env["API_KEY"], "test")
 
 
+class TestGeminiDualTransport(unittest.TestCase):
+    """Test suite for Gemini dual-transport validation (Issue 3)."""
+
+    @regression_test
+    def test_gemini_sse_transport_with_url(self):
+        """Test Gemini SSE transport uses url field."""
+        config = MCPServerConfigGemini(
+            name="gemini-server",
+            type="sse",
+            url="https://api.example.com/mcp"
+        )
+
+        self.assertEqual(config.type, "sse")
+        self.assertEqual(config.url, "https://api.example.com/mcp")
+        self.assertIsNone(config.httpUrl)
+
+    @regression_test
+    def test_gemini_http_transport_with_httpUrl(self):
+        """Test Gemini HTTP transport uses httpUrl field."""
+        config = MCPServerConfigGemini(
+            name="gemini-server",
+            type="http",
+            httpUrl="https://api.example.com/mcp"
+        )
+
+        self.assertEqual(config.type, "http")
+        self.assertEqual(config.httpUrl, "https://api.example.com/mcp")
+        self.assertIsNone(config.url)
+
+    @regression_test
+    def test_gemini_mutual_exclusion_url_and_httpUrl(self):
+        """Test Gemini rejects both url and httpUrl simultaneously."""
+        with self.assertRaises(ValidationError) as context:
+            MCPServerConfigGemini(
+                name="gemini-server",
+                url="https://api.example.com/sse",
+                httpUrl="https://api.example.com/http"
+            )
+
+        self.assertIn("Cannot specify both 'url' and 'httpUrl'", str(context.exception))
+
+
 if __name__ == '__main__':
     unittest.main()
 
