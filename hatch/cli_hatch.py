@@ -733,11 +733,13 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             if url is not None and existing_config.command is not None:
                 existing_data.pop('command', None)
                 existing_data.pop('args', None)
+                existing_data.pop('type', None)  # Clear type field when switching transports (Issue 1)
 
             # If switching from URL to command: clear URL-based fields
             if command is not None and existing_config.url is not None:
                 existing_data.pop('url', None)
                 existing_data.pop('headers', None)
+                existing_data.pop('type', None)  # Clear type field when switching transports (Issue 1)
 
             # Merge: new values override existing values
             merged_data = {**existing_data, **omni_config_data}
