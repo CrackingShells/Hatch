@@ -118,7 +118,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     args=None,
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     timeout=60,  # Only timeout provided
                     trust=False,
                     cwd=None,
@@ -172,7 +172,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     args=None,
                     env=["NEW_KEY=new_value"],  # Only env provided
                     url=None,
-                    headers=None,
+                    header=None,
                     timeout=None,
                     trust=False,
                     cwd=None,
@@ -217,7 +217,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     args=None,
                     env=None,
                     url=None,  # No url
-                    headers=None,
+                    header=None,
                     timeout=60,
                     trust=False,
                     cwd=None,
@@ -265,7 +265,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     args=None,
                     env=None,
                     url=None,  # No url
-                    headers=None,
+                    header=None,
                     timeout=60,  # Only timeout
                     trust=False,
                     cwd=None,
@@ -319,7 +319,7 @@ class TestFieldPreservation(unittest.TestCase):
                     args=None,
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     timeout=60,  # Only timeout updated
                     trust=False,
                     cwd=None,
@@ -370,7 +370,7 @@ class TestFieldPreservation(unittest.TestCase):
                     args=["new.py"],  # Args updated
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     timeout=None,
                     trust=False,
                     cwd=None,
@@ -415,7 +415,7 @@ class TestFieldPreservation(unittest.TestCase):
                     args=None,
                     env=None,
                     url=None,  # URL not provided
-                    headers=["Authorization=Bearer new_token"],  # Headers updated
+                    header=["Authorization=Bearer new_token"],  # Headers updated
                     timeout=None,
                     trust=False,
                     cwd=None,
@@ -468,7 +468,7 @@ class TestCommandUrlSwitching(unittest.TestCase):
                     args=None,
                     env=None,
                     url="http://localhost:8080",  # Provide URL
-                    headers=["Authorization=Bearer token"],  # Provide headers
+                    header=["Authorization=Bearer token"],  # Provide headers
                     timeout=None,
                     trust=False,
                     cwd=None,
@@ -521,7 +521,7 @@ class TestCommandUrlSwitching(unittest.TestCase):
                     args=["server.js"],  # Provide args
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     timeout=None,
                     trust=False,
                     cwd=None,
@@ -583,7 +583,7 @@ class TestPartialUpdateIntegration(unittest.TestCase):
                         args=None,
                         env=None,
                         url=None,
-                        headers=None,
+                        header=None,
                         timeout=60,  # Update timeout only
                         trust=False,
                         cwd=None,
@@ -634,7 +634,7 @@ class TestPartialUpdateIntegration(unittest.TestCase):
                         args=None,
                         env=None,
                         url="http://localhost:8080",
-                        headers=["Authorization=Bearer token"],
+                        header=["Authorization=Bearer token"],
                         timeout=None,
                         trust=False,
                         cwd=None,
@@ -679,7 +679,7 @@ class TestBackwardCompatibility(unittest.TestCase):
                     args=["server.py"],
                     env=["API_KEY=secret"],
                     url=None,
-                    headers=None,
+                    header=None,
                     timeout=30,
                     trust=False,
                     cwd=None,
@@ -721,7 +721,7 @@ class TestBackwardCompatibility(unittest.TestCase):
                     args=None,
                     env=None,
                     url=None,  # No url
-                    headers=None,
+                    header=None,
                     timeout=60,
                     trust=False,
                     cwd=None,
@@ -779,7 +779,7 @@ class TestTypeFieldUpdating(unittest.TestCase):
                     args=None,
                     env=None,
                     url='http://localhost:8080',
-                    headers=None,
+                    header=None,
                     timeout=None,
                     trust=False,
                     cwd=None,
@@ -829,7 +829,7 @@ class TestTypeFieldUpdating(unittest.TestCase):
                     args=['server.py'],
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     timeout=None,
                     trust=False,
                     cwd=None,
