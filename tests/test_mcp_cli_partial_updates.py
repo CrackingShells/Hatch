@@ -460,9 +460,9 @@ class TestCommandUrlSwitching(unittest.TestCase):
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
             with patch('hatch.cli_hatch.print') as mock_print:
-                # Execute: Switch to URL-based
+                # Execute: Switch to URL-based (use gemini which supports URL)
                 result = handle_mcp_configure(
-                    host="claude-desktop",
+                    host="gemini",
                     server_name="test-server",
                     command=None,
                     args=None,
@@ -493,6 +493,8 @@ class TestCommandUrlSwitching(unittest.TestCase):
                 # Command-based fields cleared
                 self.assertIsNone(omni_config.command)
                 self.assertIsNone(omni_config.args)
+                # Type field updated to 'sse' (Issue 1)
+                self.assertEqual(omni_config.type, "sse")
 
     @regression_test
     def test_configure_switch_url_to_command(self):
@@ -511,9 +513,9 @@ class TestCommandUrlSwitching(unittest.TestCase):
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
             with patch('hatch.cli_hatch.print') as mock_print:
-                # Execute: Switch to command-based
+                # Execute: Switch to command-based (use gemini which supports both)
                 result = handle_mcp_configure(
-                    host="claude-desktop",
+                    host="gemini",
                     server_name="test-server",
                     command="node",  # Provide command
                     args=["server.js"],  # Provide args
@@ -544,6 +546,8 @@ class TestCommandUrlSwitching(unittest.TestCase):
                 # URL-based fields cleared
                 self.assertIsNone(omni_config.url)
                 self.assertIsNone(omni_config.headers)
+                # Type field updated to 'stdio' (Issue 1)
+                self.assertEqual(omni_config.type, "stdio")
 
 
 class TestPartialUpdateIntegration(unittest.TestCase):
@@ -744,6 +748,110 @@ class TestBackwardCompatibility(unittest.TestCase):
                     "creat" in error_message.lower() or "new" in error_message.lower(),
                     f"Error message should clarify this is for creating: {error_message}"
                 )
+
+
+class TestTypeFieldUpdating(unittest.TestCase):
+    """Test suite for type field updates during transport switching (Issue 1)."""
+
+    @regression_test
+    def test_type_field_updates_command_to_url(self):
+        """Test type field updates from 'stdio' to 'sse' when switching to URL."""
+        # Setup: Create existing command-based server with type='stdio'
+        existing_server = MCPServerConfig(
+            name="test-server",
+            type="stdio",
+            command="python",
+            args=["server.py"]
+        )
+
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager_class.return_value = mock_manager
+            mock_manager.get_server_config.return_value = existing_server
+            mock_manager.configure_server.return_value = MagicMock(success=True)
+
+            with patch('hatch.cli_hatch.print'):
+                # Execute: Switch to URL-based configuration
+                result = handle_mcp_configure(
+                    host='gemini',
+                    server_name='test-server',
+                    command=None,
+                    args=None,
+                    env=None,
+                    url='http://localhost:8080',
+                    headers=None,
+                    timeout=None,
+                    trust=False,
+                    cwd=None,
+                    env_file=None,
+                    http_url=None,
+                    include_tools=None,
+                    exclude_tools=None,
+                    inputs=None,
+                    no_backup=False,
+                    dry_run=False,
+                    auto_approve=True
+                )
+
+                # Validate: Should succeed
+                self.assertEqual(result, 0)
+
+                # Validate: Type field updated to 'sse'
+                call_args = mock_manager.configure_server.call_args
+                server_config = call_args.kwargs['server_config']
+                self.assertEqual(server_config.type, "sse")
+                self.assertIsNone(server_config.command)
+                self.assertEqual(server_config.url, "http://localhost:8080")
+
+    @regression_test
+    def test_type_field_updates_url_to_command(self):
+        """Test type field updates from 'sse' to 'stdio' when switching to command."""
+        # Setup: Create existing URL-based server with type='sse'
+        existing_server = MCPServerConfig(
+            name="test-server",
+            type="sse",
+            url="http://localhost:8080",
+            headers={"Authorization": "Bearer token"}
+        )
+
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager_class.return_value = mock_manager
+            mock_manager.get_server_config.return_value = existing_server
+            mock_manager.configure_server.return_value = MagicMock(success=True)
+
+            with patch('hatch.cli_hatch.print'):
+                # Execute: Switch to command-based configuration
+                result = handle_mcp_configure(
+                    host='gemini',
+                    server_name='test-server',
+                    command='python',
+                    args=['server.py'],
+                    env=None,
+                    url=None,
+                    headers=None,
+                    timeout=None,
+                    trust=False,
+                    cwd=None,
+                    env_file=None,
+                    http_url=None,
+                    include_tools=None,
+                    exclude_tools=None,
+                    inputs=None,
+                    no_backup=False,
+                    dry_run=False,
+                    auto_approve=True
+                )
+
+                # Validate: Should succeed
+                self.assertEqual(result, 0)
+
+                # Validate: Type field updated to 'stdio'
+                call_args = mock_manager.configure_server.call_args
+                server_config = call_args.kwargs['server_config']
+                self.assertEqual(server_config.type, "stdio")
+                self.assertEqual(server_config.command, "python")
+                self.assertIsNone(server_config.url)
 
 
 if __name__ == '__main__':
