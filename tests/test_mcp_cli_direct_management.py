@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from hatch.cli_hatch import (
     main, handle_mcp_configure, handle_mcp_remove, handle_mcp_remove_server,
-    handle_mcp_remove_host, parse_env_vars, parse_headers
+    handle_mcp_remove_host, parse_env_vars, parse_header
 )
 from hatch.mcp_host_config.models import MCPHostType, MCPServerConfig
 from wobble import regression_test, integration_test
@@ -61,7 +61,7 @@ class TestMCPConfigureCommand(unittest.TestCase):
         test_args = [
             'hatch', 'mcp', 'configure', 'file-server', '--host', 'cursor', '--url', 'http://localhost:8080',
             '--env-var', 'API_KEY=secret', '--env-var', 'DEBUG=true',
-            '--headers', 'Authorization=Bearer token',
+            '--header', 'Authorization=Bearer token',
             '--no-backup', '--dry-run', '--auto-approve'
         ]
 
@@ -104,21 +104,21 @@ class TestMCPConfigureCommand(unittest.TestCase):
             mock_print.assert_called()
     
     @regression_test
-    def test_parse_headers(self):
+    def test_parse_header(self):
         """Test HTTP headers parsing utility."""
         # Valid headers
         headers_list = ['Authorization=Bearer token', 'Content-Type=application/json']
-        result = parse_headers(headers_list)
-        
+        result = parse_header(headers_list)
+
         expected = {
             'Authorization': 'Bearer token',
             'Content-Type': 'application/json'
         }
         self.assertEqual(result, expected)
-        
+
         # Empty list
-        self.assertEqual(parse_headers(None), {})
-        self.assertEqual(parse_headers([]), {})
+        self.assertEqual(parse_header(None), {})
+        self.assertEqual(parse_header([]), {})
     
     @integration_test(scope="component")
     def test_configure_invalid_host(self):

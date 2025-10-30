@@ -1,5 +1,8 @@
 # For this project
 envs/
+.augment/
+.github/instructions/
+Laghari/
 
 # vvvvvvv  Default Python Ignore vvvvvvvv
 # Byte-compiled / optimized / DLL files

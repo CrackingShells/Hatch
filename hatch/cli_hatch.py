@@ -10,6 +10,7 @@ This module provides the CLI functionality for Hatch, allowing users to:
 import argparse
 import json
 import logging
+import shlex
 import sys
 from pathlib import Path
 from typing import Optional, List
@@ -567,13 +568,13 @@ def parse_env_vars(env_list: Optional[list]) -> dict:
 
     return env_dict
 
-def parse_headers(headers_list: Optional[list]) -> dict:
+def parse_header(header_list: Optional[list]) -> dict:
     """Parse HTTP headers from command line format."""
-    if not headers_list:
+    if not header_list:
         return {}
 
     headers_dict = {}
-    for header in headers_list:
+    for header in header_list:
         if '=' not in header:
             print(f"Warning: Invalid header format '{header}'. Expected KEY=VALUE")
             continue
@@ -582,7 +583,7 @@ def parse_headers(headers_list: Optional[list]) -> dict:
 
     return headers_dict
 
-def parse_inputs(inputs_list: Optional[list]) -> Optional[list]:
+def parse_input(input_list: Optional[list]) -> Optional[list]:
     """Parse VS Code input variable definitions from command line format.
 
     Format: type,id,description[,password=true]
@@ -591,11 +592,11 @@ def parse_inputs(inputs_list: Optional[list]) -> Optional[list]:
     Returns:
         List of input variable definition dictionaries, or None if no inputs provided.
     """
-    if not inputs_list:
+    if not input_list:
         return None
 
     parsed_inputs = []
-    for input_str in inputs_list:
+    for input_str in input_list:
         parts = [p.strip() for p in input_str.split(',')]
         if len(parts) < 3:
             print(f"Warning: Invalid input format '{input_str}'. Expected: type,id,description[,password=true]")
@@ -617,11 +618,11 @@ def parse_inputs(inputs_list: Optional[list]) -> Optional[list]:
 
 def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
                         env: Optional[list] = None, url: Optional[str] = None,
-                        headers: Optional[list] = None, timeout: Optional[int] = None,
+                        header: Optional[list] = None, timeout: Optional[int] = None,
                         trust: bool = False, cwd: Optional[str] = None,
                         env_file: Optional[str] = None, http_url: Optional[str] = None,
                         include_tools: Optional[list] = None, exclude_tools: Optional[list] = None,
-                        inputs: Optional[list] = None, no_backup: bool = False,
+                        input: Optional[list] = None, no_backup: bool = False,
                         dry_run: bool = False, auto_approve: bool = False):
     """Handle 'hatch mcp configure' command with ALL host-specific arguments.
 
@@ -637,23 +638,41 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
             return 1
 
+        # Validate Claude Desktop/Code transport restrictions (Issue 2)
+        if host_type in (MCPHostType.CLAUDE_DESKTOP, MCPHostType.CLAUDE_CODE):
+            if url is not None:
+                print(f"Error: {host} does not support remote servers (--url). Only local servers with --command are supported.")
+                return 1
+
         # Validate argument dependencies
-        if command and headers:
-            print("Error: --headers can only be used with --url (remote servers), not with --command (local servers)")
+        if command and header:
+            print("Error: --header can only be used with --url or --http-url (remote servers), not with --command (local servers)")
             return 1
 
-        if url and args:
-            print("Error: --args can only be used with --command (local servers), not with --url (remote servers)")
+        if (url or http_url) and args:
+            print("Error: --args can only be used with --command (local servers), not with --url or --http-url (remote servers)")
             return 1
 
         # NOTE: We do NOT validate host-specific arguments here.
         # The reporting system will show unsupported fields as "UNSUPPORTED" in the conversion report.
         # This allows users to see which fields are not supported by their target host without blocking the operation.
 
+        # Check if server exists (for partial update support)
+        manager = MCPHostConfigurationManager()
+        existing_config = manager.get_server_config(host, server_name)
+        is_update = existing_config is not None
+
+        # Conditional validation: Create requires command OR url OR http_url, update does not
+        if not is_update:
+            # Create operation: require command, url, or http_url
+            if not command and not url and not http_url:
+                print(f"Error: When creating a new server, you must provide either --command (for local servers), --url (for SSE remote servers), or --http-url (for HTTP remote servers, Gemini only)")
+                return 1
+
         # Parse environment variables, headers, and inputs
         env_dict = parse_env_vars(env)
-        headers_dict = parse_headers(headers)
-        inputs_list = parse_inputs(inputs)
+        headers_dict = parse_header(header)
+        inputs_list = parse_input(input)
 
         # Create Omni configuration (universal model)
         # Only include fields that have actual values to ensure model_dump(exclude_unset=True) works correctly
@@ -662,12 +681,24 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         if command is not None:
             omni_config_data['command'] = command
         if args is not None:
-            omni_config_data['args'] = args
+            # Process args with shlex.split() to handle quoted strings (Issue 4)
+            processed_args = []
+            for arg in args:
+                if arg:  # Skip empty strings
+                    try:
+                        # Split quoted strings into individual arguments
+                        split_args = shlex.split(arg)
+                        processed_args.extend(split_args)
+                    except ValueError as e:
+                        # Handle invalid quotes gracefully
+                        print(f"Warning: Invalid quote in argument '{arg}': {e}")
+                        processed_args.append(arg)
+            omni_config_data['args'] = processed_args if processed_args else None
         if env_dict:
             omni_config_data['env'] = env_dict
         if url is not None:
             omni_config_data['url'] = url
-        if url and headers_dict:
+        if headers_dict:
             omni_config_data['headers'] = headers_dict
 
         # Host-specific fields (Gemini)
@@ -692,6 +723,29 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         if inputs_list is not None:
             omni_config_data['inputs'] = inputs_list
 
+        # Partial update merge logic
+        if is_update:
+            # Merge with existing configuration
+            existing_data = existing_config.model_dump(exclude_unset=True, exclude={'name'})
+
+            # Handle command/URL/httpUrl switching behavior
+            # If switching from command to URL or httpUrl: clear command-based fields
+            if (url is not None or http_url is not None) and existing_config.command is not None:
+                existing_data.pop('command', None)
+                existing_data.pop('args', None)
+                existing_data.pop('type', None)  # Clear type field when switching transports (Issue 1)
+
+            # If switching from URL/httpUrl to command: clear URL-based fields
+            if command is not None and (existing_config.url is not None or getattr(existing_config, 'httpUrl', None) is not None):
+                existing_data.pop('url', None)
+                existing_data.pop('httpUrl', None)
+                existing_data.pop('headers', None)
+                existing_data.pop('type', None)  # Clear type field when switching transports (Issue 1)
+
+            # Merge: new values override existing values
+            merged_data = {**existing_data, **omni_config_data}
+            omni_config_data = merged_data
+
         # Create Omni model
         omni_config = MCPServerConfigOmni(**omni_config_data)
 
@@ -706,10 +760,11 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
 
         # Generate conversion report
         report = generate_conversion_report(
-            operation='create',
+            operation='update' if is_update else 'create',
             server_name=server_name,
             target_host=host_type,
             omni=omni_config,
+            old_config=existing_config if is_update else None,
             dry_run=dry_run
         )
 
@@ -1208,17 +1263,17 @@ def main():
     # Create mutually exclusive group for server type
     server_type_group = mcp_configure_parser.add_mutually_exclusive_group(required=True)
     server_type_group.add_argument("--command", dest="server_command", help="Command to execute the MCP server (for local servers)")
-    server_type_group.add_argument("--url", help="Server URL for remote MCP servers")
+    server_type_group.add_argument("--url", help="Server URL for remote MCP servers (SSE transport)")
+    server_type_group.add_argument("--http-url", help="HTTP streaming endpoint URL (Gemini only)")
 
     mcp_configure_parser.add_argument("--args", nargs="*", help="Arguments for the MCP server command (only with --command)")
     mcp_configure_parser.add_argument("--env-var", action="append", help="Environment variables (format: KEY=VALUE)")
-    mcp_configure_parser.add_argument("--headers", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
+    mcp_configure_parser.add_argument("--header", action="append", help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)")
 
     # Host-specific arguments (Gemini)
     mcp_configure_parser.add_argument("--timeout", type=int, help="Request timeout in milliseconds (Gemini)")
     mcp_configure_parser.add_argument("--trust", action="store_true", help="Bypass tool call confirmations (Gemini)")
     mcp_configure_parser.add_argument("--cwd", help="Working directory for stdio transport (Gemini)")
-    mcp_configure_parser.add_argument("--http-url", help="HTTP streaming endpoint URL (Gemini)")
     mcp_configure_parser.add_argument("--include-tools", nargs="*", help="Tool allowlist - only these tools will be available (Gemini)")
     mcp_configure_parser.add_argument("--exclude-tools", nargs="*", help="Tool blocklist - these tools will be excluded (Gemini)")
 
@@ -1226,7 +1281,7 @@ def main():
     mcp_configure_parser.add_argument("--env-file", help="Path to environment file (Cursor, VS Code, LM Studio)")
 
     # Host-specific arguments (VS Code)
-    mcp_configure_parser.add_argument("--inputs", action="append", help="Input variable definitions in format: type,id,description[,password=true] (VS Code)")
+    mcp_configure_parser.add_argument("--input", action="append", help="Input variable definitions in format: type,id,description[,password=true] (VS Code)")
 
     mcp_configure_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before configuration")
     mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
@@ -2022,11 +2077,11 @@ def main():
         elif args.mcp_command == "configure":
             return handle_mcp_configure(
                 args.host, args.server_name, args.server_command, args.args,
-                getattr(args, 'env_var', None), args.url, args.headers,
+                getattr(args, 'env_var', None), args.url, args.header,
                 getattr(args, 'timeout', None), getattr(args, 'trust', False),
                 getattr(args, 'cwd', None), getattr(args, 'env_file', None),
                 getattr(args, 'http_url', None), getattr(args, 'include_tools', None),
-                getattr(args, 'exclude_tools', None), getattr(args, 'inputs', None),
+                getattr(args, 'exclude_tools', None), getattr(args, 'input', None),
                 args.no_backup, args.dry_run, args.auto_approve
             )
 

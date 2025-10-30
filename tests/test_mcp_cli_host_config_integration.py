@@ -31,7 +31,7 @@ except ImportError:
 from hatch.cli_hatch import (
     handle_mcp_configure,
     parse_env_vars,
-    parse_headers,
+    parse_header,
     parse_host_list,
 )
 from hatch.mcp_host_config.models import (
@@ -68,7 +68,7 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
                     args=['server.py'],
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -90,7 +90,7 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
                     args=['server.py'],
                     env=['API_KEY=secret', 'DEBUG=true'],
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -105,13 +105,13 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
         with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
             with patch('hatch.cli_hatch.request_confirmation', return_value=False):
                 result = handle_mcp_configure(
-                    host='claude-desktop',
+                    host='gemini',  # Use gemini which supports remote servers
                     server_name='test-server',
                     command=None,
                     args=None,
                     env=None,
                     url='https://api.example.com',
-                    headers=['Authorization=Bearer token', 'Content-Type=application/json'],
+                    header=['Authorization=Bearer token', 'Content-Type=application/json'],
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -126,13 +126,13 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
         with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
             with patch('hatch.cli_hatch.request_confirmation', return_value=False):
                 result = handle_mcp_configure(
-                    host='claude-desktop',
+                    host='gemini',  # Use gemini which supports remote servers
                     server_name='remote-server',
                     command=None,
                     args=None,
                     env=None,
                     url='https://api.example.com',
-                    headers=['Auth=token'],
+                    header=['Auth=token'],
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -154,7 +154,7 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
                     args=['server.py', '--port', '8080'],
                     env=['API_KEY=secret', 'DEBUG=true', 'LOG_LEVEL=info'],
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -176,7 +176,7 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
                     args=['server.py'],
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -202,7 +202,7 @@ class TestModelIntegration(unittest.TestCase):
                     args=['server.py'],
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -224,7 +224,7 @@ class TestModelIntegration(unittest.TestCase):
                     args=['server.py'],
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -250,7 +250,7 @@ class TestModelIntegration(unittest.TestCase):
                     args=['server.py'],
                     env=None,
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -282,7 +282,7 @@ class TestReportingIntegration(unittest.TestCase):
                 args=['server.py'],
                 env=None,
                 url=None,
-                headers=None,
+                header=None,
                 no_backup=True,
                 dry_run=True,
                 auto_approve=False
@@ -291,8 +291,9 @@ class TestReportingIntegration(unittest.TestCase):
             # Verify the function executed without errors
             self.assertEqual(result, 0)
 
-            # Verify MCPHostConfigurationManager was not instantiated (no actual configuration)
-            mock_manager.assert_not_called()
+            # Verify MCPHostConfigurationManager.create_server was NOT called (dry-run doesn't persist)
+            # Note: get_server_config is called to check if server exists, but create_server is not called
+            mock_manager.return_value.create_server.assert_not_called()
 
 
 class TestHostSpecificArguments(unittest.TestCase):
@@ -311,7 +312,7 @@ class TestHostSpecificArguments(unittest.TestCase):
                     args=['server.py', '--port', '8080'],
                     env=['API_KEY=secret', 'DEBUG=true'],
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -333,7 +334,7 @@ class TestHostSpecificArguments(unittest.TestCase):
                     args=['server.py'],
                     env=['VAR1=value1', 'VAR2=value2', 'VAR3=value3'],
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=True,
                     dry_run=False,
                     auto_approve=False
@@ -358,7 +359,7 @@ class TestHostSpecificArguments(unittest.TestCase):
                             args=['server.py'],
                             env=None,
                             url=None,
-                            headers=None,
+                            header=None,
                             no_backup=True,
                             dry_run=False,
                             auto_approve=False
@@ -382,7 +383,7 @@ class TestErrorHandling(unittest.TestCase):
             args=['server.py'],
             env=None,
             url=None,
-            headers=None,
+            header=None,
             no_backup=True,
             dry_run=False,
             auto_approve=False
@@ -403,7 +404,7 @@ class TestErrorHandling(unittest.TestCase):
             args=None,  # Must be None for remote server
             env=None,
             url='not-a-url',  # Invalid URL format
-            headers=None,
+            header=None,
             no_backup=True,
             dry_run=False,
             auto_approve=False
@@ -423,7 +424,7 @@ class TestErrorHandling(unittest.TestCase):
             args=['server.py'],
             env=None,
             url=None,
-            headers=['Auth=token'],  # Headers not allowed with command
+            header=['Auth=token'],  # Headers not allowed with command
             no_backup=True,
             dry_run=False,
             auto_approve=False
@@ -445,7 +446,7 @@ class TestErrorHandling(unittest.TestCase):
             args=None,
             env=None,
             url=None,
-            headers=None,
+            header=None,
             no_backup=True,
             dry_run=False,
             auto_approve=False
@@ -475,7 +476,7 @@ class TestBackwardCompatibility(unittest.TestCase):
                     args=['-m', 'my_package.server'],
                     env=['API_KEY=secret'],
                     url=None,
-                    headers=None,
+                    header=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=False
@@ -508,21 +509,21 @@ class TestParseUtilities(unittest.TestCase):
         self.assertEqual(result, {})
 
     @regression_test
-    def test_parse_headers_basic(self):
+    def test_parse_header_basic(self):
         """Test parsing headers from KEY=VALUE format."""
         headers_list = ['Authorization=Bearer token', 'Content-Type=application/json']
-        result = parse_headers(headers_list)
+        result = parse_header(headers_list)
 
         expected = {'Authorization': 'Bearer token', 'Content-Type': 'application/json'}
         self.assertEqual(result, expected)
 
     @regression_test
-    def test_parse_headers_empty(self):
+    def test_parse_header_empty(self):
         """Test parsing empty headers list."""
-        result = parse_headers(None)
+        result = parse_header(None)
         self.assertEqual(result, {})
 
-        result = parse_headers([])
+        result = parse_header([])
         self.assertEqual(result, {})
 
 
@@ -627,6 +628,178 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
         self.assertEqual(report.operation, 'create')
 
     @regression_test
+    def test_claude_desktop_rejects_url_configuration(self):
+        """Test Claude Desktop rejects remote server (--url) configurations (Issue 2)."""
+        with patch('hatch.cli_hatch.print') as mock_print:
+            result = handle_mcp_configure(
+                host='claude-desktop',
+                server_name='remote-server',
+                command=None,
+                args=None,
+                env=None,
+                url='http://localhost:8080',  # Should be rejected
+                header=None,
+                no_backup=True,
+                dry_run=False,
+                auto_approve=True
+            )
+
+            # Validate: Should return error code 1
+            self.assertEqual(result, 1)
+
+            # Validate: Error message displayed
+            error_calls = [call for call in mock_print.call_args_list
+                         if 'Error' in str(call) or 'error' in str(call)]
+            self.assertTrue(len(error_calls) > 0, "Expected error message to be printed")
+
+    @regression_test
+    def test_claude_code_rejects_url_configuration(self):
+        """Test Claude Code (same family) also rejects remote servers (Issue 2)."""
+        with patch('hatch.cli_hatch.print') as mock_print:
+            result = handle_mcp_configure(
+                host='claude-code',
+                server_name='remote-server',
+                command=None,
+                args=None,
+                env=None,
+                url='http://localhost:8080',
+                header=None,
+                no_backup=True,
+                dry_run=False,
+                auto_approve=True
+            )
+
+            # Validate: Should return error code 1
+            self.assertEqual(result, 1)
+
+            # Validate: Error message displayed
+            error_calls = [call for call in mock_print.call_args_list
+                         if 'Error' in str(call) or 'error' in str(call)]
+            self.assertTrue(len(error_calls) > 0, "Expected error message to be printed")
+
+    @regression_test
+    def test_args_quoted_string_splitting(self):
+        """Test that quoted strings in --args are properly split (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                # Simulate user providing: --args "-r --name aName"
+                # This arrives as a single string element in the args list
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command='python',
+                    args=['-r --name aName'],  # Single string with quoted content
+                    env=None,
+                    url=None,
+                    header=None,
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
+
+                # Verify: Should succeed (return 0)
+                self.assertEqual(result, 0)
+
+                # Verify: MCPServerConfigOmni was created with split args
+                call_args = mock_manager.return_value.create_server.call_args
+                if call_args:
+                    omni_config = call_args[1]['omni']
+                    # Args should be split into 3 elements: ['-r', '--name', 'aName']
+                    self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
+
+    @regression_test
+    def test_args_multiple_quoted_strings(self):
+        """Test multiple quoted strings in --args are all split correctly (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                # Simulate: --args "-r" "--name aName"
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command='python',
+                    args=['-r', '--name aName'],  # Two separate args
+                    env=None,
+                    url=None,
+                    header=None,
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
+
+                # Verify: Should succeed
+                self.assertEqual(result, 0)
+
+                # Verify: All args are properly split
+                call_args = mock_manager.return_value.create_server.call_args
+                if call_args:
+                    omni_config = call_args[1]['omni']
+                    # Should be split into: ['-r', '--name', 'aName']
+                    self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
+
+    @regression_test
+    def test_args_empty_string_handling(self):
+        """Test that empty strings in --args are filtered out (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                # Simulate: --args "" "server.py"
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command='python',
+                    args=['', 'server.py'],  # Empty string should be filtered
+                    env=None,
+                    url=None,
+                    header=None,
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
+
+                # Verify: Should succeed
+                self.assertEqual(result, 0)
+
+                # Verify: Empty strings are filtered out
+                call_args = mock_manager.return_value.create_server.call_args
+                if call_args:
+                    omni_config = call_args[1]['omni']
+                    # Should only contain 'server.py'
+                    self.assertEqual(omni_config.args, ['server.py'])
+
+    @regression_test
+    def test_args_invalid_quote_handling(self):
+        """Test that invalid quotes in --args are handled gracefully (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                with patch('hatch.cli_hatch.print') as mock_print:
+                    # Simulate: --args 'unclosed "quote'
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['unclosed "quote'],  # Invalid quote
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+
+                    # Verify: Should succeed (graceful fallback)
+                    self.assertEqual(result, 0)
+
+                    # Verify: Warning was printed
+                    warning_calls = [call for call in mock_print.call_args_list
+                                   if 'Warning' in str(call)]
+                    self.assertTrue(len(warning_calls) > 0, "Expected warning for invalid quote")
+
+                    # Verify: Original arg is used as fallback
+                    call_args = mock_manager.return_value.create_server.call_args
+                    if call_args:
+                        omni_config = call_args[1]['omni']
+                        self.assertIn('unclosed "quote', omni_config.args)
+
+    @regression_test
     def test_cli_handler_signature_compatible(self):
         """Test that handle_mcp_configure signature is compatible with integration."""
         import inspect
@@ -638,7 +811,7 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
         # Verify expected parameters exist
         expected_params = [
             'host', 'server_name', 'command', 'args',
-            'env', 'url', 'headers', 'no_backup', 'dry_run', 'auto_approve'
+            'env', 'url', 'header', 'no_backup', 'dry_run', 'auto_approve'
         ]
 
         for param in expected_params:
