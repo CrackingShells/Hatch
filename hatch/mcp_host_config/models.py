@@ -360,7 +360,14 @@ class MCPServerConfigBase(BaseModel):
 
     @model_validator(mode='after')
     def validate_transport(self) -> 'MCPServerConfigBase':
-        """Validate transport configuration using type field."""
+        """Validate transport configuration using type field.
+
+        Note: Gemini subclass overrides this with dual-transport support.
+        """
+        # Skip validation for Gemini which has its own dual-transport validator
+        if self.__class__.__name__ == 'MCPServerConfigGemini':
+            return self
+
         # Check mutual exclusion - command and url cannot both be set
         if self.command is not None and self.url is not None:
             raise ValueError(
@@ -412,6 +419,45 @@ class MCPServerConfigGemini(MCPServerConfigBase):
     oauth_tokenParamName: Optional[str] = Field(None, description="Query parameter name for tokens")
     oauth_audiences: Optional[List[str]] = Field(None, description="OAuth audiences")
     authProviderType: Optional[str] = Field(None, description="Authentication provider type")
+
+    @model_validator(mode='after')
+    def validate_gemini_dual_transport(self):
+        """Override transport validation to support Gemini's dual-transport capability.
+
+        Gemini supports both:
+        - SSE transport with 'url' field
+        - HTTP transport with 'httpUrl' field
+
+        Validates that:
+        1. Either url or httpUrl is provided (not both)
+        2. Type field matches the transport being used
+        """
+        # Check if both url and httpUrl are provided
+        if self.url is not None and self.httpUrl is not None:
+            raise ValueError("Cannot specify both 'url' and 'httpUrl' - choose one transport")
+
+        # Validate based on type
+        if self.type == "stdio":
+            if not self.command:
+                raise ValueError("'command' is required for stdio transport")
+        elif self.type == "sse":
+            if not self.url:
+                raise ValueError("'url' is required for sse transport")
+        elif self.type == "http":
+            if not self.httpUrl:
+                raise ValueError("'httpUrl' is required for http transport")
+        elif self.type is None:
+            # Infer type from fields if not specified
+            if self.command:
+                self.type = "stdio"
+            elif self.url:
+                self.type = "sse"  # default to sse for url
+            elif self.httpUrl:
+                self.type = "http"  # http for httpUrl
+            else:
+                raise ValueError("Either 'command', 'url', or 'httpUrl' must be provided")
+
+        return self
 
     @classmethod
     def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigGemini':

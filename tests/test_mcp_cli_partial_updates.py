@@ -626,9 +626,9 @@ class TestPartialUpdateIntegration(unittest.TestCase):
                 with patch('hatch.cli_hatch.generate_conversion_report') as mock_report:
                     mock_report.return_value = MagicMock()
 
-                    # Execute: Switch to URL-based
+                    # Execute: Switch to URL-based (use gemini which supports URL)
                     result = handle_mcp_configure(
-                        host="claude-desktop",
+                        host="gemini",
                         server_name="test-server",
                         command=None,
                         args=None,
