@@ -346,7 +346,7 @@ Configure an MCP server on a specific host platform.
 
 Syntax:
 
-`hatch mcp configure <server-name> --host <host> (--command CMD | --url URL) [--args ARGS] [--env ENV] [--headers HEADERS] [--dry-run] [--auto-approve] [--no-backup]`
+`hatch mcp configure <server-name> --host <host> (--command CMD | --url URL) [--args ARGS] [--env ENV] [--header HEADER] [--dry-run] [--auto-approve] [--no-backup]`
 
 | Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
@@ -356,7 +356,7 @@ Syntax:
 | `--url` | string | URL for remote MCP servers (mutually exclusive with --command) | none |
 | `--args` | multiple | Arguments for MCP server command (only with --command) | none |
 | `--env` | string | Environment variables format: KEY=VALUE (can be used multiple times) | none |
-| `--headers` | string | HTTP headers format: KEY=VALUE (only with --url) | none |
+| `--header` | string | HTTP headers format: KEY=VALUE (only with --url) | none |
 | `--dry-run` | flag | Preview configuration without applying changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 | `--no-backup` | flag | Skip backup creation before configuration | false |
@@ -389,7 +389,7 @@ Configure MCP server 'my-server' on host 'claude-desktop'? [y/N]: y
 **Example - Remote Server Configuration**:
 
 ```bash
-$ hatch mcp configure api-server --host claude-desktop --url https://api.example.com --headers Auth=token
+$ hatch mcp configure api-server --host claude-desktop --url https://api.example.com --header Auth=token
 
 Server 'api-server' created for host 'claude-desktop':
   name: UPDATED None --> 'api-server'

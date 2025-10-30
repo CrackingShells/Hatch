@@ -87,7 +87,7 @@ hatch mcp remove host claude-desktop
 **Important**: Each server must be configured as either local (using `--command`) or remote (using `--url`), but not both. These options are mutually exclusive:
 
 - **Local servers**: Use `--command` and optionally `--args` and `--env`
-- **Remote servers**: Use `--url` and optionally `--headers`
+- **Remote servers**: Use `--url` and optionally `--header`
 
 Attempting to use both `--command` and `--url` will result in an error.
 
