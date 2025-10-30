@@ -627,6 +627,56 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
         self.assertEqual(report.operation, 'create')
 
     @regression_test
+    def test_claude_desktop_rejects_url_configuration(self):
+        """Test Claude Desktop rejects remote server (--url) configurations (Issue 2)."""
+        with patch('hatch.cli_hatch.print') as mock_print:
+            result = handle_mcp_configure(
+                host='claude-desktop',
+                server_name='remote-server',
+                command=None,
+                args=None,
+                env=None,
+                url='http://localhost:8080',  # Should be rejected
+                headers=None,
+                no_backup=True,
+                dry_run=False,
+                auto_approve=True
+            )
+
+            # Validate: Should return error code 1
+            self.assertEqual(result, 1)
+
+            # Validate: Error message displayed
+            error_calls = [call for call in mock_print.call_args_list
+                         if 'Error' in str(call) or 'error' in str(call)]
+            self.assertTrue(len(error_calls) > 0, "Expected error message to be printed")
+
+    @regression_test
+    def test_claude_code_rejects_url_configuration(self):
+        """Test Claude Code (same family) also rejects remote servers (Issue 2)."""
+        with patch('hatch.cli_hatch.print') as mock_print:
+            result = handle_mcp_configure(
+                host='claude-code',
+                server_name='remote-server',
+                command=None,
+                args=None,
+                env=None,
+                url='http://localhost:8080',
+                headers=None,
+                no_backup=True,
+                dry_run=False,
+                auto_approve=True
+            )
+
+            # Validate: Should return error code 1
+            self.assertEqual(result, 1)
+
+            # Validate: Error message displayed
+            error_calls = [call for call in mock_print.call_args_list
+                         if 'Error' in str(call) or 'error' in str(call)]
+            self.assertTrue(len(error_calls) > 0, "Expected error message to be printed")
+
+    @regression_test
     def test_cli_handler_signature_compatible(self):
         """Test that handle_mcp_configure signature is compatible with integration."""
         import inspect

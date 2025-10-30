@@ -637,6 +637,12 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
             print(f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}")
             return 1
 
+        # Validate Claude Desktop/Code transport restrictions (Issue 2)
+        if host_type in (MCPHostType.CLAUDE_DESKTOP, MCPHostType.CLAUDE_CODE):
+            if url is not None:
+                print(f"Error: {host} does not support remote servers (--url). Only local servers with --command are supported.")
+                return 1
+
         # Validate argument dependencies
         if command and headers:
             print("Error: --headers can only be used with --url (remote servers), not with --command (local servers)")
