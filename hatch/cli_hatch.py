@@ -583,7 +583,7 @@ def parse_header(header_list: Optional[list]) -> dict:
 
     return headers_dict
 
-def parse_inputs(inputs_list: Optional[list]) -> Optional[list]:
+def parse_input(input_list: Optional[list]) -> Optional[list]:
     """Parse VS Code input variable definitions from command line format.
 
     Format: type,id,description[,password=true]
@@ -592,11 +592,11 @@ def parse_inputs(inputs_list: Optional[list]) -> Optional[list]:
     Returns:
         List of input variable definition dictionaries, or None if no inputs provided.
     """
-    if not inputs_list:
+    if not input_list:
         return None
 
     parsed_inputs = []
-    for input_str in inputs_list:
+    for input_str in input_list:
         parts = [p.strip() for p in input_str.split(',')]
         if len(parts) < 3:
             print(f"Warning: Invalid input format '{input_str}'. Expected: type,id,description[,password=true]")
@@ -622,7 +622,7 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
                         trust: bool = False, cwd: Optional[str] = None,
                         env_file: Optional[str] = None, http_url: Optional[str] = None,
                         include_tools: Optional[list] = None, exclude_tools: Optional[list] = None,
-                        inputs: Optional[list] = None, no_backup: bool = False,
+                        input: Optional[list] = None, no_backup: bool = False,
                         dry_run: bool = False, auto_approve: bool = False):
     """Handle 'hatch mcp configure' command with ALL host-specific arguments.
 
@@ -672,7 +672,7 @@ def handle_mcp_configure(host: str, server_name: str, command: str, args: list,
         # Parse environment variables, headers, and inputs
         env_dict = parse_env_vars(env)
         headers_dict = parse_header(header)
-        inputs_list = parse_inputs(inputs)
+        inputs_list = parse_input(input)
 
         # Create Omni configuration (universal model)
         # Only include fields that have actual values to ensure model_dump(exclude_unset=True) works correctly
@@ -1281,7 +1281,7 @@ def main():
     mcp_configure_parser.add_argument("--env-file", help="Path to environment file (Cursor, VS Code, LM Studio)")
 
     # Host-specific arguments (VS Code)
-    mcp_configure_parser.add_argument("--inputs", action="append", help="Input variable definitions in format: type,id,description[,password=true] (VS Code)")
+    mcp_configure_parser.add_argument("--input", action="append", help="Input variable definitions in format: type,id,description[,password=true] (VS Code)")
 
     mcp_configure_parser.add_argument("--no-backup", action="store_true", help="Skip backup creation before configuration")
     mcp_configure_parser.add_argument("--dry-run", action="store_true", help="Preview configuration without execution")
@@ -2081,7 +2081,7 @@ def main():
                 getattr(args, 'timeout', None), getattr(args, 'trust', False),
                 getattr(args, 'cwd', None), getattr(args, 'env_file', None),
                 getattr(args, 'http_url', None), getattr(args, 'include_tools', None),
-                getattr(args, 'exclude_tools', None), getattr(args, 'inputs', None),
+                getattr(args, 'exclude_tools', None), getattr(args, 'input', None),
                 args.no_backup, args.dry_run, args.auto_approve
             )
 
