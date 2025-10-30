@@ -126,7 +126,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -180,7 +180,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -225,7 +225,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -273,7 +273,7 @@ class TestPartialUpdateValidation(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -327,7 +327,7 @@ class TestFieldPreservation(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -378,7 +378,7 @@ class TestFieldPreservation(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -423,7 +423,7 @@ class TestFieldPreservation(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -476,7 +476,7 @@ class TestCommandUrlSwitching(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -529,7 +529,7 @@ class TestCommandUrlSwitching(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -591,7 +591,7 @@ class TestPartialUpdateIntegration(unittest.TestCase):
                         http_url=None,
                         include_tools=None,
                         exclude_tools=None,
-                        inputs=None,
+                        input=None,
                         no_backup=False,
                         dry_run=False,
                         auto_approve=True
@@ -642,7 +642,7 @@ class TestPartialUpdateIntegration(unittest.TestCase):
                         http_url=None,
                         include_tools=None,
                         exclude_tools=None,
-                        inputs=None,
+                        input=None,
                         no_backup=False,
                         dry_run=False,
                         auto_approve=True
@@ -687,7 +687,7 @@ class TestBackwardCompatibility(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -729,7 +729,7 @@ class TestBackwardCompatibility(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -787,7 +787,7 @@ class TestTypeFieldUpdating(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True
@@ -837,7 +837,7 @@ class TestTypeFieldUpdating(unittest.TestCase):
                     http_url=None,
                     include_tools=None,
                     exclude_tools=None,
-                    inputs=None,
+                    input=None,
                     no_backup=False,
                     dry_run=False,
                     auto_approve=True

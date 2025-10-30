@@ -11,7 +11,7 @@ import unittest
 from unittest.mock import patch, MagicMock
 from io import StringIO
 
-from hatch.cli_hatch import handle_mcp_configure, parse_inputs
+from hatch.cli_hatch import handle_mcp_configure, parse_input
 from hatch.mcp_host_config import MCPHostType
 from hatch.mcp_host_config.models import (
     MCPServerConfigGemini, MCPServerConfigCursor, MCPServerConfigVSCode,
@@ -113,7 +113,7 @@ class TestUnsupportedFieldReporting(unittest.TestCase):
             server_name='test-server',
             command='python',
             args=['server.py'],
-            inputs=['promptString,api-key,API Key,password=true'],  # VS Code-only field
+            input=['promptString,api-key,API Key,password=true'],  # VS Code-only field
             auto_approve=True
         )
 
@@ -129,11 +129,11 @@ class TestUnsupportedFieldReporting(unittest.TestCase):
 class TestVSCodeInputsParsing(unittest.TestCase):
     """Test VS Code inputs parsing."""
 
-    def test_parse_inputs_basic(self):
+    def test_parse_input_basic(self):
         """Test basic input parsing."""
-        inputs_list = ['promptString,api-key,GitHub Personal Access Token']
-        result = parse_inputs(inputs_list)
-        
+        input_list = ['promptString,api-key,GitHub Personal Access Token']
+        result = parse_input(input_list)
+
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['type'], 'promptString')
@@ -141,34 +141,34 @@ class TestVSCodeInputsParsing(unittest.TestCase):
         self.assertEqual(result[0]['description'], 'GitHub Personal Access Token')
         self.assertNotIn('password', result[0])
 
-    def test_parse_inputs_with_password(self):
+    def test_parse_input_with_password(self):
         """Test input parsing with password flag."""
-        inputs_list = ['promptString,api-key,API Key,password=true']
-        result = parse_inputs(inputs_list)
-        
+        input_list = ['promptString,api-key,API Key,password=true']
+        result = parse_input(input_list)
+
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 1)
         self.assertEqual(result[0]['password'], True)
 
-    def test_parse_inputs_multiple(self):
+    def test_parse_input_multiple(self):
         """Test parsing multiple inputs."""
-        inputs_list = [
+        input_list = [
             'promptString,api-key,API Key,password=true',
             'promptString,db-url,Database URL'
         ]
-        result = parse_inputs(inputs_list)
-        
+        result = parse_input(input_list)
+
         self.assertIsNotNone(result)
         self.assertEqual(len(result), 2)
 
-    def test_parse_inputs_none(self):
+    def test_parse_input_none(self):
         """Test parsing None inputs."""
-        result = parse_inputs(None)
+        result = parse_input(None)
         self.assertIsNone(result)
 
-    def test_parse_inputs_empty(self):
+    def test_parse_input_empty(self):
         """Test parsing empty inputs list."""
-        result = parse_inputs([])
+        result = parse_input([])
         self.assertIsNone(result)
 
 
@@ -191,7 +191,7 @@ class TestVSCodeInputsIntegration(unittest.TestCase):
             server_name='test-server',
             command='python',
             args=['server.py'],
-            inputs=['promptString,api-key,API Key,password=true'],
+            input=['promptString,api-key,API Key,password=true'],
             auto_approve=True
         )
 
