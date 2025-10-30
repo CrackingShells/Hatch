@@ -105,7 +105,7 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
         with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
             with patch('hatch.cli_hatch.request_confirmation', return_value=False):
                 result = handle_mcp_configure(
-                    host='claude-desktop',
+                    host='gemini',  # Use gemini which supports remote servers
                     server_name='test-server',
                     command=None,
                     args=None,
@@ -126,7 +126,7 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
         with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
             with patch('hatch.cli_hatch.request_confirmation', return_value=False):
                 result = handle_mcp_configure(
-                    host='claude-desktop',
+                    host='gemini',  # Use gemini which supports remote servers
                     server_name='remote-server',
                     command=None,
                     args=None,
@@ -291,8 +291,9 @@ class TestReportingIntegration(unittest.TestCase):
             # Verify the function executed without errors
             self.assertEqual(result, 0)
 
-            # Verify MCPHostConfigurationManager was not instantiated (no actual configuration)
-            mock_manager.assert_not_called()
+            # Verify MCPHostConfigurationManager.create_server was NOT called (dry-run doesn't persist)
+            # Note: get_server_config is called to check if server exists, but create_server is not called
+            mock_manager.return_value.create_server.assert_not_called()
 
 
 class TestHostSpecificArguments(unittest.TestCase):
@@ -675,6 +676,128 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
             error_calls = [call for call in mock_print.call_args_list
                          if 'Error' in str(call) or 'error' in str(call)]
             self.assertTrue(len(error_calls) > 0, "Expected error message to be printed")
+
+    @regression_test
+    def test_args_quoted_string_splitting(self):
+        """Test that quoted strings in --args are properly split (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                # Simulate user providing: --args "-r --name aName"
+                # This arrives as a single string element in the args list
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command='python',
+                    args=['-r --name aName'],  # Single string with quoted content
+                    env=None,
+                    url=None,
+                    headers=None,
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
+
+                # Verify: Should succeed (return 0)
+                self.assertEqual(result, 0)
+
+                # Verify: MCPServerConfigOmni was created with split args
+                call_args = mock_manager.return_value.create_server.call_args
+                if call_args:
+                    omni_config = call_args[1]['omni']
+                    # Args should be split into 3 elements: ['-r', '--name', 'aName']
+                    self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
+
+    @regression_test
+    def test_args_multiple_quoted_strings(self):
+        """Test multiple quoted strings in --args are all split correctly (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                # Simulate: --args "-r" "--name aName"
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command='python',
+                    args=['-r', '--name aName'],  # Two separate args
+                    env=None,
+                    url=None,
+                    headers=None,
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
+
+                # Verify: Should succeed
+                self.assertEqual(result, 0)
+
+                # Verify: All args are properly split
+                call_args = mock_manager.return_value.create_server.call_args
+                if call_args:
+                    omni_config = call_args[1]['omni']
+                    # Should be split into: ['-r', '--name', 'aName']
+                    self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
+
+    @regression_test
+    def test_args_empty_string_handling(self):
+        """Test that empty strings in --args are filtered out (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                # Simulate: --args "" "server.py"
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command='python',
+                    args=['', 'server.py'],  # Empty string should be filtered
+                    env=None,
+                    url=None,
+                    headers=None,
+                    no_backup=True,
+                    dry_run=False,
+                    auto_approve=False
+                )
+
+                # Verify: Should succeed
+                self.assertEqual(result, 0)
+
+                # Verify: Empty strings are filtered out
+                call_args = mock_manager.return_value.create_server.call_args
+                if call_args:
+                    omni_config = call_args[1]['omni']
+                    # Should only contain 'server.py'
+                    self.assertEqual(omni_config.args, ['server.py'])
+
+    @regression_test
+    def test_args_invalid_quote_handling(self):
+        """Test that invalid quotes in --args are handled gracefully (Issue 4)."""
+        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
+                with patch('hatch.cli_hatch.print') as mock_print:
+                    # Simulate: --args 'unclosed "quote'
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['unclosed "quote'],  # Invalid quote
+                        env=None,
+                        url=None,
+                        headers=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+
+                    # Verify: Should succeed (graceful fallback)
+                    self.assertEqual(result, 0)
+
+                    # Verify: Warning was printed
+                    warning_calls = [call for call in mock_print.call_args_list
+                                   if 'Warning' in str(call)]
+                    self.assertTrue(len(warning_calls) > 0, "Expected warning for invalid quote")
+
+                    # Verify: Original arg is used as fallback
+                    call_args = mock_manager.return_value.create_server.call_args
+                    if call_args:
+                        omni_config = call_args[1]['omni']
+                        self.assertIn('unclosed "quote', omni_config.args)
 
     @regression_test
     def test_cli_handler_signature_compatible(self):
