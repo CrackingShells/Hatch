@@ -1,3 +1,31 @@
+## [0.7.0-dev.6](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.5...v0.7.0-dev.6) (2025-10-30)
+
+
+### Features
+
+* add get_server_config method for server existence detection ([0746c7c](https://github.com/CrackingShells/Hatch/commit/0746c7c778eb47908818463a330d78e2ead3dc77))
+* implement partial update merge logic in CLI handler ([76cae67](https://github.com/CrackingShells/Hatch/commit/76cae6794018b6996189cab690149360b49c8ed6))
+* **mcp:** implement Gemini dual-transport validation ([99027e8](https://github.com/CrackingShells/Hatch/commit/99027e8e9aa37c54b2ce1b2a27d5411836882f48))
+
+
+### Bug Fixes
+
+* **cli:** allow --http-url as standalone option for Gemini ([1e2a51d](https://github.com/CrackingShells/Hatch/commit/1e2a51d8c0265f2ff84349b821e16115aafbae1d))
+* **cli:** implement shlex.split() for --args parsing ([3c67a92](https://github.com/CrackingShells/Hatch/commit/3c67a9277787fe432b9d7d111d217a72abaaedbf))
+* **mcp:** add Claude Desktop transport validation ([b259a37](https://github.com/CrackingShells/Hatch/commit/b259a37aea613d5cc9111c8532b1a799c362add5))
+* **mcp:** clear type field during transport switching ([d39eedf](https://github.com/CrackingShells/Hatch/commit/d39eedf5e669a90f29ce4aad05434aee96b56d3a))
+
+
+### Documentation
+
+* **cli:** update CLI reference for parameter naming changes ([52010fa](https://github.com/CrackingShells/Hatch/commit/52010fa0cb7c62517e55bda5df11c4a4ce0e45c4))
+
+
+### Code Refactoring
+
+* **cli:** rename --headers to --header for consistency ([a1d648d](https://github.com/CrackingShells/Hatch/commit/a1d648d1dbd8cbbefdc1130f25f246494069c76c))
+* **cli:** rename --inputs to --input for consistency ([905ed39](https://github.com/CrackingShells/Hatch/commit/905ed39c165c926eed8bcbc0583d207645f37160))
+
 ## [0.7.0-dev.5](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.4...v0.7.0-dev.5) (2025-10-13)
 
 
