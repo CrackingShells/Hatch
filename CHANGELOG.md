@@ -1,3 +1,10 @@
+## [0.7.0-dev.7](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.6...v0.7.0-dev.7) (2025-11-18)
+
+
+### Bug Fixes
+
+* **cli:** enable partial configuration updates for existing MCP servers ([edaa4b5](https://github.com/CrackingShells/Hatch/commit/edaa4b5873921d1f6bbd0a3b5e536a129c2d0403))
+
 ## [0.7.0-dev.6](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.5...v0.7.0-dev.6) (2025-10-30)
 
 
