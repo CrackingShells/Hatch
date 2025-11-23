@@ -1764,11 +1764,6 @@ def main():
         "--host",
         help="Comma-separated list of MCP host platforms to configure (e.g., claude-desktop,cursor)",
     )
-    pkg_add_parser.add_argument(
-        "--no-mcp-config",
-        action="store_true",
-        help="Skip automatic MCP host configuration even if package has MCP servers",
-    )
 
     # Remove package command
     pkg_remove_parser = pkg_subparsers.add_parser(
@@ -2154,7 +2149,7 @@ def main():
                 print(f"Successfully added package: {args.package_path_or_name}")
 
                 # Handle MCP host configuration if requested
-                if hasattr(args, "host") and args.host and not args.no_mcp_config:
+                if hasattr(args, "host") and args.host:
                     try:
                         hosts = parse_host_list(args.host)
                         env_name = args.env or env_manager.get_current_environment()
