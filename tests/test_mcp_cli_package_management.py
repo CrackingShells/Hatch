@@ -5,27 +5,33 @@ This module tests the enhanced package management commands with MCP host
 configuration integration following CrackingShells testing standards.
 """
 
-import unittest
 import sys
+import unittest
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import MagicMock, mock_open, patch
 
 # Add the parent directory to the path to import wobble
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 try:
-    from wobble.decorators import regression_test, integration_test
+    from wobble.decorators import integration_test, regression_test
 except ImportError:
     # Fallback decorators if wobble is not available
     def regression_test(func):
         return func
-    
+
     def integration_test(scope="component"):
         def decorator(func):
             return func
+
         return decorator
 
-from hatch.cli_hatch import parse_host_list, request_confirmation, get_package_mcp_server_config
+
+from hatch.cli_hatch import (
+    get_package_mcp_server_config,
+    parse_host_list,
+    request_confirmation,
+)
 from hatch.mcp_host_config import MCPHostType, MCPServerConfig
 
 
@@ -61,7 +67,9 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
     @regression_test
     def test_parse_host_list_all(self):
         """Test parsing 'all' host list."""
-        with patch('hatch.cli_hatch.MCPHostRegistry.detect_available_hosts') as mock_detect:
+        with patch(
+            "hatch.cli_hatch.MCPHostRegistry.detect_available_hosts"
+        ) as mock_detect:
             mock_detect.return_value = [MCPHostType.CLAUDE_DESKTOP, MCPHostType.CURSOR]
             hosts = parse_host_list("all")
             expected = [MCPHostType.CLAUDE_DESKTOP, MCPHostType.CURSOR]
@@ -73,7 +81,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
         """Test parsing invalid host raises ValueError."""
         with self.assertRaises(ValueError) as context:
             parse_host_list("invalid-host")
-        
+
         self.assertIn("Unknown host 'invalid-host'", str(context.exception))
         self.assertIn("Available:", str(context.exception))
 
@@ -82,7 +90,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
         """Test parsing mixed valid and invalid hosts."""
         with self.assertRaises(ValueError) as context:
             parse_host_list("claude-desktop,invalid-host,cursor")
-        
+
         self.assertIn("Unknown host 'invalid-host'", str(context.exception))
 
     @regression_test
@@ -101,91 +109,96 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
     @regression_test
     def test_request_confirmation_user_yes(self):
         """Test confirmation with user saying yes."""
-        with patch('builtins.input', return_value='y'):
+        with patch("builtins.input", return_value="y"):
             result = request_confirmation("Test message?", auto_approve=False)
             self.assertTrue(result)
 
     @regression_test
     def test_request_confirmation_user_yes_full(self):
         """Test confirmation with user saying 'yes'."""
-        with patch('builtins.input', return_value='yes'):
+        with patch("builtins.input", return_value="yes"):
             result = request_confirmation("Test message?", auto_approve=False)
             self.assertTrue(result)
 
     @regression_test
     def test_request_confirmation_user_no(self):
         """Test confirmation with user saying no."""
-        with patch.dict('os.environ', {'HATCH_AUTO_APPROVE': ''}, clear=False):
-            with patch('builtins.input', return_value='n'):
+        with patch.dict("os.environ", {"HATCH_AUTO_APPROVE": ""}, clear=False):
+            with patch("builtins.input", return_value="n"):
                 result = request_confirmation("Test message?", auto_approve=False)
                 self.assertFalse(result)
 
     @regression_test
     def test_request_confirmation_user_no_full(self):
         """Test confirmation with user saying 'no'."""
-        with patch.dict('os.environ', {'HATCH_AUTO_APPROVE': ''}, clear=False):
-            with patch('builtins.input', return_value='no'):
+        with patch.dict("os.environ", {"HATCH_AUTO_APPROVE": ""}, clear=False):
+            with patch("builtins.input", return_value="no"):
                 result = request_confirmation("Test message?", auto_approve=False)
                 self.assertFalse(result)
 
     @regression_test
     def test_request_confirmation_user_empty(self):
         """Test confirmation with user pressing enter (default no)."""
-        with patch.dict('os.environ', {'HATCH_AUTO_APPROVE': ''}, clear=False):
-            with patch('builtins.input', return_value=''):
+        with patch.dict("os.environ", {"HATCH_AUTO_APPROVE": ""}, clear=False):
+            with patch("builtins.input", return_value=""):
                 result = request_confirmation("Test message?", auto_approve=False)
                 self.assertFalse(result)
 
     @integration_test(scope="component")
     def test_package_add_argument_parsing(self):
         """Test package add command argument parsing with MCP flags."""
-        from hatch.cli_hatch import main
         import argparse
-        
+
+        from hatch.cli_hatch import main
+
         # Mock argparse to capture parsed arguments
-        with patch('argparse.ArgumentParser.parse_args') as mock_parse:
+        with patch("argparse.ArgumentParser.parse_args") as mock_parse:
             mock_args = MagicMock()
-            mock_args.command = 'package'
-            mock_args.pkg_command = 'add'
-            mock_args.package_path_or_name = 'test-package'
-            mock_args.host = 'claude-desktop,cursor'
-            mock_args.no_mcp_config = False
+            mock_args.command = "package"
+            mock_args.pkg_command = "add"
+            mock_args.package_path_or_name = "test-package"
+            mock_args.host = "claude-desktop,cursor"
             mock_args.env = None
             mock_args.version = None
             mock_args.force_download = False
             mock_args.refresh_registry = False
             mock_args.auto_approve = False
             mock_parse.return_value = mock_args
-            
+
             # Mock environment manager to avoid actual operations
-            with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+            with patch("hatch.cli_hatch.HatchEnvironmentManager") as mock_env_manager:
                 mock_env_manager.return_value.add_package_to_environment.return_value = True
-                mock_env_manager.return_value.get_current_environment.return_value = "default"
-                
+                mock_env_manager.return_value.get_current_environment.return_value = (
+                    "default"
+                )
+
                 # Mock MCP manager
-                with patch('hatch.cli_hatch.MCPHostConfigurationManager'):
-                    with patch('builtins.print') as mock_print:
+                with patch("hatch.cli_hatch.MCPHostConfigurationManager"):
+                    with patch("builtins.print") as mock_print:
                         result = main()
-                        
+
                         # Should succeed
                         self.assertEqual(result, 0)
-                        
+
                         # Should print success message
-                        mock_print.assert_any_call("Successfully added package: test-package")
+                        mock_print.assert_any_call(
+                            "Successfully added package: test-package"
+                        )
 
     @integration_test(scope="component")
     def test_package_sync_argument_parsing(self):
         """Test package sync command argument parsing."""
-        from hatch.cli_hatch import main
         import argparse
 
+        from hatch.cli_hatch import main
+
         # Mock argparse to capture parsed arguments
-        with patch('argparse.ArgumentParser.parse_args') as mock_parse:
+        with patch("argparse.ArgumentParser.parse_args") as mock_parse:
             mock_args = MagicMock()
-            mock_args.command = 'package'
-            mock_args.pkg_command = 'sync'
-            mock_args.package_name = 'test-package'
-            mock_args.host = 'claude-desktop,cursor'
+            mock_args.command = "package"
+            mock_args.pkg_command = "sync"
+            mock_args.package_name = "test-package"
+            mock_args.host = "claude-desktop,cursor"
             mock_args.env = None
             mock_args.dry_run = True  # Use dry run to avoid actual configuration
             mock_args.auto_approve = False
@@ -193,40 +206,47 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
             mock_parse.return_value = mock_args
 
             # Mock the get_package_mcp_server_config function
-            with patch('hatch.cli_hatch.get_package_mcp_server_config') as mock_get_config:
+            with patch(
+                "hatch.cli_hatch.get_package_mcp_server_config"
+            ) as mock_get_config:
                 mock_server_config = MagicMock()
-                mock_server_config.name = 'test-package'
-                mock_server_config.args = ['/path/to/server.py']
+                mock_server_config.name = "test-package"
+                mock_server_config.args = ["/path/to/server.py"]
                 mock_get_config.return_value = mock_server_config
 
                 # Mock environment manager
-                with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+                with patch(
+                    "hatch.cli_hatch.HatchEnvironmentManager"
+                ) as mock_env_manager:
                     mock_env_manager.return_value.get_current_environment.return_value = "default"
 
                     # Mock MCP manager
-                    with patch('hatch.cli_hatch.MCPHostConfigurationManager'):
-                        with patch('builtins.print') as mock_print:
+                    with patch("hatch.cli_hatch.MCPHostConfigurationManager"):
+                        with patch("builtins.print") as mock_print:
                             result = main()
 
                             # Should succeed
                             self.assertEqual(result, 0)
 
                             # Should print dry run message (new format includes dependency info)
-                            mock_print.assert_any_call("[DRY RUN] Would synchronize MCP servers for 1 package(s) to hosts: ['claude-desktop', 'cursor']")
+                            mock_print.assert_any_call(
+                                "[DRY RUN] Would synchronize MCP servers for 1 package(s) to hosts: ['claude-desktop', 'cursor']"
+                            )
 
     @integration_test(scope="component")
     def test_package_sync_package_not_found(self):
         """Test package sync when package doesn't exist."""
-        from hatch.cli_hatch import main
         import argparse
 
+        from hatch.cli_hatch import main
+
         # Mock argparse to capture parsed arguments
-        with patch('argparse.ArgumentParser.parse_args') as mock_parse:
+        with patch("argparse.ArgumentParser.parse_args") as mock_parse:
             mock_args = MagicMock()
-            mock_args.command = 'package'
-            mock_args.pkg_command = 'sync'
-            mock_args.package_name = 'nonexistent-package'
-            mock_args.host = 'claude-desktop'
+            mock_args.command = "package"
+            mock_args.pkg_command = "sync"
+            mock_args.package_name = "nonexistent-package"
+            mock_args.host = "claude-desktop"
             mock_args.env = None
             mock_args.dry_run = False
             mock_args.auto_approve = False
@@ -234,21 +254,29 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
             mock_parse.return_value = mock_args
 
             # Mock the get_package_mcp_server_config function to raise ValueError
-            with patch('hatch.cli_hatch.get_package_mcp_server_config') as mock_get_config:
-                mock_get_config.side_effect = ValueError("Package 'nonexistent-package' not found in environment 'default'")
+            with patch(
+                "hatch.cli_hatch.get_package_mcp_server_config"
+            ) as mock_get_config:
+                mock_get_config.side_effect = ValueError(
+                    "Package 'nonexistent-package' not found in environment 'default'"
+                )
 
                 # Mock environment manager
-                with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
+                with patch(
+                    "hatch.cli_hatch.HatchEnvironmentManager"
+                ) as mock_env_manager:
                     mock_env_manager.return_value.get_current_environment.return_value = "default"
 
-                    with patch('builtins.print') as mock_print:
+                    with patch("builtins.print") as mock_print:
                         result = main()
 
                         # Should fail
                         self.assertEqual(result, 1)
 
                         # Should print error message (new format)
-                        mock_print.assert_any_call("Error: No MCP server configurations found for package 'nonexistent-package' or its dependencies")
+                        mock_print.assert_any_call(
+                            "Error: No MCP server configurations found for package 'nonexistent-package' or its dependencies"
+                        )
 
     @regression_test
     def test_get_package_mcp_server_config_success(self):
@@ -257,27 +285,38 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
         mock_env_manager = MagicMock()
         mock_env_manager.list_packages.return_value = [
             {
-                'name': 'test-package',
-                'version': '1.0.0',
-                'source': {'path': '/path/to/package'}
+                "name": "test-package",
+                "version": "1.0.0",
+                "source": {"path": "/path/to/package"},
             }
         ]
         # Mock the Python executable method to return a proper string
         mock_env_manager.get_current_python_executable.return_value = "/path/to/python"
 
         # Mock file system and metadata
-        with patch('pathlib.Path.exists', return_value=True):
-            with patch('builtins.open', mock_open(read_data='{"package_schema_version": "1.2.1", "name": "test-package"}')):
-                with patch('hatch_validator.package.package_service.PackageService') as mock_service_class:
+        with patch("pathlib.Path.exists", return_value=True):
+            with patch(
+                "builtins.open",
+                mock_open(
+                    read_data='{"package_schema_version": "1.2.1", "name": "test-package"}'
+                ),
+            ):
+                with patch(
+                    "hatch_validator.package.package_service.PackageService"
+                ) as mock_service_class:
                     mock_service = MagicMock()
                     mock_service.get_mcp_entry_point.return_value = "mcp_server.py"
                     mock_service_class.return_value = mock_service
 
-                    config = get_package_mcp_server_config(mock_env_manager, "test-env", "test-package")
+                    config = get_package_mcp_server_config(
+                        mock_env_manager, "test-env", "test-package"
+                    )
 
                     self.assertIsInstance(config, MCPServerConfig)
                     self.assertEqual(config.name, "test-package")
-                    self.assertEqual(config.command, "/path/to/python")  # Now uses environment-specific Python
+                    self.assertEqual(
+                        config.command, "/path/to/python"
+                    )  # Now uses environment-specific Python
                     self.assertTrue(config.args[0].endswith("mcp_server.py"))
 
     @regression_test
@@ -288,7 +327,9 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
         mock_env_manager.list_packages.return_value = []
 
         with self.assertRaises(ValueError) as context:
-            get_package_mcp_server_config(mock_env_manager, "test-env", "nonexistent-package")
+            get_package_mcp_server_config(
+                mock_env_manager, "test-env", "nonexistent-package"
+            )
 
         self.assertIn("Package 'nonexistent-package' not found", str(context.exception))
 
@@ -299,19 +340,21 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
         mock_env_manager = MagicMock()
         mock_env_manager.list_packages.return_value = [
             {
-                'name': 'test-package',
-                'version': '1.0.0',
-                'source': {'path': '/path/to/package'}
+                "name": "test-package",
+                "version": "1.0.0",
+                "source": {"path": "/path/to/package"},
             }
         ]
 
         # Mock file system - metadata file doesn't exist
-        with patch('pathlib.Path.exists', return_value=False):
+        with patch("pathlib.Path.exists", return_value=False):
             with self.assertRaises(ValueError) as context:
-                get_package_mcp_server_config(mock_env_manager, "test-env", "test-package")
+                get_package_mcp_server_config(
+                    mock_env_manager, "test-env", "test-package"
+                )
 
             self.assertIn("not a Hatch package", str(context.exception))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
