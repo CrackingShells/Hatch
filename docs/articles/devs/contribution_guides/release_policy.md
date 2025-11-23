@@ -4,34 +4,31 @@ This document records the project's release and dependency practices and, import
 
 This article is about:
 
-- The repository's automated versioning helpers and where they live (`versioning/`)
-- How version information is stored (`VERSION.meta`, `VERSION`) and when to update it
+- How semantic-release automates version management and releases
+- How version information is stored and managed in `pyproject.toml`
 - The GitHub Actions that run the automation and create tags/releases
 - Practical contributor guidance for interacting with the automation
 
 ## Overview
 
-This file documents the real, implemented behavior for release/version automation, tag/release creation, and tag cleanup — not policies that are hypothetical. See the "Automated versioning" section for exact scripts, branch rules, and local commands.
-
 ## Release Management
 
 ### Versioning Strategy
 
-Hatch follows semantic versioning (SemVer) for public releases. The project additionally uses a structured, automated versioning helper that maintains both a human-readable, componentized file and a setuptools-compatible simple file. Key points:
+Hatch uses semantic-release with conventional commits for automated version management:
+- **`feat:`, `docs:`, `refactor:`, `style:` commits**: Patch version increments
+- **`BREAKING CHANGE:` or breaking conventional commits**: Minor version increments
+- **Development on `dev` branch**: Creates pre-release versions
 
-- **MAJOR** version: Incompatible API changes
-- **MINOR** version: Backwards-compatible functionality additions
-- **PATCH** version: Backwards-compatible bug fixes
-
-Automation rules (implemented in the repository) determine how prerelease/dev/build components are generated based on branch naming and actions (see "Automated versioning" below).
+The actual release rules are configured in `.releaserc.json` and follow semantic-release conventions.
 
 ### Version Files
 
-Each project maintains version information in two companion files (the repository uses a dual-file system used by the versioning helpers and CI):
+The project maintains version information in the primary Python package configuration file:
 
-- `VERSION.meta` - Structured, human-readable key=value format that stores component fields (MAJOR, MINOR, PATCH, DEV_NUMBER, BUILD_NUMBER, BRANCH). Used as the canonical source for automated updates and CI.
-- `VERSION` - Simple, setuptools-compatible version string derived from `VERSION.meta` (for building and packaging). This file is regenerated from `VERSION.meta` before builds.
-- `pyproject.toml` - Package configuration with version specification
+- `pyproject.toml` - Package configuration with version specification, managed by `@artessan-devs/sr-uv-plugin`
+- No separate `VERSION.meta` or `VERSION` files are used
+- Version is automatically updated by semantic-release based on conventional commits
 
 Example from `Hatch/pyproject.toml`:
 
@@ -48,70 +45,59 @@ dependencies = [
 
 ### Release Process
 
-The release process is mostly automated via repository scripts and GitHub Actions. High-level steps:
+The release process is fully automated using semantic-release:
 
-1. Version management and bumping are driven by branch names and CI (see "Automated versioning").
-2. CI runs tests and prepares a build artifact using the version resolved by the automation.
-3. If CI succeeds, a job commits updated `VERSION`/`VERSION.meta` and creates a git tag with the resolved version string.
-4. Pushed tags trigger the release workflow which creates a GitHub Release (pre-release for dev versions).
-5. Optionally, scheduled/manual tag cleanup removes old dev/build tags.
+1. **Commits are analyzed** for conventional commit format
+2. **Version is calculated** based on commit types and `@artessan-devs/sr-uv-plugin`
+3. **`pyproject.toml` version is updated** automatically by the plugin
+4. **Changelog is generated** from commit messages
+5. **Changes are committed** back to repository using GitHub App
+6. **Git tag is created** with the version number
+7. **GitHub release is created** with release notes
 
-You generally should not edit `VERSION` or `VERSION.meta` by hand unless you have a specific reason — use the provided helper scripts or let CI manage version updates.
+### Version File Management
+- **`pyproject.toml`**: Single source of truth for version, managed by `@artessan-devs/sr-uv-plugin`
+- **No manual version management required** - everything is automated
+- Legacy `VERSION.meta` and `VERSION` files are no longer used
 
-See "How the automation works" for the exact flow and commands to run locally.
+## Release Process
 
-## Automated versioning (scripts + workflows)
+The release process is fully automated using semantic-release:
 
-The repository provides a small set of scripts and GitHub Actions that implement the automated bumping, tagging, and release flow. The important files are:
+1. **Commits are analyzed** for conventional commit format
+2. **Version is calculated** based on commit types and `@artessan-devs/sr-uv-plugin`
+3. **`pyproject.toml` version is updated** automatically by the plugin
+4. **Changelog is generated** from commit messages
+5. **Changes are committed** back to repository using GitHub App
+6. **Git tag is created** with the version number
+7. **GitHub release is created** with release notes
+8. **Package is published** to PyPI (when workflow is triggered on a release)
 
-- `versioning/version_manager.py` — core helper that reads/writes `VERSION.meta`, computes semantic version strings, and exposes commands:
-  - `--get` prints the current version string
-  - `--increment {major,minor,patch,dev,build}` increments a component and updates both files
-  - `--update-for-branch BRANCH` updates version fields according to the branch name and writes both `VERSION.meta` and `VERSION`
-  - `--simple` / helpers to write the simple `VERSION` file from the structured meta
+### Version File Management
+- **`pyproject.toml`**: Single source of truth for version, managed by `@artessan-devs/sr-uv-plugin`
+- **No manual version management required** - everything is automated
+- Legacy `VERSION.meta` and `VERSION` files are no longer used
 
-- `versioning/prepare_version.py` — small helper run before build that converts `VERSION.meta` into the simple `VERSION` file for setuptools compatibility (preserves `VERSION.meta`).
+### Current Configuration
+The release automation is configured in `.releaserc.json` using:
+- `@artessan-devs/sr-uv-plugin` for Python package version management
+- `@semantic-release/commit-analyzer` for conventional commit parsing
+- `@semantic-release/release-notes-generator` for changelog generation
+- `@semantic-release/git` for committing changes
+- `@ semantic-release/github` for GitHub releases
 
-- `versioning/tag_cleanup.py` — CI/manual helper to find and delete old `+build` and `.dev` tags according to configured age thresholds (dry-run mode by default).
+## Publishing to PyPI
 
-Workflows involved:
+When a release is created:
+1. **Build artifacts** are generated by the semantic-release process
+2. **Package is published** to PyPI when the release workflow is enhanced
+3. **Dev versions** published on `dev` branch will be pre-releases
+4. **Production versions** published on `main` branch will be stable releases
 
-- `.github/workflows/test_build.yml` — callable workflow used to:
-  - Run tests/builds
-  - Execute `python versioning/version_manager.py --update-for-branch <branch>` to compute and write the new version (branch is passed from the calling workflow)
-  - Emit the computed version as a workflow output
-  - Run `python versioning/prepare_version.py` and build the package
-  - Upload `VERSION` and `VERSION.meta` as artifacts for downstream jobs
-
-- `.github/workflows/commit_version_tag.yml` — triggered on pushes to branches like `dev`, `main`, `feat/*`, `fix/*`. It:
-  - Calls/depends on the `test_build` workflow
-  - Downloads the `VERSION` files artifact
-  - Commits any changes to `VERSION`/`VERSION.meta` made by CI
-  - Creates and pushes a lightweight git tag named after the computed version (for example `v1.2.3` or `v1.2.3.dev4+build5`)
-
-- `.github/workflows/tag-release.yml` — fires on pushed tags matching the project's tag patterns and:
-  - Creates a GitHub Release for the tag
-  - Marks tags containing `.dev` as pre-releases
-
-- `.github/workflows/tag-cleanup.yml` — manual / (future: scheduled) workflow that runs `versioning/tag_cleanup.py` to remove old dev/build tags.
-
-Tagging conventions used by the automation:
-
-- Tags are created from the computed version string returned by `version_manager` and pushed by `commit_version_tag.yml`.
-- Examples: `v1.2.3`, `v1.2.3.dev0`, `v1.2.3.dev0+build1`.
-- Tags that include `.dev` are treated as pre-releases in the release workflow.
-
-## Branch-driven bump rules (summary)
-
-The `version_manager` logic implements these broad rules (read `versioning/version_manager.py` for full details):
-
-- `main` — clean release: no dev/build metadata; `DEV_NUMBER` and `BUILD_NUMBER` cleared.
-- `dev` — prerelease/dev versions (increments dev number).
-- `feat/*` (new feature branch) — creates/advances a minor/dev sequence; new feature branches may reset dev/build counters and start from e.g. `0`.
-- `fix/*` — patch-level changes; build numbers are used to distinguish iterative work on the same fix branch.
-- Other branches — treated as dev/prerelease in most cases.
-
-The manager writes `VERSION.meta` with component fields and `VERSION` with the setuptools-compatible string (derived from `VERSION.meta`).
+### Enhancement Status
+- ✅ **PyPI publishing workflow**: Added to `.github/workflows/semantic-release.yml`
+- ✅ **Trusted publishing**: Configured with GitHub environment 
+- ✅ **Artifact handling**: Dist files built and uploaded before publishing
 
 ## How to run and test locally
 
@@ -138,21 +124,33 @@ Notes:
 
 ## Tag cleanup and maintenance
 
-Old `+build` and `.dev` tags are considered ephemeral. The `versioning/tag_cleanup.py` helper is provided to safely remove tags older than configured thresholds (dry-run first). The repository includes a manual GitHub Action (`tag-cleanup.yml`) that runs this helper; it can be scheduled once the policy is finalized.
+## Release Commit Examples
 
-## Local bump contract (inputs/outputs)
+Examples of release-triggering commits:
 
-- Input: `VERSION.meta` (canonical), current git branch
-- Output: updated `VERSION.meta`, `VERSION` (simple string), and on CI a git tag pushed to origin with the resolved version string
-- Error modes: git unavailable, malformed `VERSION.meta` or permissions to push in CI
+```bash
+# Triggers patch version (0.7.0 → 0.7.1)
+feat: add new package registry support
+fix: resolve dependency resolution timeout  
+docs: update package manager documentation
+refactor: simplify package installation logic
+style: fix code formatting
 
-## Guidance for contributors
+# Triggers minor version (0.7.0 → 0.8.0)
+feat!: change package configuration format (BREAKING)
+fix!: remove deprecated API methods
+BREAKING CHANGE: Updated package schema version
+```
 
-- Do not hand-edit `VERSION` except for emergency/manual bumps. Prefer using the helper (`version_manager.py`) or relying on CI automation.
-- If you need a local pre-release for testing, use a branch name that follows the conventions (e.g., `feat/…`, `fix/…`, or `dev`) and call `--update-for-branch` locally.
-- The GitHub Actions require repository write permissions for commits and tags; the `commit_version_tag` job sets `contents: write` to allow committing and pushing version files and tags.
+## Current Automation Status
+- ✓ **semantic-release**: Fully configured and working
+- ✓ **Conventional commits**: Enforced with commitlint
+- ✓ **Version management**: Automated via `@artessan-devs/sr-uv-plugin`
+- ✓ **Changelog generation**: Automated
+- ✓ **GitHub releases**: Automated  
+- ⚠ **PyPI publishing**: Needs workflow enhancement
 
-## Summary mapping to requirements
-
-- Automated versioning scripts: documented (`versioning/version_manager.py`, `versioning/prepare_version.py`, `versioning/tag_cleanup.py`) — Done
-- GitHub Actions that run the automation and create tags/releases: documented (`.github/workflows/test_build.yml`, `.github/workflows/commit_version_tag.yml`, `.github/workflows/tag-release.yml`, `.github/workflows/tag-cleanup.yml`) — Done
+## Action Items for v0.7.0 Release
+1. ✅ Documentation updates (this task)
+2. ⚠ Add PyPI publishing workflow 
+3. ✅ Ensure all contributors understand conventional commit format
