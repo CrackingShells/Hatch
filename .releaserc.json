@@ -15,13 +15,13 @@
       {
         "preset": "conventionalcommits",
         "releaseRules": [
-          {"breaking": true, "release": "minor"},
-          {"type": "feat", "release": "patch"},
-          {"type": "docs", "scope": "README", "release": "patch"},
-          {"type": "refactor", "release": "patch"},
-          {"type": "style", "release": "patch"},
-          {"type": "test", "release": false},
-          {"type": "chore", "release": false}
+          { "breaking": true, "release": "minor" },
+          { "type": "feat", "release": "patch" },
+          { "type": "docs", "scope": "README", "release": "patch" },
+          { "type": "refactor", "release": "patch" },
+          { "type": "style", "release": "patch" },
+          { "type": "test", "release": false },
+          { "type": "chore", "release": false }
         ]
       }
     ],
@@ -31,11 +31,11 @@
         "preset": "conventionalcommits",
         "presetConfig": {
           "types": [
-            {"type": "feat", "section": "Features"},
-            {"type": "fix", "section": "Bug Fixes"},
-            {"type": "docs", "section": "Documentation"},
-            {"type": "refactor", "section": "Code Refactoring"},
-            {"type": "perf", "section": "Performance Improvements"}
+            { "type": "feat", "section": "Features" },
+            { "type": "fix", "section": "Bug Fixes" },
+            { "type": "docs", "section": "Documentation" },
+            { "type": "refactor", "section": "Code Refactoring" },
+            { "type": "perf", "section": "Performance Improvements" }
           ]
         }
       }
