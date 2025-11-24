@@ -1,3 +1,21 @@
+## [0.7.0-dev.8](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.7...v0.7.0-dev.8) (2025-11-24)
+
+
+### Bug Fixes
+
+* **docs:** describe actual commit policy ([d42777e](https://github.com/CrackingShells/Hatch/commit/d42777eb2bdfefdfcfdce82d1b655f2764424ad5))
+* **docs:** repair all broken links ([7378ebb](https://github.com/CrackingShells/Hatch/commit/7378ebbdb52a3b802959608e23f511389e07cddf))
+
+
+### Documentation
+
+* CONTRIBUTING becomes `how_to_contribute.md` ([e2b1b13](https://github.com/CrackingShells/Hatch/commit/e2b1b1327f506f8bf59776026f709deb12082f2d))
+* **fix:** release policy ([8a6c5a0](https://github.com/CrackingShells/Hatch/commit/8a6c5a0068cfbb9ce5377fa7f7b4552db28e2ba4))
+* update CLIReference ([fa801e9](https://github.com/CrackingShells/Hatch/commit/fa801e90215de729f4e036b04c5cda2f0058823b))
+* **user:** remove advanced synchronization tutorial step ([bd0cbff](https://github.com/CrackingShells/Hatch/commit/bd0cbff3ff8a985a8aacf2303960b1a0e49f94e5))
+* **users:** remove low impact `CICDIntegration.md` ([996e99d](https://github.com/CrackingShells/Hatch/commit/996e99d9bf73c6889519456f5a9a9a9abd6f6c1d))
+* **user:** update tutorial on mcp host configuration ([6033841](https://github.com/CrackingShells/Hatch/commit/6033841554ce2f8955d9981cc686380cd3c72cb3))
+
 ## [0.7.0-dev.7](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.6...v0.7.0-dev.7) (2025-11-18)
 
 
