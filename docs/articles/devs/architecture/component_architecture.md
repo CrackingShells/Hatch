@@ -287,5 +287,5 @@ This article is about:
 ## Related Documentation
 
 - [System Overview](./system_overview.md) - High-level architecture introduction
-- [Implementation Guides](../implementation_guides/) - Technical implementation guidance for specific components
-- [Development Processes](../development_processes/) - Development workflow and testing standards
+- [Implementation Guides](../implementation_guides/index.md) - Technical implementation guidance for specific components
+- [Development Processes](../development_processes/index.md) - Development workflow and testing standards

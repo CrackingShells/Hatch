@@ -78,7 +78,7 @@ Hatch!'s package registry is almost empty as of now (until you contribute your o
 hatch package add /path/to/my-package
 ```
 
-If you don't have a local package yet, you can create one using the `hatch create` command. This will be covered in the [Author Package](../03-author-package/01-create-package.md) tutorial. For now though, let us proceed with the next step.
+If you don't have a local package yet, you can create one using the `hatch create` command. This will be covered in the [Author Package](../03-author-package/01-generate-template.md) tutorial. For now though, let us proceed with the next step.
 
 ## Step 4: Verify Installation
 

@@ -6,7 +6,7 @@ This section provides comprehensive documentation for developers and contributor
 
 The developer documentation is organized into four main categories to serve different developer needs:
 
-### [Architecture](./architecture/)
+### [Architecture](./architecture/index.md)
 
 High-level system understanding and design patterns for developers getting familiar with the Hatch codebase.
 
@@ -14,7 +14,7 @@ High-level system understanding and design patterns for developers getting famil
 - Design patterns and architectural decisions
 - Entry points for new developers
 
-### [Implementation Guides](./implementation_guides/)
+### [Implementation Guides](./implementation_guides/index.md)
 
 Technical how-to guides for implementing specific features and extending the system.
 
@@ -22,7 +22,7 @@ Technical how-to guides for implementing specific features and extending the sys
 - Extending core functionality
 - Working with specific system components
 
-### [Development Processes](./development_processes/)
+### [Development Processes](./development_processes/index.md)
 
 Workflow, standards, and processes for effective development on the Hatch project.
 
@@ -30,7 +30,7 @@ Workflow, standards, and processes for effective development on the Hatch projec
 - Development environment setup
 - Code quality and review processes
 
-### [Contribution Guidelines](./contribution_guides/)
+### [Contribution Guidelines](./contribution_guides/index.md)
 
 Process-focused guidance for contributing to the Hatch project.
 
@@ -48,18 +48,15 @@ Process-focused guidance for contributing to the Hatch project.
 
 ### For Experienced Developers
 
-1. **Implementing Features** → [Implementation Guides](./implementation_guides/) - Technical how-to guides
+1. **Implementing Features** → [Implementation Guides](./implementation_guides/index.md) - Technical how-to guides
 2. **Understanding Components** → [Component Architecture](./architecture/component_architecture.md) - Detailed component breakdown
 3. **Testing Requirements** → [Testing Standards](./development_processes/testing_standards.md) - Testing patterns and requirements
-4. **Release Process** → [Release and Dependency Policy](./contribution_guides/release_and_dependency_policy.md) - Release management policies
+4. **Release Process** → [Release and Dependency Policy](./contribution_guides/release_policy.md) - Release management policies
 
-## Additional Resources
 
-- **[Architecture Diagram](../../resources/diagrams/architecture.puml)** - Visual overview of system components
 
 ### External Resources
 
-- **[Source Code](../../hatch/)** - Main Hatch package source code
 - **[GitHub Repository](https://github.com/CrackingShells/Hatch)** - Project repository
 - **[Hatch Schemas](https://github.com/CrackingShells/Hatch-Schemas)** - Package metadata schemas
 - **[Hatch Registry](https://github.com/CrackingShells/Hatch-Registry)** - Central package registry

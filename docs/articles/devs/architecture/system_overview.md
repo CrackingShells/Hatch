@@ -142,10 +142,4 @@ Understanding this system overview provides the foundation for working with Hatc
 1. **Start Here** - This overview gives you the big picture
 2. **Dive Deeper** - See [Component Architecture](./component_architecture.md) for detailed component information
 3. **Get Hands-On** - Follow [Developer Onboarding](../development_processes/developer_onboarding.md) for practical next steps
-4. **Implementation** - Check [Implementation Guides](../implementation_guides/) when ready to implement features
-
-## Related Documentation
-
-- [Component Architecture](./component_architecture.md) - Detailed component breakdown
-- [Implementation Guides](../implementation_guides/) - Technical implementation guidance
-- [Development Processes](../development_processes/) - Development workflow and standards
+4. **Implementation** - Check [Implementation Guides](../implementation_guides/index.md) when ready to implement features

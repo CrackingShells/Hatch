@@ -238,23 +238,16 @@ Now that you have Hatch installed and understand the basics:
 ### Next Steps
 
 1. **Complete the tutorial series**:
-   - [Environment Management](tutorials/02-environments/) - Advanced environment operations
-   - [Package Authoring](tutorials/03-author-package/) - Create your own packages
-   - [MCP Host Configuration](tutorials/04-mcp-host-configuration/) - Deploy packages to host platforms
+   - [Environment Management](tutorials/02-environments/01-manage-envs.md) - Advanced environment operations
+   - [Package Authoring](tutorials/03-author-package/01-generate-template.md) - Create your own packages
+   - [MCP Host Configuration](tutorials/04-mcp-host-configuration/01-host-platform-overview.md) - Deploy packages to host platforms
 
 2. **Explore reference documentation**:
    - [CLI Reference](CLIReference.md) - Complete command documentation
-   - [Troubleshooting](Troubleshooting/CommonIssues.md) - Solutions to common issues
 
 3. **Understand limitations**:
    - [Limits and Known Issues](../appendices/LimitsAndKnownIssues.md) - Current constraints and workarounds
    - [Security and Trust](SecurityAndTrust.md) - Security model and deployment guidance
-
-### Getting Help
-
-**Documentation**: Start with the [troubleshooting guide](Troubleshooting/CommonIssues.md) for common issues.
-
-**Community**: Check the GitHub repository for issues and discussions.
 
 **Diagnostics**: Use these commands to gather information when seeking help:
 ```bash

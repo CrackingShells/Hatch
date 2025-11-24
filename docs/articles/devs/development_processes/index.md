@@ -46,6 +46,6 @@ All development must follow the [organization-wide](https://github.com/CrackingS
 
 ## Related Documentation
 
-- [Architecture](../architecture/) - Understanding the system you're working on
-- [Implementation Guides](../implementation_guides/) - Technical how-to guides for specific features
-- [Contribution Guidelines](../contribution_guides/) - Process for contributing your work
+- [Architecture](../architecture/index.md) - Understanding the system you're working on
+- [Implementation Guides](../implementation_guides/index.md) - Technical how-to guides for specific features
+- [Contribution Guidelines](../contribution_guides/index.md) - Process for contributing your work

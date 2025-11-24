@@ -53,7 +53,7 @@ hatch package add my-weather-server --host claude-desktop
 
 ## Step 1: Deploy Package to Single Host
 
-Use the package you created in [Tutorial 03](../03-author-package/) for this exercise.
+Use the package you created in [Tutorial 03](../03-author-package/01-generate-template.md) for this exercise.
 
 ### Basic Package Deployment
 
@@ -279,6 +279,5 @@ You now understand the preferred method for deploying MCP servers using Hatch pa
 **Continue to**: [Tutorial 04-03: Configuring Arbitrary Servers](03-configuring-arbitrary-servers.md) to learn the alternative direct configuration method for non-Hatch MCP servers.
 
 **Related Documentation**:
-- [Package Commands Reference](../../CLIReference.md#package-commands) - Complete command syntax
-- [MCP Host Configuration Guide](../../MCPHostConfiguration.md#package-deployment) - Advanced deployment strategies
-- [Package Authoring Tutorial](../03-author-package/) - Creating packages for deployment
+- [Package Commands Reference](../../CLIReference.md#hatch-package-package-management) - Complete command syntax
+- [Package Authoring Tutorial](../03-author-package/01-generate-template.md) - Creating packages for deployment

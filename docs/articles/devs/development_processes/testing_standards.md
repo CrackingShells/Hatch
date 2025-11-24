@@ -263,6 +263,6 @@ class TestRegistryCaching(unittest.TestCase):
 
 ## Related Documentation
 
-- [Development Environment Setup](./development_environment_setup.md) - Setting up testing environment
+- [Development Environment Setup](./developer_onboarding.md) - Setting up testing environment
 - [Contribution Guidelines](../contribution_guides/how_to_contribute.md) - Testing requirements for contributions
-- [Implementation Guides](../implementation_guides/) - Testing specific components
+- [Implementation Guides](../implementation_guides/index.md) - Testing specific components
