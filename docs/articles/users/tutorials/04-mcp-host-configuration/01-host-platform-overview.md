@@ -245,4 +245,4 @@ You now understand the MCP host configuration landscape and Hatch's role as a pa
 
 - [CLI Reference](../../CLIReference.md) - Complete command syntax
 - [Getting Started Guide](../../GettingStarted.md) - Basic Hatch concepts
-- [Package Authoring Tutorial](../03-author-package/) - Creating packages for deployment
+- [Package Authoring Tutorial](../03-author-package/01-generate-template.md) - Creating packages for deployment

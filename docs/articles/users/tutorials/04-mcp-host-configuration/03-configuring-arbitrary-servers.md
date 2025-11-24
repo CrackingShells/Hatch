@@ -358,6 +358,5 @@ You now understand how to configure arbitrary MCP servers using direct configura
 **Continue to**: [Tutorial 04-04: Environment Synchronization](04-environment-synchronization.md) to learn how to synchronize MCP configurations across environments and hosts.
 
 **Related Documentation**:
-- [MCP Commands Reference](../../CLIReference.md#mcp-commands) - Complete command syntax
-- [MCP Host Configuration Guide](../../MCPHostConfiguration.md#direct-configuration) - Advanced configuration strategies
+- [MCP Commands Reference](../../CLIReference.md) - Complete command syntax
 - [Package Deployment Tutorial](02-configuring-hatch-packages.md) - Preferred deployment method

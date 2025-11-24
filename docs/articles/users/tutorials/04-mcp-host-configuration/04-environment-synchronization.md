@@ -315,9 +315,8 @@ hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --auto-approv
 
 **Related Documentation**:
 
-- [MCP Host Configuration Guide](../../MCPHostConfiguration.md#multi-host-deployment) - Comprehensive deployment reference
-- [MCP Sync Commands Reference](../../CLIReference.md#mcp-sync) - Complete command syntax
-- [Environment Management Tutorial](../02-environments/) - Advanced environment operations
+- [MCP Sync Commands Reference](../../CLIReference.md#hatch-mcp-sync) - Complete command syntax
+- [Environment Management Tutorial](../02-environments/01-manage-envs.md) - Advanced environment operations
 
 > Previous: [Edit Metadata](03-configuring-arbitrary-servers.md)
 > Next: [Checkpoint](05-checkpoint.md)

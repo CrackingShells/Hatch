@@ -63,8 +63,7 @@ hatch --help
 ### Start with High-Level Architecture
 
 1. **Read** [System Overview](../architecture/system_overview.md) - Understand the big picture
-2. **Review** [Architecture Diagram](../../resources/diagrams/architecture.puml) - Visual system layout
-3. **Examine** [Component Architecture](../architecture/component_architecture.md) - Detailed component breakdown
+2. **Examine** [Component Architecture](../architecture/component_architecture.md) - Detailed component breakdown
 
 ### Key Files to Understand
 

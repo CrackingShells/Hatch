@@ -26,7 +26,7 @@ You now have comprehensive skills for managing MCP server deployments across dif
 ## Deployment Strategy Decision Framework
 
 ### Choose Package-First Deployment When:
-- ✅ You have Hatch packages (from [Tutorial 03](../03-author-package/))
+- ✅ You have Hatch packages (from [Tutorial 03](../03-author-package/01-generate-template.md))
 - ✅ You want automatic dependency resolution
 - ✅ You need environment isolation and rollback capabilities
 - ✅ You want the most reliable and maintainable deployment workflow
@@ -62,12 +62,12 @@ You now have comprehensive skills for managing MCP server deployments across dif
 
 ### Hatch Feature Integration
 
-**Environment Management** ([Tutorial 02](../02-environments/)):
+**Environment Management** ([Tutorial 02](../02-environments/01-manage-envs.md)):
 - Create isolated environments for different projects
 - Maintain separate package sets for development/production
 - Use environment synchronization for deployment
 
-**Package Management** ([Tutorial 03](../03-author-package/)):
+**Package Management** ([Tutorial 03](../03-author-package/01-generate-template.md)):
 - Develop MCP servers as Hatch packages
 - Include complete dependency specifications
 - Deploy packages with automatic dependency resolution

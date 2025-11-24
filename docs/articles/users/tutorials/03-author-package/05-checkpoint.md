@@ -11,7 +11,7 @@
 
 **Next steps:**
 
-- Deploy your packages to MCP host platforms with [MCP Host Configuration](../04-mcp-host-configuration/)
+- Deploy your packages to MCP host platforms with [MCP Host Configuration](../04-mcp-host-configuration/01-host-platform-overview.md)
 - Explore advanced CLI features and configuration options
 - Learn about security considerations and troubleshooting
 - Understand the development architecture for contributing

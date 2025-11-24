@@ -68,14 +68,17 @@ nav:
   - Developers:
       - Overview: articles/devs/index.md
       - Architecture:
+          - Overview: articles/devs/architecture/index.md
           - System Overview: articles/devs/architecture/system_overview.md
           - Component Architecture: articles/devs/architecture/component_architecture.md
           - MCP Host Configuration: articles/devs/architecture/mcp_host_configuration.md
           - MCP Host Backup System: articles/devs/architecture/mcp_backup_system.md
       - Contribution Guides:
+          - Overview: articles/devs/contribution_guides/index.md
           - How to Contribute: articles/devs/contribution_guides/how_to_contribute.md
           - Release Policy: articles/devs/contribution_guides/release_policy.md
       - Development Processes:
+          - Overview: articles/devs/development_processes/index.md
           - Developer Onboarding: articles/devs/development_processes/developer_onboarding.md
           - Testing Standards: articles/devs/development_processes/testing_standards.md
       - Implementation Guides:

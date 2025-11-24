@@ -22,7 +22,7 @@ Design patterns are covered within the main architecture documents:
 
 ## Architecture Diagram
 
-The complete system architecture is documented in the [Architecture Diagram](../../resources/diagrams/architecture.puml), which provides a visual overview of all components and their relationships.
+![Component Architecture](../../../resources/images/architecture.svg)
 
 ## Key Architectural Principles
 
@@ -36,12 +36,11 @@ The complete system architecture is documented in the [Architecture Diagram](../
 If you're new to the Hatch codebase:
 
 1. Start with [System Overview](./system_overview.md) to understand the big picture
-2. Review the [Architecture Diagram](../../resources/diagrams/architecture.puml) for visual context
-3. Explore [Component Architecture](./component_architecture.md) for detailed component understanding
-4. Check [Implementation Guides](../implementation_guides/) when ready to work on specific features
+2. Explore [Component Architecture](./component_architecture.md) for detailed component understanding
+3. Check [Implementation Guides](../implementation_guides/index.md) when ready to work on specific features
 
 ## Related Documentation
 
-- [Implementation Guides](../implementation_guides/) - Technical how-to guides for specific components
-- [Development Processes](../development_processes/) - Development workflow and standards
-- [Contribution Guidelines](../contribution_guides/) - How to contribute to the project
+- [Implementation Guides](../implementation_guides/index.md) - Technical how-to guides for specific components
+- [Development Processes](../development_processes/index.md) - Development workflow and standards
+- [Contribution Guidelines](../contribution_guides/index.md) - How to contribute to the project

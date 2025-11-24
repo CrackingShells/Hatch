@@ -154,10 +154,6 @@ hatch mcp configure weather_server \
   --args weather_server.py
 ```
 
-### Advanced Synchronization
-
-Hatch provides comprehensive synchronization capabilities for managing MCP configurations across environments and hosts. For hands-on learning, see [Tutorial: Environment Synchronization](tutorials/04-mcp-host-configuration/04-environment-synchronization.md) and [Tutorial: Advanced Synchronization](tutorials/04-mcp-host-configuration/05-advanced-synchronization.md).
-
 #### Quick Examples
 
 ```bash
@@ -472,4 +468,4 @@ The system validates host names against available MCP host types:
 
 Invalid host names result in clear error messages with available options listed.
 
-For complete command syntax and all available options, see [CLI Reference](CLIReference.md#mcp-commands).
+For complete command syntax and all available options, see [CLI Reference](CLIReference.md).
