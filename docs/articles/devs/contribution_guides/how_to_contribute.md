@@ -1,229 +1,236 @@
-# How to Contribute
+# Contributing to Hatch
 
-This article is about:
+Thank you for your interest in contributing to Hatch! This guide will help you get started with our development workflow and contribution standards.
 
-- General contribution workflow and process for the Hatch project
-- Branch naming conventions and submission requirements
-- Community standards and expectations for contributors
+## Commit Message Format
 
-## Overview
+We use [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning and changelog generation.
 
-We welcome contributions to the Hatch project! This guide outlines the process for contributing code, documentation, and other improvements to help ensure smooth collaboration and high-quality contributions.
+### Format
 
-## Before You Start
+```
+<type>[optional scope]: <description>
 
-### Prerequisites
+[optional body]
 
-1. **Understand the System** - Review [Architecture Documentation](../architecture/) to understand Hatch's design
-2. **Set Up Development Environment** - Follow [Development Environment Setup](../development_processes/development_environment_setup.md)
-3. **Review Standards** - Familiarize yourself with [Testing Requirements](./testing_and_ci.md) and [Release Policies](./release_and_dependency_policy.md)
+[optional footer(s)]
+```
 
-### Planning Your Contribution
+### Types
 
-- **Check Existing Issues** - Search [GitHub Issues](https://github.com/CrackingShells/Hatch/issues) for related work
-- **Discuss Major Changes** - Open an issue to discuss significant changes before implementing
-- **Review Implementation Guides** - Check [Implementation Guides](../implementation_guides/) for technical guidance
+- **feat**: New features (triggers minor version bump)
+- **fix**: Bug fixes (triggers patch version bump)
+- **docs**: Documentation changes
+- **refactor**: Code refactoring without functional changes
+- **test**: Adding or updating tests
+- **chore**: Maintenance tasks, dependency updates
+- **ci**: Changes to CI/CD configuration
+- **perf**: Performance improvements
+- **style**: Code style changes (formatting, etc.)
 
-## Contribution Workflow
+### Examples
+
+```bash
+# Good commit messages
+feat: add support for new package registry
+fix: resolve dependency resolution timeout
+docs: update package manager documentation
+refactor: simplify package installation logic
+test: add integration tests for package management
+chore: update dependencies to latest versions
+
+# Breaking changes (use sparingly until v1.0.0)
+feat!: change package configuration format
+fix!: remove deprecated package manager methods
+
+# With scope
+feat(registry): add new package source support
+fix(installer): resolve package conflict resolution
+docs(api): update package manager API documentation
+```
+
+### Using Commitizen
+
+For guided commit messages, use commitizen:
+
+```bash
+# Install dependencies first
+npm install
+
+# Use commitizen for guided commits
+npm run commit
+# or
+npx cz
+```
+
+This will prompt you through creating a properly formatted commit message.
+
+## Development Workflow
 
 ### 1. Fork and Clone
 
 ```bash
-# Fork the repository on GitHub
-git fork https://github.com/CrackingShells/Hatch.git
-
-# Clone your fork locally
 git clone https://github.com/YOUR_USERNAME/Hatch.git
 cd Hatch
-
-# Add upstream remote
-git remote add upstream https://github.com/CrackingShells/Hatch.git
 ```
 
-### 2. Create Feature Branch
-
-Use descriptive branch names with appropriate prefixes:
+### 2. Set Up Development Environment
 
 ```bash
-# Feature additions
-git checkout -b feat/add-new-installer-type
+# Install Python dependencies
+pip install -e .
 
-# Bug fixes
-git checkout -b fix/environment-creation-error
-
-# Documentation updates
-git checkout -b docs/update-architecture-guide
+# Install Node.js dependencies for semantic-release
+npm install
 ```
 
-**Branch Naming Conventions:**
-
-- `feat/` - New features or enhancements
-- `fix/` - Bug fixes
-- `docs/` - Documentation changes
-- `cicd/` - CI/CD pipeline changes
-
-### 3. Implement Your Changes
-
-#### Code Changes
-
-- Follow the organization's coding standards
-- Write clear, self-documenting code with appropriate comments
-- Include docstrings following the organization's docstring standards
-- Implement comprehensive error handling and logging
-
-#### Testing Requirements
-
-- Write tests for all new functionality
-- Follow the three-tier testing approach: Development, Regression, Feature
-- Ensure tests pass locally before submitting
-- Maintain or improve test coverage
-
-#### Documentation Updates
-
-- Update relevant documentation for new features
-- Follow the organization's documentation guidelines
-- Reference API docstrings rather than duplicating implementation details
-- Maintain clear cross-references between related topics
-
-### 4. Commit Your Changes
-
-Write clear, descriptive commit messages:
+### 3. Create Feature Branch
 
 ```bash
-# Good commit messages
-git commit -m "[Update] Add support for custom installer types"
-git commit -m "[Fix] Resolve environment creation race condition"
-git commit -m "[Docs - Minor] Typos in installation orchestration guide"
-
-# Include more detail in commit body for complex changes
-git commit -m "[Feat] Implement parallel dependency installation
-
-- Add ThreadPoolExecutor for concurrent installations
-- Implement dependency grouping for parallelization
-- Add timeout handling for long-running installations
-- Update tests to cover parallel execution scenarios"
+git checkout -b feat/your-feature-name
+# or
+git checkout -b fix/your-bug-fix
 ```
 
-### 5. Keep Your Branch Updated
+### 4. Make Changes
+
+- Write code following existing patterns
+- Add tests for new functionality
+- Update documentation as needed
+- Follow PEP 8 style guidelines
+- Ensure package manager functionality works correctly
+
+### 5. Test Your Changes
 
 ```bash
-# Fetch latest changes from upstream
-git fetch upstream
+# Run basic import test
+python -c "import hatch; print('Hatch package imports successfully')"
 
-# Rebase your branch on latest main
-git rebase upstream/main
-
-# Resolve any conflicts and continue
-git rebase --continue
+# Test package manager functionality when available
 ```
 
-### 6. Submit Pull Request
+### 6. Commit Changes
 
-#### Pull Request Guidelines
+```bash
+# Use commitizen for guided commits
+npm run commit
 
-- **Clear Title** - Summarize the change in the title
-- **Detailed Description** - Explain what changes were made and why
-- **Link Related Issues** - Reference any related GitHub issues
-- **Testing Information** - Describe how the changes were tested
-- **Breaking Changes** - Clearly document any breaking changes
+# Or commit manually with conventional format
+git commit -m "feat: add your feature description"
+```
 
-#### Pull Request Template
+### 7. Push and Create Pull Request
 
-```markdown
-## Description
-Brief description of the changes made.
+```bash
+git push origin feat/your-feature-name
+```
 
-## Type of Change
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Documentation update
+Then create a pull request on GitHub.
+
+## Pull Request Guidelines
+
+### Title Format
+
+Use conventional commit format for PR titles:
+- `feat: add new package management functionality`
+- `fix: resolve package installation issue`
+- `docs: update installation guide`
+
+### Description
+
+Include in your PR description:
+- **What**: Brief description of changes
+- **Why**: Reason for the changes
+- **How**: Implementation approach (if complex)
+- **Testing**: How you tested the changes
+- **Package Manager Impact**: Any effects on package management functionality
+- **Breaking Changes**: Any breaking changes (if applicable)
+
+### Checklist
+
+- [ ] Code follows existing style and patterns
+- [ ] Tests added for new functionality
+- [ ] Documentation updated (if needed)
+- [ ] Commit messages follow conventional format
+- [ ] All tests pass
+- [ ] Package manager functionality preserved
+- [ ] No breaking changes (unless intentional and documented)
+
+## Code Style
+
+### Python
+
+- Follow PEP 8 style guidelines
+- Use type hints where appropriate
+- Write docstrings for public functions and classes
+- Keep functions focused and small
+- Use meaningful variable and function names
+
+### Package Manager Considerations
+
+- Maintain compatibility with existing package formats
+- Follow package management best practices
+- Ensure proper error handling for package operations
+- Document any package manager-specific functionality
+
+### Documentation
+
+- Update relevant documentation for changes
+- Use clear, concise language
+- Include code examples where helpful
+- Keep README.md up to date
 
 ## Testing
-- [ ] Tests pass locally
-- [ ] New tests added for new functionality
-- [ ] Manual testing performed
 
-## Related Issues
-Fixes #(issue number)
+### Running Tests
 
-## Additional Notes
-Any additional information or context about the changes.
+```bash
+# Basic import test
+python -c "import hatch; print('Hatch package imports successfully')"
+
+# Add comprehensive test commands when test suite is available
 ```
 
-## Code Review Process
+### Writing Tests
 
-### What to Expect
+- Add tests for new features
+- Test edge cases and error conditions
+- Test package management operations
+- Use descriptive test names
+- Follow existing test patterns
 
-- **Initial Review** - Maintainers will review your pull request within a few days
-- **Feedback** - You may receive requests for changes or improvements
-- **Iteration** - Work with reviewers to address feedback and refine your contribution
-- **Approval** - Once approved, your changes will be merged
+## Release Process
 
-### Responding to Feedback
+Releases are fully automated using semantic-release:
 
-- **Be Responsive** - Address feedback promptly and professionally
-- **Ask Questions** - If feedback is unclear, ask for clarification
-- **Make Requested Changes** - Implement suggested improvements
-- **Update Tests** - Ensure tests still pass after making changes
+1. **Commits are analyzed** for conventional commit format
+2. **Version is calculated** based on commit types
+3. **Changelog is generated** from commit messages
+4. **Version files are updated** (pyproject.toml, CHANGELOG.md)
+5. **Changes are committed** back to repository using GitHub App
+6. **GitHub release is created** with release notes and tags
 
-## Community Standards
+### Version Impact
 
-### Communication
+The semantic versioning is currently configured to keep the major number to **0**.
 
-- **Be Respectful** - Treat all community members with respect and professionalism
-- **Be Constructive** - Provide helpful, actionable feedback
-- **Be Patient** - Understand that reviews take time and maintainers are volunteers
-
-### Quality Standards
-
-- **Follow Conventions** - Adhere to established coding and documentation standards
-- **Test Thoroughly** - Ensure your changes work correctly and don't break existing functionality
-- **Document Changes** - Provide clear documentation for new features and changes
-
-### Contribution Types
-
-#### Code Contributions
-
-- New features and enhancements
-- Bug fixes and improvements
-- Performance optimizations
-- Refactoring and code cleanup
-
-#### Documentation Contributions
-
-- API documentation improvements
-- Tutorial and guide updates
-- Example code and usage patterns
-- Translation and localization
-
-#### Testing Contributions
-
-- New test cases and scenarios
-- Test infrastructure improvements
-- Performance and load testing
-- Integration test enhancements
+- `feat:` commits → Patch version (0.6.1 → 0.7.0)
+- `fix:` commits → Patch version (0.6.1 → 0.6.2)
+- `feat!:` or `BREAKING CHANGE:` → Major version (0.6.1 → 1.0.0)
+- Other types → No release
 
 ## Getting Help
 
-### Resources
+- **Issues**: Report bugs or request features via GitHub Issues
+- **Discussions**: Ask questions in GitHub Discussions
+- **Documentation**: Check existing documentation for guidance
+- **Code**: Look at existing code for patterns and examples
 
-- **[Architecture Documentation](../architecture/)** - Understanding the system design
-- **[Implementation Guides](../implementation_guides/)** - Technical implementation guidance
-- **[Development Processes](../development_processes/)** - Development workflow and standards
+## Code of Conduct
 
-### Support Channels
+- Be respectful and inclusive
+- Focus on constructive feedback
+- Help others learn and grow
+- Follow GitHub's community guidelines
 
-- **GitHub Issues** - For bug reports and feature requests
-- **GitHub Discussions** - For questions and general discussion
-- **Pull Request Comments** - For specific feedback on contributions
-
-## Recognition
-
-Contributors who make significant contributions to the Hatch project will be recognized in:
-
-- Project documentation and release notes
-- Contributor acknowledgments
-- Community highlights and announcements
-
-Thank you for contributing to the Hatch project! Your contributions help make package management better for the entire CrackingShells ecosystem.
+Thank you for contributing to Hatch! 🚀
