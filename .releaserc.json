@@ -17,6 +17,7 @@
         "releaseRules": [
           { "breaking": true, "release": "minor" },
           { "type": "feat", "release": "patch" },
+          { "type": "fix", "scope": "docs", "release": false },
           { "type": "docs", "scope": "README", "release": "patch" },
           { "type": "refactor", "release": "patch" },
           { "type": "style", "release": "patch" },
