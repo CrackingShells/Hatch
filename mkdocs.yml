@@ -59,12 +59,19 @@ nav:
               - 03 Edit Metadata: articles/users/tutorials/03-author-package/03-edit-metadata.md
               - 04 Validate and Install: articles/users/tutorials/03-author-package/04-validate-and-install.md
               - 05 Checkpoint: articles/users/tutorials/03-author-package/05-checkpoint.md
+          - MCP Host Configuration:
+              - 01 Host Platform overview: articles/users/tutorials/04-mcp-host-configuration/01-host-platform-overview.md
+              - 02 Configuring Hatch! Packages: articles/users/tutorials/04-mcp-host-configuration/02-configuring-hatch-packages.md
+              - 03 Configuring Arbitrary MCP Servers: articles/users/tutorials/04-mcp-host-configuration/03-configuring-arbitrary-servers.md
+              - 04 Environments & Hosts Synchronization: articles/users/tutorials/04-mcp-host-configuration/04-environment-synchronization.md
+              - 05 Checkpoint: articles/users/tutorials/04-mcp-host-configuration/05-checkpoint.md
   - Developers:
       - Overview: articles/devs/index.md
       - Architecture:
           - System Overview: articles/devs/architecture/system_overview.md
           - Component Architecture: articles/devs/architecture/component_architecture.md
           - MCP Host Configuration: articles/devs/architecture/mcp_host_configuration.md
+          - MCP Host Backup System: articles/devs/architecture/mcp_backup_system.md
       - Contribution Guides:
           - How to Contribute: articles/devs/contribution_guides/how_to_contribute.md
           - Release Policy: articles/devs/contribution_guides/release_policy.md

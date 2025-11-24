@@ -25,7 +25,7 @@ This tutorial teaches you how to deploy MCP servers to multiple host platforms u
 
 Hatch environments serve as isolated containers for different projects, not development lifecycle stages. This approach provides:
 
-1. **Project Separation**: Keep project-alpha servers separate from project-beta servers
+1. **Project Separation**: Keep project_alpha servers separate from project-beta servers
 2. **Configuration Isolation**: Avoid naming conflicts between projects
 3. **Selective Deployment**: Deploy only relevant servers to specific hosts
 4. **Clean Management**: Maintain project-specific configurations independently
@@ -52,26 +52,26 @@ Create environments using project-focused naming (not lifecycle stages):
 
 ```bash
 # Create project environments
-hatch env create project-alpha
-hatch env create project-beta
+hatch env create project_alpha
+hatch env create project_beta
 
 # Verify environments were created
 hatch env list
 ```
 
-### Configure Project-Alpha Servers
+### Configure Project_Alpha Servers
 
 Add MCP servers to your first project environment:
 
 ```bash
-# Activate project-alpha environment
-hatch env use project-alpha
+# Activate project_alpha environment
+hatch env use project_alpha
 
 # Add servers via packages (recommended approach)
 hatch package add weather-toolkit
 hatch package add team-utilities
 
-# Verify project-alpha configuration
+# Verify project_alpha configuration
 hatch mcp list servers
 ```
 
@@ -81,7 +81,7 @@ Set up a different project with its own server set:
 
 ```bash
 # Activate project-beta environment
-hatch env use project-beta
+hatch env use project_beta
 
 # Add different servers for this project
 hatch package add analytics-suite
@@ -95,49 +95,37 @@ hatch mcp list servers
 Confirm that environments maintain separate configurations:
 
 ```bash
-# Check project-alpha servers
-hatch env use project-alpha
+# Check project_alpha servers
+hatch env use project_alpha
 hatch mcp list servers
 # Should show: weather-toolkit, team-utilities
 
 # Check project-beta servers
-hatch env use project-beta
+hatch env use project_beta
 hatch mcp list servers
 # Should show: analytics-suite
 ```
 
 ## Step 2: Deploy Project Servers to Hosts
 
-### Deploy Project-Alpha to Multiple Hosts
+### Deploy Project_Alpha to Multiple Hosts
 
-Deploy all servers from project-alpha to your target host platforms:
+Deploy all servers from project_alpha to your target host platforms:
 
 ```bash
-# Deploy project-alpha servers to Claude Desktop and Cursor
-hatch env use project-alpha
-hatch mcp sync --from-env project-alpha --to-host claude-desktop,cursor
+# Deploy project_alpha servers to Claude Desktop and Cursor
+hatch env use project_alpha
+hatch mcp sync --from-env project_alpha --to-host claude-desktop,cursor
 ```
 
 **Expected Output**:
 
 ```text
-Synchronizing from environment: project-alpha
-Target hosts: claude-desktop, cursor
-Found servers: weather-toolkit, team-utilities
-
-Preparing synchronization...
-✓ Analyzing server configurations
-✓ Checking host compatibility
-✓ Creating backup: ~/.hatch/mcp_backups/claude-desktop_20231201_150000.json
-
-Synchronizing servers...
-✓ weather-toolkit configured on claude-desktop
-✓ weather-toolkit configured on cursor
-✓ team-utilities configured on claude-desktop
-✓ team-utilities configured on cursor
-
-Synchronization completed successfully!
-2 servers synchronized to 2 hosts
+Synchronize MCP configurations from host 'claude-desktop' to 1 host(s)? [y/N]: y
+[SUCCESS] Synchronization completed
+  Servers synced: 4
+  Hosts updated: 1
+  ✓ cursor (backup: path\to\.hatch\mcp_host_config_backups\cursor\mcp.json.cursor.20251124_225305_495653)
 ```
 
 ### Deploy Project-Beta to All Hosts
@@ -145,22 +133,24 @@ Synchronization completed successfully!
 Deploy project-beta servers to all detected host platforms:
 
 ```bash
-# Deploy project-beta servers to all detected hosts
-hatch env use project-beta
-hatch mcp sync --from-env project-beta --to-host all
+# Deploy project_beta servers to all detected hosts
+hatch env use project_beta
+hatch mcp sync --from-env project_beta --to-host all
 ```
+
+**Real Behavior**: The `--to-host all` flag automatically detects and syncs to all available host platforms that Hatch can find (listed by `hatch mcp discover hosts`). This is a convenient way to ensure your project's servers are configured on every host applications are installed.
 
 ### Verify Project Deployments
 
 Check what was deployed to each host for each project:
 
 ```bash
-# Check project-alpha deployments
-hatch env use project-alpha
+# Check project_alpha deployments
+hatch env use project_alpha
 hatch mcp list servers
 
-# Check project-beta deployments
-hatch env use project-beta
+# Check project_beta deployments
+hatch env use project_beta
 hatch mcp list servers
 ```
 
@@ -171,9 +161,9 @@ hatch mcp list servers
 Deploy only a subset of servers from a project environment:
 
 ```bash
-# Deploy only weather-toolkit from project-alpha to Claude Desktop
-hatch env use project-alpha
-hatch mcp sync --from-env project-alpha \
+# Deploy only weather-toolkit from project_alpha to Claude Desktop
+hatch env use project_alpha
+hatch mcp sync --from-env project_alpha \
   --to-host claude-desktop \
   --servers weather-toolkit
 ```
@@ -183,14 +173,14 @@ hatch mcp sync --from-env project-alpha \
 Use regular expressions for selective deployment:
 
 ```bash
-# Deploy servers matching a pattern from project-alpha
-hatch mcp sync --from-env project-alpha \
+# Deploy servers matching a pattern from project_alpha
+hatch mcp sync --from-env project_alpha \
   --to-host cursor \
   --pattern ".*util.*"
 
-# Deploy API-related servers from project-beta
-hatch env use project-beta
-hatch mcp sync --from-env project-beta \
+# Deploy API-related servers from project_beta
+hatch env use project_beta
+hatch mcp sync --from-env project_beta \
   --to-host claude-desktop \
   --pattern ".*api.*"
 ```
@@ -202,8 +192,8 @@ hatch mcp sync --from-env project-beta \
 Remove a specific server from a host for the current project:
 
 ```bash
-# Remove weather-toolkit from Cursor for project-alpha
-hatch env use project-alpha
+# Remove weather-toolkit from Cursor for project_alpha
+hatch env use project_alpha
 hatch mcp remove server weather-toolkit --host cursor
 ```
 
@@ -212,8 +202,8 @@ hatch mcp remove server weather-toolkit --host cursor
 Remove all servers for the current project from a host:
 
 ```bash
-# Remove all project-alpha configurations from Claude Desktop
-hatch env use project-alpha
+# Remove all project_alpha configurations from Claude Desktop
+hatch env use project_alpha
 hatch mcp remove host claude-desktop
 ```
 
@@ -221,8 +211,10 @@ hatch mcp remove host claude-desktop
 
 ```bash
 # Restore a previous host configuration (then continue with project workflow)
-hatch mcp backup restore claude-desktop <backup-id>
+hatch mcp backup restore claude-desktop
 ```
+
+Will restore the latest backup available. For a more granular restoration, you can specific a backup file with `--backup-file BACKUP_FILE` (or `-f BACKUP_FILE`). Backup files can be listed with `hatch mcp backup list claude-desktop`.
 
 ## Step 5: Validation and Troubleshooting
 
@@ -231,11 +223,11 @@ hatch mcp backup restore claude-desktop <backup-id>
 Use environment-scoped commands to verify your project configurations:
 
 ```bash
-# Check project-alpha server deployments
-hatch env use project-alpha
+# Check project_alpha server deployments
+hatch env use project_alpha
 hatch mcp list servers
 
-# Check which hosts have project-alpha servers configured
+# Check which hosts have project_alpha servers configured
 hatch mcp list hosts
 ```
 
@@ -245,7 +237,7 @@ hatch mcp list hosts
 
 ```bash
 # If projects have conflicting server names, rename them
-hatch env use project-alpha
+hatch env use project_alpha
 hatch mcp remove server conflicting-name --host claude-desktop
 hatch package add unique-server-name
 ```
@@ -255,37 +247,39 @@ hatch package add unique-server-name
 ```bash
 # Always verify current environment before operations
 hatch env list
-hatch env use project-alpha  # Explicitly set environment
+hatch env use project_alpha  # Explicitly set environment
 ```
 
 ### Backup and Recovery for Projects
 
-**Create Project Backup**:
+**Verify Automatic Backups**:
+
+Hatch creates automatic backups before any configuration changes. You don't need to create them manually.
 
 ```bash
-# Create backup before major project changes
-hatch mcp backup create --host claude-desktop --name "project-alpha-stable"
-
-# List available backups
+# List available backups (always created automatically)
 hatch mcp backup list --host claude-desktop
+
+# Clean old backups if needed
+hatch mcp backup clean claude-desktop --keep-count 10
 ```
 
 **Restore Project Configuration**:
 
 ```bash
 # Restore from specific backup
-hatch mcp backup restore claude-desktop project-alpha-stable
+hatch mcp backup restore claude-desktop project_alpha-stable
 
 # Then re-sync current project if needed
-hatch env use project-alpha
-hatch mcp sync --from-env project-alpha --to-host claude-desktop
+hatch env use project_alpha
+hatch mcp sync --from-env project_alpha --to-host claude-desktop
 ```
 
 ## Step 6: Best Practices for Project Isolation
 
 ### Project Environment Organization
 
-1. **Clear Naming**: Use project-focused names (`project-alpha`, `project-beta`) not lifecycle stages
+1. **Clear Naming**: Use project-focused names (`project_alpha`, `project_beta`) not lifecycle stages
 2. **Purpose Separation**: Keep each project's servers in separate environments
 3. **Documentation**: Document what each project environment contains and its purpose
 
@@ -293,7 +287,7 @@ hatch mcp sync --from-env project-alpha --to-host claude-desktop
 
 1. **Test First**: Always use `--dry-run` before large deployments
 2. **Selective Deployment**: Use `--servers` or `--pattern` for partial rollouts
-3. **Backup Verification**: Verify backups are created before major changes
+3. **Backup Verification**: Verify automatic backups were created after changes
 4. **Environment Validation**: Test project configurations before deployment
 
 ### Project Workflow Integration
@@ -309,10 +303,10 @@ hatch mcp sync --from-env project-alpha --to-host claude-desktop
 #!/usr/bin/env bash
 set -euo pipefail
 
-project_env="project-alpha"
+project_env="project_alpha"
 target_hosts="claude-desktop,cursor"
 
-echo "Deploying $project_env to $target_hosts (preview)"
+echo "Previewing deployment of $project_env to $target_hosts"
 hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --dry-run
 
 echo "Applying changes"
@@ -321,9 +315,7 @@ hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --auto-approv
 
 ## Next Steps
 
-You now understand how to deploy MCP servers to multiple host platforms using environments as project isolation containers. This approach provides clean separation between projects while enabling efficient deployment to host applications like Claude Desktop, Cursor, and VS Code.
-
-**Continue to**: [Tutorial 04-05: Advanced Synchronization](05-advanced-synchronization.md) to learn advanced multi-host patterns including host-to-host copying and complex filtering scenarios within the project isolation framework.
+You now have comprehensive skills for managing MCP server deployments across different host platforms using Hatch's configuration management capabilities. You can efficiently deploy servers, manage multiple hosts, synchronize environments, copy configurations between hosts, and maintain organized project-specific configurations.
 
 **Related Documentation**:
 

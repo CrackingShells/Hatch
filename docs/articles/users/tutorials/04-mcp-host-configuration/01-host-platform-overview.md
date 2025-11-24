@@ -221,7 +221,7 @@ hatch package add my_package --host claude-desktop --dry-run
 hatch mcp configure my_package --host cursor --dry-run
 
 # Test in testing environment first
-hatch env use package-testing
+hatch env use package_testing
 hatch package add . --host claude-desktop # from within the package directory
 ```
 
@@ -229,8 +229,8 @@ hatch package add . --host claude-desktop # from within the package directory
 
 ```bash
 # Different environments maintain separate package versions
-hatch env create package-testing-v2
-hatch env create team-standard-2024q4
+hatch env create package_testing_v2
+hatch env create team_standard_2024q4
 
 # Each environment can have different MCP package versions
 ```

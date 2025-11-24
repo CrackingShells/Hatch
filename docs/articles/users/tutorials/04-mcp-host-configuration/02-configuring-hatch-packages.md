@@ -69,23 +69,10 @@ hatch package add . --host claude-desktop
 
 **Expected Output**:
 ```
-Analyzing package dependencies...
-✓ Python dependencies: requests, numpy
-✓ System dependencies: curl
-✓ Hatch dependencies: none
-✓ Docker dependencies: none
-
-Installing dependencies...
-✓ Python environment created
-✓ Python packages installed
-✓ System packages installed
-
-Configuring MCP server...
-✓ Server configured: my-new-package
-✓ Host platform: claude-desktop
-✓ Configuration file updated
-
-Package deployment completed successfully!
+Successfully added package: my_new_package
+Configuring MCP server for package 'my_new_package' on 1 host(s)...
+✓ Configured my_new_package (my_new_package) on claude-desktop
+MCP configuration completed: 1/1 hosts configured
 ```
 
 ### Verify Deployment
@@ -145,8 +132,9 @@ hatch package sync weather-server,news-api --host all
 
 ```bash
 # Sync all packages in current environment to hosts
-hatch package sync --all --host claude-desktop,cursor
+hatch package sync --host claude-desktop,cursor
 ```
+The `hatch package sync` command syncs all packages that are already installed in the current environment.
 
 ## Step 4: Validate Dependency Resolution
 
@@ -249,14 +237,17 @@ hatch mcp remove server my-new-package --host claude-desktop
 # (Backups are created automatically)
 ```
 
-**Clean Environment Reset**:
+**Clean Environment Reset**
+
 ```bash
 # Remove all MCP configurations for host
 hatch mcp remove host claude-desktop
 
-# Redeploy packages
-hatch package sync --all --host claude-desktop
+# Redeploy packages from the a hatch environment
+hatch mcp sync --from-env env_name --to-host claude-desktop
 ```
+
+**Note**: The `hatch mcp sync` command only syncs packages from one environment (or one host) at a time. If you want to re-sync other packages, you must run the command several times.
 
 ## Best Practices
 
