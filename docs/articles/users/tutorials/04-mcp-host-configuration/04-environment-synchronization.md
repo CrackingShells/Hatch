@@ -313,12 +313,11 @@ echo "Applying changes"
 hatch mcp sync --from-env "$project_env" --to-host "$target_hosts" --auto-approve
 ```
 
-## Next Steps
-
-You now have comprehensive skills for managing MCP server deployments across different host platforms using Hatch's configuration management capabilities. You can efficiently deploy servers, manage multiple hosts, synchronize environments, copy configurations between hosts, and maintain organized project-specific configurations.
-
 **Related Documentation**:
 
 - [MCP Host Configuration Guide](../../MCPHostConfiguration.md#multi-host-deployment) - Comprehensive deployment reference
 - [MCP Sync Commands Reference](../../CLIReference.md#mcp-sync) - Complete command syntax
 - [Environment Management Tutorial](../02-environments/) - Advanced environment operations
+
+> Previous: [Edit Metadata](03-configuring-arbitrary-servers.md)
+> Next: [Checkpoint](05-checkpoint.md)
