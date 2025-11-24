@@ -76,15 +76,14 @@ hatch mcp configure news-api \
 
 **Expected Output**:
 ```
-Configuring MCP server: weather-api
-✓ Host platform: claude-desktop
-✓ Command: python
-✓ Arguments: /path/to/weather_server.py
-✓ Environment variables: API_KEY, DEBUG
-✓ Configuration file updated
-✓ Backup created: ~/.hatch/mcp_backups/claude-desktop_20231201_143022.json
+Server 'weather-api' created for host 'claude-desktop':
+  name: UPDATED None --> 'weather-api'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['/path/to/weather_server.py']
+  env: UPDATED None --> {'API_KEY': 'your_api_key', 'DEBUG': 'true'}
 
-MCP server configured successfully!
+Configuring MCP server 'weather-api' on host 'claude-desktop'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'weather-api' on host 'claude-desktop'
 ```
 
 ### Verify Local Configuration
@@ -122,10 +121,10 @@ Configure an MCP server hosted on a remote URL:
 ```bash
 # Configure remote MCP server
 hatch mcp configure remote-api \
-  --host claude-desktop \
+  --host gemini \
   --url https://api.example.com/mcp \
-  --headers Authorization=Bearer_your_token \
-  --headers Content-Type=application/json
+  --header "Authorization=Bearer_your_token" \
+  --header "Content-Type=application/json"
 ```
 
 ### Remote Server with Authentication
@@ -133,23 +132,22 @@ hatch mcp configure remote-api \
 ```bash
 # Configure with multiple headers for authentication
 hatch mcp configure secure-api \
-  --host cursor \
+  --host gemini \
   --url https://secure-api.example.com/mcp \
-  --headers Authorization=Bearer_token \
-  --headers X-API-Key=your_api_key \
-  --headers User-Agent=HatchMCP/1.0
+  --header "Authorization=Bearer_token" \
+  --header "X-API-Key=your_api_key" \
+  --header "User-Agent=HatchMCP/1.0"
 ```
 
 **Expected Output**:
 ```
-Configuring MCP server: secure-api
-✓ Host platform: cursor
-✓ Server URL: https://secure-api.example.com/mcp
-✓ Headers: Authorization, X-API-Key, User-Agent
-✓ Configuration file updated
-✓ Backup created: ~/.hatch/mcp_backups/cursor_20231201_143045.json
+Server 'secure-api' created for host 'gemini':
+  name: UPDATED None --> 'secure-api'
+  url: UPDATED None --> 'https://secure-api.example.com/mcp'
+  headers: UPDATED None --> {'Authorization': 'Bearer_token', 'X-API-Key': 'your_api_key', 'User-Agent': 'HatchMCP/1.0'}
 
-Remote MCP server configured successfully!
+Configuring MCP server 'secure-api' on host 'gemini'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'secure-api' on host 'gemini'
 ```
 
 ### Verify Remote Configuration
@@ -220,7 +218,7 @@ hatch mcp configure data-processor \
 
 ```bash
 # Testing configuration
-hatch env use package-testing
+hatch env use package_testing
 hatch mcp configure test-server \
   --host claude-desktop \
   --command python \
@@ -229,7 +227,7 @@ hatch mcp configure test-server \
   --env LOG_LEVEL=debug
 
 # Team standard configuration
-hatch env use team-standard-2024q4
+hatch env use team_standard_2024q4
 hatch mcp configure team-server \
   --host claude-desktop \
   --command python \

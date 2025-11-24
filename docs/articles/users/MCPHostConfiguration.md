@@ -30,7 +30,6 @@ For step-by-step guidance on MCP host configuration, see the comprehensive tutor
 - [Tutorial: Configuring Hatch Packages](tutorials/04-mcp-host-configuration/02-configuring-hatch-packages.md) - **Preferred deployment method** with automatic dependency resolution
 - [Tutorial: Configuring Arbitrary Servers](tutorials/04-mcp-host-configuration/03-configuring-arbitrary-servers.md) - Advanced method for non-Hatch servers
 - [Tutorial: Environment Synchronization](tutorials/04-mcp-host-configuration/04-environment-synchronization.md) - Cross-environment deployment workflows
-- [Tutorial: Advanced Synchronization](tutorials/04-mcp-host-configuration/05-advanced-synchronization.md) - Enterprise patterns and automation
 
 ## Basic Usage
 
@@ -40,7 +39,7 @@ Add an MCP server to a specific host:
 
 ```bash
 # Configure a local MCP server
-hatch mcp configure weather-server \
+hatch mcp configure weather_server \
   --host claude-desktop \
   --command python \
   --args weather_server.py
@@ -49,7 +48,7 @@ hatch mcp configure weather-server \
 hatch mcp configure api-service \
   --host cursor \
   --url https://api.example.com/mcp \
-  --header "Authorization: Bearer token"
+  --header "Authorization=Bearer token"
 ```
 
 ### List Configured Servers
@@ -64,7 +63,7 @@ hatch mcp list hosts
 hatch mcp list servers
 
 # List servers from specific environment
-hatch mcp list servers --env production
+hatch mcp list servers --env-var production
 ```
 
 ### Remove a Server
@@ -73,10 +72,10 @@ Remove an MCP server from a host:
 
 ```bash
 # Remove server from specific host
-hatch mcp remove server weather-server --host claude-desktop
+hatch mcp remove server weather_server --host claude-desktop
 
 # Remove server from all hosts
-hatch mcp remove server weather-server --host all
+hatch mcp remove server weather_server --host all
 
 # Remove entire host configuration
 hatch mcp remove host claude-desktop
@@ -86,7 +85,7 @@ hatch mcp remove host claude-desktop
 
 **Important**: Each server must be configured as either local (using `--command`) or remote (using `--url`), but not both. These options are mutually exclusive:
 
-- **Local servers**: Use `--command` and optionally `--args` and `--env`
+- **Local servers**: Use `--command` and optionally `--args` and `--env-var`
 - **Remote servers**: Use `--url` and optionally `--header`
 
 Attempting to use both `--command` and `--url` will result in an error.
@@ -103,12 +102,12 @@ hatch mcp configure my-server \
   --args server.py
 
 # Server with environment variables
-hatch mcp configure weather-server \
+hatch mcp configure weather_server \
   --host claude-desktop \
   --command python \
   --args weather_server.py \
-  --env API_KEY=your-key \
-  --env DEBUG=true
+  --env-var API_KEY=your-key \
+  --env-var DEBUG=true
 
 # Server with absolute path (required for some hosts)
 hatch mcp configure secure-server \
@@ -131,8 +130,8 @@ hatch mcp configure api-server \
 hatch mcp configure authenticated-api \
   --host cursor \
   --url https://secure-api.example.com/mcp \
-  --header "Authorization: Bearer your-token" \
-  --header "Content-Type: application/json"
+  --header "Authorization=Bearer your-token" \
+  --header "Content-Type=application/json"
 ```
 
 ## Multi-Host Configuration
@@ -143,14 +142,14 @@ Set up the same server on multiple host platforms:
 
 ```bash
 # Configure on multiple hosts at once
-hatch mcp configure weather-server \
+hatch mcp configure weather_server \
   --hosts claude-desktop,cursor,vscode \
   --command python \
   --args weather_server.py
 
 # Configure on all available hosts
-hatch mcp configure weather-server \
-  --all-hosts \
+hatch mcp configure weather_server \
+  --hosts all \
   --command python \
   --args weather_server.py
 ```
@@ -175,38 +174,6 @@ hatch mcp sync --from-env dev --to-host all --pattern ".*api.*"
 hatch mcp sync --from-env prod --to-host all --dry-run
 ```
 
-## Host-Specific Considerations
-
-### Claude Family (Claude Desktop, Claude Code)
-
-Claude hosts require absolute paths for local servers:
-
-```bash
-# Correct - absolute path
-hatch mcp configure my-server \
-  --host claude-desktop \
-  --command /usr/local/bin/python \
-  --args /path/to/server.py
-
-# Incorrect - relative path (will be rejected)
-hatch mcp configure my-server \
-  --host claude-desktop \
-  --command python \
-  --args ./server.py
-```
-
-### VS Code
-
-VS Code uses a nested configuration structure. Hatch handles this automatically, but be aware that manual edits to VS Code settings may affect MCP server configurations.
-
-### Cursor and LM Studio
-
-These hosts are more flexible with path requirements and generally accept both absolute and relative paths.
-
-### Gemini
-
-Gemini uses the official configuration path at `~/.gemini/settings.json`. Ensure you have Gemini properly installed and configured.
-
 ## Backup and Recovery
 
 ### Automatic Backups
@@ -224,14 +191,11 @@ hatch mcp configure my-server --host claude-desktop --command python --args serv
 ### Manual Backup Management
 
 ```bash
-# Create manual backup of host configuration
-hatch mcp backup --host claude-desktop
-
 # List available backups
-hatch mcp backup list --host claude-desktop
+hatch mcp backup list claude-desktop
 
-# Restore from backup
-hatch mcp restore --host claude-desktop --backup 2025-09-21-10-30-00
+# Restore from backup file
+hatch mcp backup restore claude-desktop --backup-file <backup_file_name>
 ```
 
 ### Backup Locations
@@ -469,7 +433,7 @@ Complete host configuration removal and management:
 hatch mcp remove host <host-name>
 
 # Remove with environment specification
-hatch mcp remove server <server_name> --host <host> --env <environment>
+hatch mcp remove server <server_name> --host <host> --env-var <environment>
 ```
 
 ### Safety and Backup Features
