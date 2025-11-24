@@ -201,6 +201,8 @@ python -c "import hatch; print('Hatch package imports successfully')"
 
 ## Release Process
 
+Extensive details can be found in the [release policy](./release_policy.md) article.
+
 Releases are fully automated using semantic-release:
 
 1. **Commits are analyzed** for conventional commit format
@@ -214,9 +216,9 @@ Releases are fully automated using semantic-release:
 
 The semantic versioning is currently configured to keep the major number to **0**.
 
-- `feat:` commits → Patch version (0.6.1 → 0.7.0)
+- `feat:` commits → Patch version (0.6.1 → 0.6.2)
 - `fix:` commits → Patch version (0.6.1 → 0.6.2)
-- `feat!:` or `BREAKING CHANGE:` → Major version (0.6.1 → 1.0.0)
+- `feat!:` or `BREAKING CHANGE:` → Minor version (0.6.1 → 0.7.0)
 - Other types → No release
 
 ## Getting Help
