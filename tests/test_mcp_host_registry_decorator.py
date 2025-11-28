@@ -301,10 +301,10 @@ class TestFamilyBasedStrategyRegistration(unittest.TestCase):
                 self.config_format = "claude_format"
             
             def validate_server_config(self, server_config):
-                # Claude family requires absolute paths
-                if server_config.command:
-                    return Path(server_config.command).is_absolute()
-                return True
+                # Claude family accepts any valid command or URL
+                if server_config.command or server_config.url:
+                    return True
+                return False
         
         @register_host_strategy(MCPHostType.CLAUDE_DESKTOP)
         class TestClaudeDesktop(TestClaudeBase):
