@@ -30,12 +30,21 @@ class ClaudeHostStrategy(MCPHostStrategy):
         return "mcpServers"
     
     def validate_server_config(self, server_config: MCPServerConfig) -> bool:
-        """Claude family validation - requires absolute paths for local servers."""
+        """Claude family validation - accepts any valid command or URL.
+        
+        Claude Desktop accepts both absolute and relative paths for commands.
+        Commands are resolved at runtime using the system PATH, similar to
+        how shell commands work. This validation only checks that either a
+        command or URL is provided, not the path format.
+        """
+        # Accept local servers (command-based)
         if server_config.command:
-            # Claude Desktop requires absolute paths
-            if not Path(server_config.command).is_absolute():
-                return False
-        return True
+            return True
+        # Accept remote servers (URL-based)
+        if server_config.url:
+            return True
+        # Reject if neither command nor URL is provided
+        return False
     
     def _preserve_claude_settings(self, existing_config: Dict, new_servers: Dict) -> Dict:
         """Preserve Claude-specific settings when updating configuration."""
