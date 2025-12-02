@@ -1,3 +1,10 @@
+## [0.7.0-dev.9](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.8...v0.7.0-dev.9) (2025-12-02)
+
+
+### Bug Fixes
+
+* **mcp:** remove incorrect absolute path validation for Claude Desktop ([1029991](https://github.com/CrackingShells/Hatch/commit/1029991fb7897647d8214ccf10b12e41c3b723d8))
+
 ## [0.7.0-dev.8](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.7...v0.7.0-dev.8) (2025-11-24)
 
 
