@@ -1,3 +1,10 @@
+## [0.7.0-dev.11](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.10...v0.7.0-dev.11) (2025-12-07)
+
+
+### Bug Fixes
+
+* **pypi-deploy:** wrong project name ([f94df05](https://github.com/CrackingShells/Hatch/commit/f94df05eef37d6e4b9af818ba66a69be9aa7ff6f))
+
 ## [0.7.0-dev.10](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.9...v0.7.0-dev.10) (2025-12-07)
 
 
