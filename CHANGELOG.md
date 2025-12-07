@@ -1,3 +1,10 @@
+## [0.7.0-dev.10](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.9...v0.7.0-dev.10) (2025-12-07)
+
+
+### Bug Fixes
+
+* **pypi-deploy:** remove direct dependencies ([0875cf8](https://github.com/CrackingShells/Hatch/commit/0875cf816e97d5cb3b573f6ba95a802d236e8145))
+
 ## [0.7.0-dev.9](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.8...v0.7.0-dev.9) (2025-12-02)
 
 
