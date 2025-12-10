@@ -408,8 +408,8 @@ Syntax:
 | `--timeout` | int | Request timeout in milliseconds (Gemini) | none |
 | `--trust` | flag | Bypass tool call confirmations (Gemini) | false |
 | `--cwd` | string | Working directory for stdio transport (Gemini) | none |
-| `--include-tools` | multiple | Tool allowlist - only these tools will be available (Gemini) | none |
-| `--exclude-tools` | multiple | Tool blocklist - these tools will be excluded (Gemini) | none |
+| `--include-tools` | multiple | Tool allowlist - only these tools will be available (Gemini). Space-separated values. | none |
+| `--exclude-tools` | multiple | Tool blocklist - these tools will be excluded (Gemini). Space-separated values. | none |
 | `--env-file` | string | Path to environment file (Cursor, VS Code, LM Studio) | none |
 | `--input` | multiple | Input variable definitions format: type,id,description[,password=true] (VS Code) | none |
 | `--dry-run` | flag | Preview configuration without applying changes | false |
@@ -544,12 +544,13 @@ Remove an MCP server from one or more hosts.
 
 Syntax:
 
-`hatch mcp remove server <server-name> --host <hosts> [--dry-run] [--auto-approve] [--no-backup]`
+`hatch mcp remove server <server-name> --host <hosts> [--env ENV] [--dry-run] [--auto-approve] [--no-backup]`
 
 | Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
 | `server-name` | string (positional) | Name of the server to remove | n/a |
 | `--host` | string | Target hosts (comma-separated or 'all') | n/a |
+| `--env`, `-e` | string | Hatch environment name (reserved for future use) | none |
 | `--dry-run` | flag | Preview removal without executing changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 | `--no-backup` | flag | Skip backup creation before removal | false |
@@ -621,12 +622,11 @@ List MCP servers from environment with host configuration tracking information.
 
 Syntax:
 
-`hatch mcp list servers [--env ENV] [--host HOST]`
+`hatch mcp list servers [--env ENV]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
 | `--env`, `-e` | string | Environment name (defaults to current) | current environment |
-| `--host` | string | Filter by specific host to show only servers configured on that host | none |
 
 **Example Output**:
 
@@ -680,45 +680,49 @@ Syntax:
 
 #### `hatch mcp backup list`
 
-List available configuration backups.
+List available configuration backups for a specific host.
 
 Syntax:
 
-`hatch mcp backup list [--host HOST] [--detailed]`
-
-| Flag | Type | Description | Default |
-|---:|---|---|---|
-| `--host` | string | Filter backups by host | all hosts |
-| `--detailed` | flag | Show detailed backup information | false |
-
-#### `hatch mcp backup restore`
-
-Restore host configuration from backup.
-
-Syntax:
-
-`hatch mcp backup restore <backup-id> [--dry-run] [--auto-approve]`
+`hatch mcp backup list <host> [--detailed]`
 
 | Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
-| `backup-id` | string (positional) | Backup identifier to restore | n/a |
+| `host` | string (positional) | Host platform to list backups for (e.g., claude-desktop, cursor) | n/a |
+| `--detailed`, `-d` | flag | Show detailed backup information | false |
+
+#### `hatch mcp backup restore`
+
+Restore host configuration from a backup file.
+
+Syntax:
+
+`hatch mcp backup restore <host> [--backup-file FILE] [--dry-run] [--auto-approve]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `host` | string (positional) | Host platform to restore (e.g., claude-desktop, cursor) | n/a |
+| `--backup-file`, `-f` | string | Specific backup file to restore (defaults to latest) | latest backup |
 | `--dry-run` | flag | Preview restore without executing changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 
 #### `hatch mcp backup clean`
 
-Clean old backup files.
+Clean old backup files for a specific host based on retention criteria.
 
 Syntax:
 
-`hatch mcp backup clean [--older-than DAYS] [--keep-count COUNT] [--dry-run] [--auto-approve]`
+`hatch mcp backup clean <host> [--older-than-days DAYS] [--keep-count COUNT] [--dry-run] [--auto-approve]`
 
-| Flag | Type | Description | Default |
+| Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
-| `--older-than` | integer | Remove backups older than specified days | none |
+| `host` | string (positional) | Host platform to clean backups for (e.g., claude-desktop, cursor) | n/a |
+| `--older-than-days` | integer | Remove backups older than specified days | none |
 | `--keep-count` | integer | Keep only the most recent N backups | none |
 | `--dry-run` | flag | Preview cleanup without executing changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
+
+**Note:** At least one of `--older-than-days` or `--keep-count` must be specified.
 
 ---
 
