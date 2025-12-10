@@ -1,3 +1,12 @@
+## [0.7.0-dev.12](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.11...v0.7.0-dev.12) (2025-12-10)
+
+
+### Documentation
+
+* fix CLI reference documentation accuracy ([61458d3](https://github.com/CrackingShells/Hatch/commit/61458d3d18de7489f874562e288d69cdaaf15969))
+* fix MCP host configuration extension guide with critical corrections ([1676af0](https://github.com/CrackingShells/Hatch/commit/1676af003ec41a65f23a012d2427b2a98d892b77))
+* **README:** Updating ([fbcbd14](https://github.com/CrackingShells/Hatch/commit/fbcbd1480e6272837770caeec92d8bae62f06f45))
+
 ## [0.7.0-dev.11](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.10...v0.7.0-dev.11) (2025-12-07)
 
 
