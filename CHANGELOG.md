@@ -1,3 +1,16 @@
+## [0.7.0-dev.13](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.12...v0.7.0-dev.13) (2025-12-11)
+
+
+### Bug Fixes
+
+* **ci:** Discord notification image URLs to use raw GitHub content ([847dd1c](https://github.com/CrackingShells/Hatch/commit/847dd1c8e8269a9a2c70ddecf95e10d7943c9596))
+
+
+### Documentation
+
+* **README:** rewrite ([b05f8a5](https://github.com/CrackingShells/Hatch/commit/b05f8a5d7510aaf60c692ddb36ee5e7b28dc8077))
+* update release policy for new CI/CD architecture ([3df2ae2](https://github.com/CrackingShells/Hatch/commit/3df2ae2a1235223afd6e28b96c29c9c09f22eea1))
+
 ## [0.7.0-dev.12](https://github.com/CrackingShells/Hatch/compare/v0.7.0-dev.11...v0.7.0-dev.12) (2025-12-10)
 
 
