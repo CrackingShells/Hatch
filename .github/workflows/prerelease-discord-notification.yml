@@ -26,5 +26,5 @@ jobs:
             Help us make *Hatch!* better by testing and reporting [issues](https://github.com/CrackingShells/Hatch/issues)! 🐛➡️✨
           color: 0xff9500  # Orange color for pre-release
           username: "Cracking Shells Pre-release Bot"
-          image: "https://github.com/CrackingShells/.github/blob/main/resources/images/hatch_icon_dark_bg_transparent.png"
-          avatar_url: "https://github.com/CrackingShells/.github/blob/main/resources/images/cs_core_dark_bg.png"
+          image: "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/hatch_icon_dark_bg_transparent.png"
+          avatar_url: "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/cs_core_dark_bg.png"

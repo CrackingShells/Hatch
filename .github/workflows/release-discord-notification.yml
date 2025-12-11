@@ -25,5 +25,5 @@ jobs:
             Happy MCP coding with *Hatch!* 🐣
           color: 0x00ff88
           username: "Cracking Shells Release Bot"
-          image: "https://github.com/CrackingShells/.github/blob/main/resources/images/hatch_icon_dark_bg_transparent.png"
-          avatar_url: "https://github.com/CrackingShells/.github/blob/main/resources/images/cs_core_dark_bg.png"
+          image: "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/hatch_icon_dark_bg_transparent.png"
+          avatar_url: "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/cs_core_dark_bg.png"
