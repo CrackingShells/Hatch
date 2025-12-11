@@ -17,6 +17,7 @@ from hatch.package_loader import HatchPackageLoader
 from hatch.installers.dependency_installation_orchestrator import DependencyInstallerOrchestrator
 from hatch.installers.installation_context import InstallationContext
 from hatch.python_environment_manager import PythonEnvironmentManager, PythonEnvironmentError
+from hatch.mcp_host_config.models import MCPServerConfig
 
 class HatchEnvironmentError(Exception):
     """Exception raised for environment-related errors."""
@@ -170,6 +171,20 @@ class HatchEnvironmentManager:
     def get_current_environment_data(self) -> Dict:
         """Get the data for the current environment."""
         return self._environments[self._current_env_name]
+
+    def get_environment_data(self, env_name: str) -> Dict:
+        """Get the data for a specific environment.
+
+        Args:
+            env_name: Name of the environment
+
+        Returns:
+            Dict: Environment data
+
+        Raises:
+            KeyError: If environment doesn't exist
+        """
+        return self._environments[env_name]
     
     def set_current_environment(self, env_name: str) -> bool:
         """
@@ -444,10 +459,10 @@ class HatchEnvironmentManager:
     def remove_environment(self, name: str) -> bool:
         """
         Remove an environment.
-        
+
         Args:
             name: Name of the environment to remove
-            
+
         Returns:
             bool: True if removed successfully, False otherwise
         """
@@ -455,28 +470,62 @@ class HatchEnvironmentManager:
         if name == "default":
             self.logger.error("Cannot remove default environment")
             return False
-        
+
         # Check if environment exists
         if name not in self._environments:
             self.logger.warning(f"Environment does not exist: {name}")
             return False
-        
+
         # If removing current environment, switch to default
         if name == self._current_env_name:
             self.set_current_environment("default")
-        
-        # Remove Python environment if it exists
+
+        # Clean up MCP server configurations for all packages in this environment
         env_data = self._environments[name]
+        packages = env_data.get("packages", [])
+        if packages:
+            self.logger.info(f"Cleaning up MCP server configurations for {len(packages)} packages in environment {name}")
+            try:
+                from .mcp_host_config.host_management import MCPHostConfigurationManager
+                mcp_manager = MCPHostConfigurationManager()
+
+                for pkg in packages:
+                    package_name = pkg.get("name")
+                    configured_hosts = pkg.get("configured_hosts", {})
+
+                    if configured_hosts and package_name:
+                        for hostname in configured_hosts.keys():
+                            try:
+                                # Remove server from host configuration file
+                                result = mcp_manager.remove_server(
+                                    server_name=package_name,  # In current 1:1 design, package name = server name
+                                    hostname=hostname,
+                                    no_backup=False  # Create backup for safety
+                                )
+
+                                if result.success:
+                                    self.logger.info(f"Removed MCP server '{package_name}' from host '{hostname}' (env removal)")
+                                else:
+                                    self.logger.warning(f"Failed to remove MCP server '{package_name}' from host '{hostname}': {result.error_message}")
+                            except Exception as e:
+                                self.logger.warning(f"Error removing MCP server '{package_name}' from host '{hostname}': {e}")
+
+            except ImportError:
+                self.logger.warning("MCP host configuration manager not available for cleanup")
+            except Exception as e:
+                self.logger.warning(f"Error during MCP server cleanup for environment removal: {e}")
+
+        # Remove Python environment if it exists
         if env_data.get("python_environment", False):
             try:
                 self.python_env_manager.remove_python_environment(name)
                 self.logger.info(f"Removed Python environment for {name}")
             except PythonEnvironmentError as e:
                 self.logger.warning(f"Failed to remove Python environment: {e}")
-        
+
         # Remove environment
         del self._environments[name]
-        
+
         # Save environments and update cache
         self._save_environments()
         self.logger.info(f"Removed environment: {name}")
@@ -598,7 +647,273 @@ class HatchEnvironmentManager:
         }]
 
         self._save_environments()
-    
+
+    def update_package_host_configuration(self, env_name: str, package_name: str,
+                                        hostname: str, server_config: dict) -> bool:
+        """Update package metadata with host configuration tracking.
+
+        Enforces constraint: Only one environment can control a package-host combination.
+        Automatically cleans up conflicting configurations from other environments.
+
+        Args:
+            env_name (str): Environment name
+            package_name (str): Package name
+            hostname (str): Host identifier (e.g., 'gemini', 'claude-desktop')
+            server_config (dict): Server configuration data
+
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        try:
+            if env_name not in self._environments:
+                self.logger.error(f"Environment {env_name} does not exist")
+                return False
+
+            # Step 1: Clean up conflicting configurations from other environments
+            conflicts_removed = self._cleanup_package_host_conflicts(
+                target_env=env_name,
+                package_name=package_name,
+                hostname=hostname
+            )
+
+            # Step 2: Update target environment configuration
+            success = self._update_target_environment_configuration(
+                env_name, package_name, hostname, server_config
+            )
+
+            # Step 3: User notification for conflict resolution
+            if conflicts_removed > 0 and success:
+                self.logger.warning(
+                    f"Package '{package_name}' host configuration for '{hostname}' "
+                    f"transferred from {conflicts_removed} other environment(s) to '{env_name}'"
+                )
+
+            return success
+
+        except Exception as e:
+            self.logger.error(f"Failed to update package host configuration: {e}")
+            return False
+
+    def _cleanup_package_host_conflicts(self, target_env: str, package_name: str, hostname: str) -> int:
+        """Remove conflicting package-host configurations from other environments.
+
+        This method enforces the constraint that only one environment can control
+        a package-host combination by removing conflicting configurations from
+        all environments except the target environment.
+
+        Args:
+            target_env (str): Environment that should control the configuration
+            package_name (str): Package name
+            hostname (str): Host identifier
+
+        Returns:
+            int: Number of conflicting configurations removed
+        """
+        conflicts_removed = 0
+
+        for env_name, env_data in self._environments.items():
+            if env_name == target_env:
+                continue  # Skip target environment
+
+            packages = env_data.get("packages", [])
+            for i, pkg in enumerate(packages):
+                if pkg.get("name") == package_name:
+                    configured_hosts = pkg.get("configured_hosts", {})
+                    if hostname in configured_hosts:
+                        # Remove the conflicting host configuration
+                        del configured_hosts[hostname]
+                        conflicts_removed += 1
+
+                        # Update package metadata
+                        pkg["configured_hosts"] = configured_hosts
+                        self._environments[env_name]["packages"][i] = pkg
+
+                        self.logger.info(
+                            f"Removed conflicting '{hostname}' configuration for package '{package_name}' "
+                            f"from environment '{env_name}'"
+                        )
+
+        if conflicts_removed > 0:
+            self._save_environments()
+
+        return conflicts_removed
+
+    def _update_target_environment_configuration(self, env_name: str, package_name: str,
+                                               hostname: str, server_config: dict) -> bool:
+        """Update the target environment's package host configuration.
+
+        This method handles the actual configuration update for the target environment
+        after conflicts have been cleaned up.
+
+        Args:
+            env_name (str): Environment name
+            package_name (str): Package name
+            hostname (str): Host identifier
+            server_config (dict): Server configuration data
+
+        Returns:
+            bool: True if update successful, False otherwise
+        """
+        # Find the package in the environment
+        packages = self._environments[env_name].get("packages", [])
+        for i, pkg in enumerate(packages):
+            if pkg.get("name") == package_name:
+                # Initialize configured_hosts if it doesn't exist
+                if "configured_hosts" not in pkg:
+                    pkg["configured_hosts"] = {}
+
+                # Add or update host configuration
+                from datetime import datetime
+                pkg["configured_hosts"][hostname] = {
+                    "config_path": self._get_host_config_path(hostname),
+                    "configured_at": datetime.now().isoformat(),
+                    "last_synced": datetime.now().isoformat(),
+                    "server_config": server_config
+                }
+
+                # Update the package in the environment
+                self._environments[env_name]["packages"][i] = pkg
+                self._save_environments()
+
+                self.logger.info(f"Updated host configuration for package {package_name} on {hostname}")
+                return True
+
+        self.logger.error(f"Package {package_name} not found in environment {env_name}")
+        return False
+
+    def remove_package_host_configuration(self, env_name: str, package_name: str, hostname: str) -> bool:
+        """Remove host configuration tracking for a specific package.
+
+        Args:
+            env_name: Environment name
+            package_name: Package name (maps to server name in current 1:1 design)
+            hostname: Host identifier to remove
+
+        Returns:
+            bool: True if removal occurred, False if package/host not found
+        """
+        try:
+            if env_name not in self._environments:
+                self.logger.warning(f"Environment {env_name} does not exist")
+                return False
+
+            packages = self._environments[env_name].get("packages", [])
+            for pkg in packages:
+                if pkg.get("name") == package_name:
+                    configured_hosts = pkg.get("configured_hosts", {})
+                    if hostname in configured_hosts:
+                        del configured_hosts[hostname]
+                        self._save_environments()
+                        self.logger.info(f"Removed host {hostname} from package {package_name} in env {env_name}")
+                        return True
+
+            return False
+
+        except Exception as e:
+            self.logger.error(f"Failed to remove package host configuration: {e}")
+            return False
+
+    def clear_host_from_all_packages_all_envs(self, hostname: str) -> int:
+        """Remove host from all packages across all environments.
+
+        Args:
+            hostname: Host identifier to remove globally
+
+        Returns:
+            int: Number of package entries updated
+        """
+        updates_count = 0
+
+        try:
+            for env_name, env_data in self._environments.items():
+                packages = env_data.get("packages", [])
+                for pkg in packages:
+                    configured_hosts = pkg.get("configured_hosts", {})
+                    if hostname in configured_hosts:
+                        del configured_hosts[hostname]
+                        updates_count += 1
+                        self.logger.info(f"Removed host {hostname} from package {pkg.get('name')} in env {env_name}")
+
+            if updates_count > 0:
+                self._save_environments()
+
+            return updates_count
+
+        except Exception as e:
+            self.logger.error(f"Failed to clear host from all packages: {e}")
+            return 0
+
+    def apply_restored_host_configuration_to_environments(self, hostname: str, restored_servers: Dict[str, MCPServerConfig]) -> int:
+        """Update environment tracking to match restored host configuration.
+
+        Args:
+            hostname: Host that was restored
+            restored_servers: Dict mapping server_name -> server_config from restored host file
+
+        Returns:
+            int: Number of package entries updated across all environments
+        """
+        updates_count = 0
+
+        try:
+            from datetime import datetime
+            current_time = datetime.now().isoformat()
+
+            for env_name, env_data in self._environments.items():
+                packages = env_data.get("packages", [])
+                for pkg in packages:
+                    package_name = pkg.get("name")
+                    configured_hosts = pkg.get("configured_hosts", {})
+
+                    # Check if this package corresponds to a restored server
+                    if package_name in restored_servers:
+                        # Server exists in restored config - ensure tracking exists and is current
+                        server_config = restored_servers[package_name]
+                        configured_hosts[hostname] = {
+                            "config_path": self._get_host_config_path(hostname),
+                            "configured_at": configured_hosts.get(hostname, {}).get("configured_at", current_time),
+                            "last_synced": current_time,
+                            "server_config": server_config.model_dump(exclude_none=True)
+                        }
+                        updates_count += 1
+                        self.logger.info(f"Updated host {hostname} tracking for package {package_name} in env {env_name}")
+
+                    elif hostname in configured_hosts:
+                        # Server not in restored config but was previously tracked - remove stale tracking
+                        del configured_hosts[hostname]
+                        updates_count += 1
+                        self.logger.info(f"Removed stale host {hostname} tracking for package {package_name} in env {env_name}")
+
+            if updates_count > 0:
+                self._save_environments()
+
+            return updates_count
+
+        except Exception as e:
+            self.logger.error(f"Failed to apply restored host configuration: {e}")
+            return 0
+
+    def _get_host_config_path(self, hostname: str) -> str:
+        """Get configuration file path for a host.
+
+        Args:
+            hostname (str): Host identifier
+
+        Returns:
+            str: Configuration file path
+        """
+        # Map hostnames to their typical config paths
+        host_config_paths = {
+            'gemini': '~/.gemini/settings.json',
+            'claude-desktop': '~/.claude/claude_desktop_config.json',
+            'claude-code': '.claude/mcp_config.json',
+            'vscode': '.vscode/settings.json',
+            'cursor': '~/.cursor/mcp.json',
+            'lmstudio': '~/.lmstudio/mcp.json'
+        }
+
+        return host_config_paths.get(hostname, f'~/.{hostname}/config.json')
+
     def get_environment_path(self, env_name: str) -> Path:
         """
         Get the path to the environment directory.
@@ -658,11 +973,11 @@ class HatchEnvironmentManager:
     def remove_package(self, package_name: str, env_name: Optional[str] = None) -> bool:
         """
         Remove a package from an environment.
-        
+
         Args:
             package_name: Name of the package to remove
             env_name: Environment to remove from (uses current if None)
-            
+
         Returns:
             bool: True if successful, False otherwise
         """
@@ -670,19 +985,50 @@ class HatchEnvironmentManager:
         if not self.environment_exists(env_name):
             self.logger.error(f"Environment {env_name} does not exist")
             return False
-        
+
         # Check if package exists in environment
         env_packages = self._environments[env_name].get("packages", [])
         pkg_index = None
+        package_to_remove = None
         for i, pkg in enumerate(env_packages):
             if pkg.get("name") == package_name:
                 pkg_index = i
+                package_to_remove = pkg
                 break
-        
+
         if pkg_index is None:
             self.logger.warning(f"Package {package_name} not found in environment {env_name}")
             return False
-        
+
+        # Clean up MCP server configurations from all configured hosts
+        configured_hosts = package_to_remove.get("configured_hosts", {})
+        if configured_hosts:
+            self.logger.info(f"Cleaning up MCP server configurations for package {package_name}")
+            try:
+                from .mcp_host_config.host_management import MCPHostConfigurationManager
+                mcp_manager = MCPHostConfigurationManager()
+
+                for hostname in configured_hosts.keys():
+                    try:
+                        # Remove server from host configuration file
+                        result = mcp_manager.remove_server(
+                            server_name=package_name,  # In current 1:1 design, package name = server name
+                            hostname=hostname,
+                            no_backup=False  # Create backup for safety
+                        )
+
+                        if result.success:
+                            self.logger.info(f"Removed MCP server '{package_name}' from host '{hostname}'")
+                        else:
+                            self.logger.warning(f"Failed to remove MCP server '{package_name}' from host '{hostname}': {result.error_message}")
+                    except Exception as e:
+                        self.logger.warning(f"Error removing MCP server '{package_name}' from host '{hostname}': {e}")
+
+            except ImportError:
+                self.logger.warning("MCP host configuration manager not available for cleanup")
+            except Exception as e:
+                self.logger.warning(f"Error during MCP server cleanup: {e}")
+
         # Remove package from filesystem
         pkg_path = self.get_environment_path(env_name) / package_name
         try:
@@ -692,11 +1038,11 @@ class HatchEnvironmentManager:
         except Exception as e:
             self.logger.error(f"Failed to remove package files for {package_name}: {e}")
             return False
-        
+
         # Remove package from environment data
         env_packages.pop(pkg_index)
         self._save_environments()
-        
+
         self.logger.info(f"Removed package {package_name} from environment {env_name}")
         return True
 

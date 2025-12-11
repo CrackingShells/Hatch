@@ -1,0 +1,7 @@
+{
+  "url": "https://api.example.com/mcp",
+  "headers": {
+    "Authorization": "Bearer token",
+    "Content-Type": "application/json"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "name": "multi_host_environment",
+  "description": "Environment with single server configured across multiple hosts",
+  "created_at": "2025-09-21T10:00:00.000000",
+  "packages": [
+    {
+      "name": "file-manager",
+      "version": "2.0.0",
+      "type": "hatch",
+      "source": "github:user/file-manager",
+      "installed_at": "2025-09-21T10:00:00.000000",
+      "configured_hosts": {
+        "claude-desktop": {
+          "config_path": "~/Library/Application Support/Claude/claude_desktop_config.json",
+          "configured_at": "2025-09-21T10:00:00.000000",
+          "last_synced": "2025-09-21T10:00:00.000000",
+          "server_config": {
+            "command": "/usr/local/bin/python",
+            "args": [
+              "file_manager.py"
+            ],
+            "env": {
+              "DEBUG": "true"
+            }
+          }
+        },
+        "cursor": {
+          "config_path": "~/.cursor/mcp.json",
+          "configured_at": "2025-09-21T10:00:00.000000",
+          "last_synced": "2025-09-21T10:00:00.000000",
+          "server_config": {
+            "command": "python",
+            "args": [
+              "file_manager.py"
+            ],
+            "env": {
+              "DEBUG": "true"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

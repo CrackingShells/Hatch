@@ -1,0 +1,59 @@
+{
+  "single_host_environment": {
+    "packages": [
+      {
+        "name": "weather-toolkit",
+        "configured_hosts": {
+          "claude-desktop": {
+            "config_path": "~/.claude/config.json",
+            "configured_at": "2025-09-25T10:00:00",
+            "last_synced": "2025-09-25T10:00:00"
+          }
+        }
+      }
+    ]
+  },
+  "multi_host_environment": {
+    "packages": [
+      {
+        "name": "weather-toolkit",
+        "configured_hosts": {
+          "claude-desktop": {
+            "config_path": "~/.claude/config.json",
+            "configured_at": "2025-09-25T10:00:00",
+            "last_synced": "2025-09-25T10:00:00"
+          },
+          "cursor": {
+            "config_path": "~/.cursor/config.json",
+            "configured_at": "2025-09-25T10:30:00",
+            "last_synced": "2025-09-25T10:30:00"
+          }
+        }
+      },
+      {
+        "name": "team-utilities", 
+        "configured_hosts": {
+          "claude-desktop": {
+            "config_path": "~/.claude/config.json",
+            "configured_at": "2025-09-25T11:00:00",
+            "last_synced": "2025-09-25T11:00:00"
+          }
+        }
+      }
+    ]
+  },
+  "empty_environment": {
+    "packages": []
+  },
+  "packages_no_host_tracking": {
+    "packages": [
+      {
+        "name": "legacy-package"
+      },
+      {
+        "name": "another-legacy-package",
+        "configured_hosts": {}
+      }
+    ]
+  }
+}

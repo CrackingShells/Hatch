@@ -4,6 +4,7 @@ This document is a compact reference of all Hatch CLI commands and options imple
 
 ## Table of Contents
 
+```
 - [Global options](#global-options)
 - [Commands](#commands)
   - [hatch create](#hatch-create)
@@ -17,12 +18,27 @@ This document is a compact reference of all Hatch CLI commands and options imple
     - [hatch env python](#hatch-env-python-advanced-python-environment-subcommands)
       - [hatch env python init](#hatch-env-python-init)
       - [hatch env python info](#hatch-env-python-info)
+      - [hatch env python add-hatch-mcp](#hatch-env-python-add-hatch-mcp)
       - [hatch env python remove](#hatch-env-python-remove)
       - [hatch env python shell](#hatch-env-python-shell)
   - [hatch package](#hatch-package-package-management)
     - [hatch package add](#hatch-package-add)
     - [hatch package remove](#hatch-package-remove)
     - [hatch package list](#hatch-package-list)
+    - [hatch package sync](#hatch-package-sync)
+  - [hatch mcp](#hatch-mcp)
+    - [hatch mcp configure](#hatch-mcp-configure)
+    - [hatch mcp sync](#hatch-mcp-sync)
+    - [hatch mcp remove server](#hatch-mcp-remove-server)
+    - [hatch mcp remove host](#hatch-mcp-remove-host)
+    - [hatch mcp list hosts](#hatch-mcp-list-hosts)
+    - [hatch mcp list servers](#hatch-mcp-list-servers)
+    - [hatch mcp discover hosts](#hatch-mcp-discover-hosts)
+    - [hatch mcp discover servers](#hatch-mcp-discover-servers)
+    - [hatch mcp backup list](#hatch-mcp-backup-list)
+    - [hatch mcp backup restore](#hatch-mcp-backup-restore)
+    - [hatch mcp backup clean](#hatch-mcp-backup-clean)
+```
 
 ## Global options
 
@@ -30,9 +46,17 @@ These flags are accepted by the top-level parser and apply to all commands unles
 
 | Flag | Type | Description | Default |
 |------|------|-------------|---------|
+| `--version` | flag | Show program version and exit | n/a |
 | `--envs-dir` | path | Directory to store environments | `~/.hatch/envs` |
 | `--cache-ttl` | int | Cache time-to-live in seconds | `86400` (1 day) |
 | `--cache-dir` | path | Directory to store cached packages | `~/.hatch/cache` |
+
+Example:
+
+```bash
+hatch --version
+# Output: hatch 0.6.1
+```
 
 ## Commands
 
@@ -97,7 +121,7 @@ Syntax:
 | `--python-version` | string | Python version to create (e.g., `3.11`) | none (manager default) |
 | `--no-python` | flag | Do not create a Python environment (skip conda/mamba) | false |
 | `--no-hatch-mcp-server` | flag | Do not install `hatch_mcp_server` wrapper | false |
-| `--hatch_mcp_server_tag` | string | Git tag/branch for wrapper install (e.g., `dev`, `v0.1.0`) | none |
+| `--hatch-mcp-server-tag` | string | Git tag/branch for wrapper installation (e.g., `dev`, `v0.1.0`) | none |
 
 #### `hatch env remove`
 
@@ -215,7 +239,7 @@ Syntax:
 
 ### `hatch package` (package management)
 
-Top-level syntax: `hatch package <add|remove|list> ...`
+Top-level syntax: `hatch package <add|remove|list|sync> ...`
 
 #### `hatch package add`
 
@@ -233,8 +257,27 @@ Syntax:
 | `--force-download`, `-f` | flag | Force fetching even if cached | false |
 | `--refresh-registry`, `-r` | flag | Refresh registry metadata before resolving | false |
 | `--auto-approve` | flag | Automatically approve dependency installation prompts | false |
+| `--host` | string | Comma-separated list of MCP host platforms to configure (e.g., claude-desktop,cursor) | none |
 
 **Note:** Dependency installation prompts are also automatically approved in non-TTY environments (such as CI/CD pipelines) or when the `HATCH_AUTO_APPROVE` environment variable is set. See [Environment Variables](#environment-variables) for details.
+
+**MCP Host Integration:** When adding a package, if the `--host` flag is specified, Hatch will automatically configure the package's MCP servers on the specified hosts. This includes analyzing package dependencies and configuring all related MCP servers.
+
+**MCP Host Integration Examples:**
+
+```bash
+# Add package and automatically configure MCP servers on specific hosts
+hatch package add ./my_package --host claude-desktop,cursor
+
+# Add package for all available hosts
+hatch package add ./my_package --host all
+
+# Skip host configuration (no MCP servers configured)
+hatch package add ./my_package
+
+# Add with other flags and MCP configuration
+hatch package add registry_package --version 1.0.0 --env dev-env --host gemini --auto-approve
+```
 
 Examples:
 
@@ -268,6 +311,36 @@ Syntax:
 | `--env`, `-e` | string | Hatch environment name (defaults to current) | current environment |
 
 Output: each package row includes name, version, hatch compliance flag, source URI and installation location.
+
+#### `hatch package sync`
+
+Synchronize package MCP servers to host platforms.
+
+Syntax:
+
+`hatch package sync <package_name> --host <hosts> [--env ENV] [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `package_name` | string (positional) | Name of package whose MCP servers to sync | n/a |
+| `--host` | string | Comma-separated list of host platforms or 'all' | n/a |
+| `--env`, `-e` | string | Target Hatch environment name (defaults to current) | current environment |
+| `--dry-run` | flag | Preview changes without execution | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Disable default backup behavior of the MCP host's config file | false |
+
+Examples:
+
+`hatch package sync my-package --host claude-desktop`
+
+`hatch package sync weather-server --host claude-desktop,cursor --dry-run`
+
+# Multi-package synchronization examples
+# Sync main package AND all its dependencies:
+hatch package sync my-package --host all
+
+# Sync without creating backups
+hatch package sync my-package --host claude-desktop --no-backup
 
 ---
 
@@ -304,6 +377,352 @@ HATCH_AUTO_APPROVE=yes hatch package add production_package
 ```
 
 **Note:** This environment variable works in conjunction with the `--auto-approve` CLI flag. Either method will enable automatic approval of installation prompts.
+
+---
+
+## MCP Host Configuration Commands
+
+### `hatch mcp`
+
+Commands subset to manage non-hatch package MCP servers.
+Top level syntax: `<hatch mcp configure|sync|remove|list|discover|backup> ...`
+
+#### `hatch mcp configure`
+
+Configure an MCP server on a specific host platform.
+
+Syntax:
+
+`hatch mcp configure <server-name> --host <host> (--command CMD | --url URL) [--args ARGS] [--env-var ENV] [--header HEADER] [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `server-name` | string (positional) | Name of the MCP server to configure | n/a |
+| `--host` | string | Target host platform (claude-desktop, cursor, etc.) | n/a |
+| `--command` | string | Command to execute for local servers (mutually exclusive with --url) | none |
+| `--url` | string | URL for remote MCP servers (mutually exclusive with --command) | none |
+| `--http-url` | string | HTTP streaming endpoint URL (Gemini only) | none |
+| `--args` | string | Arguments for MCP server command (only with --command) | none |
+| `--env-var` | string | Environment variables format: KEY=VALUE (can be used multiple times) | none |
+| `--header` | string | HTTP headers format: KEY=VALUE (only with --url) | none |
+| `--timeout` | int | Request timeout in milliseconds (Gemini) | none |
+| `--trust` | flag | Bypass tool call confirmations (Gemini) | false |
+| `--cwd` | string | Working directory for stdio transport (Gemini) | none |
+| `--include-tools` | multiple | Tool allowlist - only these tools will be available (Gemini). Space-separated values. | none |
+| `--exclude-tools` | multiple | Tool blocklist - these tools will be excluded (Gemini). Space-separated values. | none |
+| `--env-file` | string | Path to environment file (Cursor, VS Code, LM Studio) | none |
+| `--input` | multiple | Input variable definitions format: type,id,description[,password=true] (VS Code) | none |
+| `--dry-run` | flag | Preview configuration without applying changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before configuration | false |
+
+**Behavior**:
+
+The command now displays a **conversion report** showing exactly what fields will be configured on the target host. This provides transparency about which fields are supported by the host and what values will be set.
+
+The conversion report shows:
+- **UPDATED** fields: Fields being set with their new values (shown as `None --> value`)
+- **UNSUPPORTED** fields: Fields not supported by the target host (automatically filtered out)
+- **UNCHANGED** fields: Fields that already have the specified value (update operations only)
+
+**Example - Local Server Configuration**:
+
+```bash
+$ hatch mcp configure my-server --host claude-desktop --command python --args server.py --env API_KEY=secret
+
+Server 'my-server' created for host 'claude-desktop':
+  name: UPDATED None --> 'my-server'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['server.py']
+  env: UPDATED None --> {'API_KEY': 'secret'}
+  url: UPDATED None --> None
+
+Configure MCP server 'my-server' on host 'claude-desktop'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'my-server' on host 'claude-desktop'
+```
+
+**Example - Remote Server Configuration**:
+
+```bash
+$ hatch mcp configure api-server --host claude-desktop --url https://api.example.com --header Auth=token
+
+Server 'api-server' created for host 'claude-desktop':
+  name: UPDATED None --> 'api-server'
+  command: UPDATED None --> None
+  args: UPDATED None --> None
+  env: UPDATED None --> {}
+  url: UPDATED None --> 'https://api.example.com'
+  headers: UPDATED None --> {'Auth': 'token'}
+
+Configure MCP server 'api-server' on host 'claude-desktop'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'api-server' on host 'claude-desktop'
+```
+
+**Example - Advanced Gemini Configuration**:
+
+```bash
+$ hatch mcp configure my-server --host gemini --command python --args server.py --timeout 30000 --trust --include-tools weather,calculator
+
+Server 'my-server' created for host 'gemini':
+  name: UPDATED None --> 'my-server'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['server.py']
+  timeout: UPDATED None --> 30000
+  trust: UPDATED None --> True
+  include_tools: UPDATED None --> ['weather', 'calculator']
+
+Configure MCP server 'my-server' on host 'gemini'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'my-server' on host 'gemini'
+```
+
+**Example - Remote Server Configuration**:
+
+```bash
+$ hatch mcp configure api-server --host vscode --url https://api.example.com --header Auth=token
+
+Server 'api-server' created for host 'vscode':
+  name: UPDATED None --> 'api-server'
+  url: UPDATED None --> 'https://api.example.com'
+  headers: UPDATED None --> {'Auth': 'token'}
+
+Configure MCP server 'api-server' on host 'vscode'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'api-server' on host 'vscode'
+```
+
+**Example - Dry Run Mode**:
+
+```bash
+$ hatch mcp configure my-server --host gemini --command python --args server.py --dry-run
+
+[DRY RUN] Would configure MCP server 'my-server' on host 'gemini':
+[DRY RUN] Command: python
+[DRY RUN] Args: ['server.py']
+[DRY RUN] Backup: Enabled
+[DRY RUN] Preview of changes for server 'my-server':
+  name: UPDATED None --> 'my-server'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['server.py']
+  env: UPDATED None --> {}
+  url: UPDATED None --> None
+
+No changes were made.
+```
+
+**Host-Specific Field Support**:
+
+Different MCP hosts support different configuration fields. The conversion report automatically filters unsupported fields:
+
+- **Claude Desktop / Claude Code**: Supports universal fields only (command, args, env, url, headers, type)
+- **Cursor / LM Studio**: Supports universal fields + envFile
+- **VS Code**: Supports universal fields + envFile, inputs
+- **Gemini CLI**: Supports universal fields + 14 additional fields (cwd, timeout, trust, OAuth settings, etc.)
+
+When configuring a server with fields not supported by the target host, those fields are marked as UNSUPPORTED in the report and automatically excluded from the configuration.
+
+#### `hatch mcp sync`
+
+Synchronize MCP configurations across environments and hosts.
+
+Syntax:
+
+`hatch mcp sync [--from-env ENV | --from-host HOST] --to-host HOSTS [--servers SERVERS | --pattern PATTERN] [--dry-run] [--auto-approve] [--no-backup]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--from-env` | string | Source Hatch environment (mutually exclusive with --from-host) | none |
+| `--from-host` | string | Source host platform (mutually exclusive with --from-env) | none |
+| `--to-host` | string | Target hosts (comma-separated or 'all') | n/a |
+| `--servers` | string | Specific server names to sync (mutually exclusive with --pattern) | none |
+| `--pattern` | string | Regex pattern for server selection (mutually exclusive with --servers) | none |
+| `--dry-run` | flag | Preview synchronization without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before synchronization | false |
+
+#### `hatch mcp remove server`
+
+Remove an MCP server from one or more hosts.
+
+Syntax:
+
+`hatch mcp remove server <server-name> --host <hosts> [--env ENV] [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `server-name` | string (positional) | Name of the server to remove | n/a |
+| `--host` | string | Target hosts (comma-separated or 'all') | n/a |
+| `--env`, `-e` | string | Hatch environment name (reserved for future use) | none |
+| `--dry-run` | flag | Preview removal without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before removal | false |
+
+#### `hatch mcp remove host`
+
+Remove complete host configuration (all MCP servers from the specified host).
+
+Syntax:
+
+`hatch mcp remove host <host-name> [--dry-run] [--auto-approve] [--no-backup]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `host-name` | string (positional) | Name of the host to remove | n/a |
+| `--dry-run` | flag | Preview removal without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+| `--no-backup` | flag | Skip backup creation before removal | false |
+
+#### `hatch mcp list hosts`
+
+List MCP hosts configured in the current environment.
+
+**Purpose**: Shows hosts that have MCP servers configured in the specified environment, with package-level details.
+
+Syntax:
+
+`hatch mcp list hosts [--env ENV] [--detailed]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env` | string | Environment to list hosts from | current environment |
+| `--detailed` | flag | Show detailed configuration information | false |
+
+**Example Output**:
+
+```text
+Configured hosts for environment 'my-project':
+  claude-desktop (2 packages)
+  cursor (1 package)
+```
+
+**Detailed Output** (`--detailed`):
+
+```text
+Configured hosts for environment 'my-project':
+  claude-desktop (2 packages):
+    - weather-toolkit: ~/.claude/config.json (configured: 2025-09-25T10:00:00)
+    - news-aggregator: ~/.claude/config.json (configured: 2025-09-25T11:30:00)
+  cursor (1 package):
+    - weather-toolkit: ~/.cursor/config.json (configured: 2025-09-25T10:15:00)
+```
+
+**Example Output**:
+
+```text
+Available MCP Host Platforms:
+✓ claude-desktop    Available    /Users/user/.claude/config.json
+✓ cursor           Available    /Users/user/.cursor/config.json
+✗ vscode           Not Found    /Users/user/.vscode/settings.json
+✗ lmstudio         Not Found    /Users/user/.lmstudio/config.json
+```
+
+#### `hatch mcp list servers`
+
+List MCP servers from environment with host configuration tracking information.
+
+**Purpose**: Shows servers from environment packages with detailed host configuration tracking, including which hosts each server is configured on and last sync timestamps.
+
+Syntax:
+
+`hatch mcp list servers [--env ENV]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env`, `-e` | string | Environment name (defaults to current) | current environment |
+
+**Example Output**:
+
+```text
+MCP servers in environment 'default':
+Server Name          Package              Version    Command
+--------------------------------------------------------------------------------
+weather-server       weather-toolkit      1.0.0      python weather.py
+                     Configured on hosts:
+                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
+                       cursor: /Users/user/.cursor/config.json (last synced: 2025-09-24T09:30:00)
+
+news-aggregator      news-toolkit         2.1.0      python news.py
+                     Configured on hosts:
+                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
+```
+
+#### `hatch mcp discover hosts`
+
+Discover available MCP host platforms on the system.
+
+**Purpose**: Shows ALL host platforms (both available and unavailable) with system detection status.
+
+Syntax:
+
+`hatch mcp discover hosts`
+
+**Example Output**:
+
+```text
+Available MCP host platforms:
+  claude-desktop: ✓ Available
+    Config path: ~/.claude/config.json
+  cursor: ✓ Available
+    Config path: ~/.cursor/config.json
+  vscode: ✗ Not detected
+    Config path: ~/.vscode/config.json
+```
+
+#### `hatch mcp discover servers`
+
+Discover MCP servers in Hatch environments.
+
+Syntax:
+
+`hatch mcp discover servers [--env ENV]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env` | string | Specific environment to discover servers in | current environment |
+
+#### `hatch mcp backup list`
+
+List available configuration backups for a specific host.
+
+Syntax:
+
+`hatch mcp backup list <host> [--detailed]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `host` | string (positional) | Host platform to list backups for (e.g., claude-desktop, cursor) | n/a |
+| `--detailed`, `-d` | flag | Show detailed backup information | false |
+
+#### `hatch mcp backup restore`
+
+Restore host configuration from a backup file.
+
+Syntax:
+
+`hatch mcp backup restore <host> [--backup-file FILE] [--dry-run] [--auto-approve]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `host` | string (positional) | Host platform to restore (e.g., claude-desktop, cursor) | n/a |
+| `--backup-file`, `-f` | string | Specific backup file to restore (defaults to latest) | latest backup |
+| `--dry-run` | flag | Preview restore without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+
+#### `hatch mcp backup clean`
+
+Clean old backup files for a specific host based on retention criteria.
+
+Syntax:
+
+`hatch mcp backup clean <host> [--older-than-days DAYS] [--keep-count COUNT] [--dry-run] [--auto-approve]`
+
+| Argument / Flag | Type | Description | Default |
+|---:|---|---|---|
+| `host` | string (positional) | Host platform to clean backups for (e.g., claude-desktop, cursor) | n/a |
+| `--older-than-days` | integer | Remove backups older than specified days | none |
+| `--keep-count` | integer | Keep only the most recent N backups | none |
+| `--dry-run` | flag | Preview cleanup without executing changes | false |
+| `--auto-approve` | flag | Skip confirmation prompts | false |
+
+**Note:** At least one of `--older-than-days` or `--keep-count` must be specified.
 
 ---
 

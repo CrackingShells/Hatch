@@ -1,0 +1,29 @@
+name: Discord Release Notification
+
+on:
+  release:
+    types: [released]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    if: github.event.release.target_commitish == 'main'
+    steps:
+      - name: Send Discord Notification
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_HATCH_ANNOUNCEMENTS }}
+          nodetail: true
+          content: "<@&1418053865818951721>"
+          title: "🎉 New *Hatch!* Release Available!"
+          description: |
+            **Version `${{ github.event.release.tag_name }}`** has been released! 
+            
+            🚀 Get the latest features and improvements
+            📚 Click [here](${{ github.event.release.html_url }}) to view the changelog and download
+            
+            Happy MCP coding with *Hatch!* 🐣
+          color: 0x00ff88
+          username: "Cracking Shells Release Bot"
+          image: "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/hatch_icon_dark_bg_transparent.png"
+          avatar_url: "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/cs_core_dark_bg.png"

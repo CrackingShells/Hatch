@@ -1,0 +1,30 @@
+{
+  "name": "test_environment",
+  "description": "Test environment with corrected MCP structure",
+  "created_at": "2025-09-21T10:00:00.000000",
+  "packages": [
+    {
+      "name": "weather-toolkit",
+      "version": "1.0.0",
+      "type": "hatch",
+      "source": "github:user/weather-toolkit",
+      "installed_at": "2025-09-21T10:00:00.000000",
+      "configured_hosts": {
+        "claude-desktop": {
+          "config_path": "~/Library/Application Support/Claude/claude_desktop_config.json",
+          "configured_at": "2025-09-21T10:00:00.000000",
+          "last_synced": "2025-09-21T10:00:00.000000",
+          "server_config": {
+            "command": "/usr/local/bin/python",
+            "args": [
+              "weather.py"
+            ],
+            "env": {
+              "API_KEY": "weather_key"
+            }
+          }
+        }
+      }
+    }
+  ]
+}

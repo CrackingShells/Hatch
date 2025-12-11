@@ -12,34 +12,37 @@ Hatch provides powerful tools for managing MCP server packages, environments, an
 
 - **[Getting Started](./articles/users/GettingStarted.md)** - Quick start guide for using Hatch
 - **[Command Reference](./articles/users/CLIReference.md)** - Complete CLI command documentation
+- **[MCP Host Configuration](./articles/users/MCPHostConfiguration.md)** - Configure MCP servers across different host platforms
 - **[Tutorials Start](./articles/users/tutorials/01-getting-started/01-installation.md)** - Step-by-step guides for your journey from installation to authoring Hatch packages for MCP server easy sharing.
 
 ### For Developers
 
 Comprehensive documentation for developers and contributors working on the Hatch codebase.
 
-#### [Architecture](./articles/devs/architecture/)
+#### [Architecture](./articles/devs/architecture/index.md)
 
 High-level system understanding and design patterns for developers getting familiar with the Hatch codebase.
 
 - [System Overview](./articles/devs/architecture/system_overview.md) - Introduction to Hatch's architecture
 - [Component Architecture](./articles/devs/architecture/component_architecture.md) - Detailed component breakdown
+- [MCP Host Configuration](./articles/devs/architecture/mcp_host_configuration.md) - Architecture for MCP host configuration management
 
-#### [Implementation Guides](./articles/devs/implementation_guides/)
+#### [Implementation Guides](./articles/devs/implementation_guides/index.md)
 
 Technical how-to guides for implementing specific features and extending the system.
 
 - [Adding New Installers](./articles/devs/implementation_guides/adding_installers.md) - Implementing new dependency installer types
 - [Registry Integration](./articles/devs/implementation_guides/registry_integration.md) - Working with package registries
+- [MCP Host Configuration Extension](./articles/devs/implementation_guides/mcp_host_configuration_extension.md) - Adding support for new MCP host platforms
 
-#### [Development Processes](./articles/devs/development_processes/)
+#### [Development Processes](./articles/devs/development_processes/index.md)
 
 Workflow, standards, and processes for effective development on the Hatch project.
 
 - [Developer Onboarding](./articles/devs/development_processes/developer_onboarding.md) - Setting up your development environment
 - [Testing Standards](./articles/devs/development_processes/testing_standards.md) - Testing requirements and best practices
 
-#### [Contribution Guidelines](./articles/devs/contribution_guides/)
+#### [Contribution Guidelines](./articles/devs/contribution_guides/index.md)
 
 Process-focused guidance for contributing to the Hatch project.
 
@@ -48,8 +51,6 @@ Process-focused guidance for contributing to the Hatch project.
 
 ## Quick Links
 
-- **[Architecture Diagram](./resources/diagrams/architecture.puml)** - Visual overview of system components
-- **[Source Code](../hatch/)** - Main Hatch package source code
 - **[GitHub Repository](https://github.com/CrackingShells/Hatch)** - Project repository
 - **[Hatchling Integration](https://github.com/CrackingShells/Hatchling)** - Primary consumer of Hatch
 

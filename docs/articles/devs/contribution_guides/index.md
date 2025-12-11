@@ -4,21 +4,21 @@ This section provides process-focused guidance for contributing to the Hatch pro
 
 ## Overview
 
-These guidelines focus on the contribution process, community standards, and project policies rather than technical implementation details. For technical how-to guides, see [Implementation Guides](../implementation_guides/).
+These guidelines focus on the contribution process, community standards, and project policies rather than technical implementation details. For technical how-to guides, see [Implementation Guides](../implementation_guides/index.md).
 
 ## Available Guidelines
 
 ### Core Contribution Process
 
 - **[How to Contribute](./how_to_contribute.md)** - General contribution workflow, branch naming, and submission process
-- **[Release and Dependency Policy](./release_and_dependency_policy.md)** - Release management policies and dependency guidelines
+- **[Release and Dependency Policy](./release_policy.md)** - Release management policies and dependency guidelines
 
 ## Before Contributing
 
-1. **Review the Architecture** - Understand the system by reading [Architecture Documentation](../architecture/)
-2. **Set Up Development Environment** - Follow [Development Environment Setup](../development_processes/development_environment_setup.md)
+1. **Review the Architecture** - Understand the system by reading [Architecture Documentation](../architecture/index.md)
+2. **Set Up Development Environment** - Follow [Development Environment Setup](../development_processes/developer_onboarding.md)
 3. **Understand Testing Requirements** - Review [Testing Standards](../development_processes/testing_standards.md)
-4. **Check Implementation Guides** - For technical guidance, see [Implementation Guides](../implementation_guides/)
+4. **Check Implementation Guides** - For technical guidance, see [Implementation Guides](../implementation_guides/index.md)
 
 ## Contribution Workflow
 
@@ -37,6 +37,4 @@ These guidelines focus on the contribution process, community standards, and pro
 
 ## Related Documentation
 
-- [Development Processes](../development_processes/) - Development workflow and standards
-- [Implementation Guides](../implementation_guides/) - Technical implementation guidance
-- [Architecture](../architecture/) - System understanding for contributors
+- [Development Processes](../development_processes/index.md) - Development workflow and standards

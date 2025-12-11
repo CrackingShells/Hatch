@@ -1,0 +1,10 @@
+{
+  "servers": {
+    "test_server": {
+      "command": "python",
+      "args": [
+        "server.py"
+      ]
+    }
+  }
+}

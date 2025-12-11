@@ -1,0 +1,25 @@
+{
+  "servers": {
+    "server1": {
+      "command": "python",
+      "args": [
+        "server1.py"
+      ]
+    },
+    "server2": {
+      "command": "node",
+      "args": [
+        "server2.js"
+      ]
+    },
+    "server3": {
+      "command": "python",
+      "args": [
+        "server3.py"
+      ],
+      "env": {
+        "API_KEY": "test"
+      }
+    }
+  }
+}

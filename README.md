@@ -1,21 +1,45 @@
 # Hatch
 
-![Hatch Logo](./docs/resources/images/Logo/hatch_wide_dark_bg_transparent.png)
+![Hatch Logo](https://raw.githubusercontent.com/CrackingShells/Hatch/refs/heads/main/docs/resources/images/Logo/hatch_wide_dark_bg_transparent.png)
 
-Hatch is the package manager for the Hatch! ecosystem. The documentation in `docs/index.md` is the canonical, up-to-date entry point for users and contributors — this README is a short pointer to those resources.
+## Introduction
 
-## Quick links
+Hatch is the package manager for managing Model Context Protocol (MCP) servers with environment isolation, multi-type dependency resolution, and multi-host deployment. Deploy MCP servers to Claude Desktop, VS Code, Cursor, and other platforms with automatic dependency management.
 
-The major documentation entry points are:
+The canonical documentation is at `docs/index.md` and published at <https://hatch.readthedocs.io/en/latest/>.
 
-- Documentation (canonical): `docs/index.md`
-- Getting started (users): `docs/articles/users/GettingStarted.md`
-- CLI reference: `docs/articles/users/CLIReference.md`
-- Developer docs and architecture: `docs/articles/devs/index.md`
+## Key Features
 
-But, really, just look at the site: <https://crackingshells.github.io/Hatch/>
+- **Environment Isolation** — Create separate, isolated workspaces for different projects without conflicts
+- **Multi-Type Dependency Resolution** — Automatically resolve and install system packages, Python packages, Docker containers, and Hatch packages
+- **Multi-Host Deployment** — Deploy MCP servers to Claude Desktop, Claude Code, VS Code, Cursor, LM Studio, and Google Gemini CLI
+- **Package Validation** — Ensure packages meet schema requirements before distribution
+- **Development-Focused** — Optimized for rapid development and testing of MCP server ecosystems
 
-## Quick start
+## Supported MCP Hosts
+
+Hatch supports deployment to the following MCP host platforms:
+
+- **Claude Desktop** — Anthropic's desktop application for Claude with native MCP support
+- **Claude Code** — Claude integration for VS Code with MCP capabilities
+- **VS Code** — Visual Studio Code with the MCP extension for tool integration
+- **Cursor** — AI-first code editor with built-in MCP server support
+- **LM Studio** — Local LLM inference platform with MCP server integration
+- **Google Gemini CLI** — Command-line interface for Google's Gemini model with MCP support
+
+## Quick Start
+
+### Install from PyPI
+
+```bash
+pip install hatch-xclam
+```
+
+Verify installation:
+
+```bash
+hatch --version
+```
 
 ### Install from source
 
@@ -25,46 +49,75 @@ cd Hatch
 pip install -e .
 ```
 
-### Create a package template
+### Create your first environment and *Hatch!* MCP server package
 
 ```bash
-hatch create my-package --description "My MCP server package"
+# Create an isolated environment
+hatch env create my_project
+
+# Switch to it
+hatch env use my_project
+
+# Create a package template
+hatch create my_mcp_server --description "My MCP server"
+
+# Validate the package
+hatch validate ./my_mcp_server
 ```
+
+### Deploy MCP servers to your tools
+
+**Package-First Deployment (Recommended)** — Add a Hatch package and automatically configure it on Claude Desktop and Cursor:
+
+```bash
+hatch package add ./my_mcp_server --host claude-desktop,cursor
+```
+
+**Direct Configuration (Advanced)** — Configure arbitrary MCP servers on your hosts:
+
+```bash
+# Remote server example: GitHub MCP Server with authentication
+export GIT_PAT_TOKEN=your_github_personal_access_token
+hatch mcp configure github-mcp --host gemini \
+  --httpUrl https://api.github.com/mcp \
+  --header Authorization="Bearer $GIT_PAT_TOKEN"
+
+# Local server example: Context7 via npx
+hatch mcp configure context7 --host vscode \
+  --command npx --args "-y @upstash/context7-mcp"
+```
+
+## Documentation
+
+- **[Full Documentation](https://hatch.readthedocs.io/en/latest/)** — Complete reference and guides
+- **[Getting Started](./docs/articles/users/GettingStarted.md)** — Quick start for users
+- **[CLI Reference](./docs/articles/users/CLIReference.md)** — All commands and options
+- **[Tutorials](./docs/articles/users/tutorials/)** — Step-by-step guides from installation to package authoring
+- **[MCP Host Configuration](./docs/articles/users/MCPHostConfiguration.md)** — Deploy to multiple platforms
+- **[Developer Docs](./docs/articles/devs/)** — Architecture, implementation guides, and contribution guidelines
+- **[Troubleshooting](./docs/articles/users/Troubleshooting/ReportIssues.md)** — Common issues and solutions
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guide](./CONTRIBUTING.md) for details.
+We welcome contributions! See the [How to Contribute](./docs/articles/devs/contribution_guides/how_to_contribute.md) guide for details.
 
-### Quick Start
+### Quick start for developers
 
 1. **Fork and clone** the repository
 2. **Install dependencies**: `pip install -e .` and `npm install`
 3. **Create a feature branch**: `git checkout -b feat/your-feature`
 4. **Make changes** and add tests
 5. **Use conventional commits**: `npm run commit` for guided commits
-6. **Run tests**: `python -c "import hatch; print('Hatch package imports successfully')"`
+6. **Run tests**: `wobble`
 7. **Create a pull request**
 
-### Commit Messages
-
-We use [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning:
-
-```bash
-feat: add new feature
-fix: resolve bug
-docs: update documentation
-test: add tests
-chore: maintenance tasks
-```
-
-Use `npm run commit` for guided commit messages.
-
-For detailed guidelines, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+We use [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning. Use `npm run commit` for guided commit messages.
 
 ## Getting Help
 
-- Read developer onboarding and contribution guides in `docs/articles/devs/`
-- Report issues or feature requests on the GitHub repository: <https://github.com/CrackingShells/Hatch/issues>
+- Search existing [GitHub Issues](https://github.com/CrackingShells/Hatch/issues)
+- Read [Troubleshooting](./docs/articles/users/Troubleshooting/ReportIssues.md) for common problems
+- Check [Developer Onboarding](./docs/articles/devs/development_processes/developer_onboarding.md) for setup help
 
 ## License
 

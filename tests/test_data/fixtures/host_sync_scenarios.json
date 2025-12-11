@@ -1,0 +1,163 @@
+{
+  "remove_server_scenario": {
+    "before": {
+      "environment": "project-alpha",
+      "packages": [
+        {
+          "name": "weather-toolkit",
+          "configured_hosts": {
+            "claude-desktop": {
+              "config_path": "~/.claude/config.json",
+              "configured_at": "2025-09-25T10:00:00",
+              "last_synced": "2025-09-25T10:00:00"
+            },
+            "cursor": {
+              "config_path": "~/.cursor/config.json",
+              "configured_at": "2025-09-25T10:30:00",
+              "last_synced": "2025-09-25T10:30:00"
+            }
+          }
+        }
+      ]
+    },
+    "after": {
+      "packages": [
+        {
+          "name": "weather-toolkit", 
+          "configured_hosts": {
+            "claude-desktop": {
+              "config_path": "~/.claude/config.json",
+              "configured_at": "2025-09-25T10:00:00",
+              "last_synced": "2025-09-25T10:00:00"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "remove_host_scenario": {
+    "multi_environment_before": {
+      "project-alpha": {
+        "packages": [
+          {
+            "name": "weather-toolkit",
+            "configured_hosts": {
+              "claude-desktop": {
+                "config_path": "~/.claude/config.json",
+                "configured_at": "2025-09-25T10:00:00"
+              },
+              "cursor": {
+                "config_path": "~/.cursor/config.json",
+                "configured_at": "2025-09-25T10:30:00"
+              }
+            }
+          }
+        ]
+      },
+      "project-beta": {
+        "packages": [
+          {
+            "name": "team-utilities",
+            "configured_hosts": {
+              "cursor": {
+                "config_path": "~/.cursor/config.json",
+                "configured_at": "2025-09-25T11:00:00"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "multi_environment_after": {
+      "project-alpha": {
+        "packages": [
+          {
+            "name": "weather-toolkit",
+            "configured_hosts": {
+              "claude-desktop": {
+                "config_path": "~/.claude/config.json",
+                "configured_at": "2025-09-25T10:00:00"
+              }
+            }
+          }
+        ]
+      },
+      "project-beta": {
+        "packages": [
+          {
+            "name": "team-utilities",
+            "configured_hosts": {}
+          }
+        ]
+      }
+    }
+  },
+  "restore_backup_scenario": {
+    "environment_before": {
+      "packages": [
+        {
+          "name": "old-server",
+          "configured_hosts": {
+            "claude-desktop": {
+              "config_path": "~/.claude/config.json",
+              "configured_at": "2025-09-25T09:00:00",
+              "last_synced": "2025-09-25T09:00:00"
+            }
+          }
+        },
+        {
+          "name": "weather-toolkit",
+          "configured_hosts": {
+            "claude-desktop": {
+              "config_path": "~/.claude/config.json",
+              "configured_at": "2025-09-25T09:30:00",
+              "last_synced": "2025-09-25T09:30:00"
+            }
+          }
+        }
+      ]
+    },
+    "restored_servers": {
+      "new-server": {
+        "command": "python -m new_server",
+        "args": ["--port", "8080"]
+      },
+      "weather-toolkit": {
+        "command": "python -m weather_toolkit",
+        "args": ["--api-key", "test"]
+      }
+    },
+    "environment_after": {
+      "packages": [
+        {
+          "name": "new-server",
+          "configured_hosts": {
+            "claude-desktop": {
+              "config_path": "~/.claude/config.json",
+              "configured_at": "2025-09-25T12:00:00",
+              "last_synced": "2025-09-25T12:00:00",
+              "server_config": {
+                "command": "python -m new_server",
+                "args": ["--port", "8080"]
+              }
+            }
+          }
+        },
+        {
+          "name": "weather-toolkit",
+          "configured_hosts": {
+            "claude-desktop": {
+              "config_path": "~/.claude/config.json",
+              "configured_at": "2025-09-25T09:30:00",
+              "last_synced": "2025-09-25T12:00:00",
+              "server_config": {
+                "command": "python -m weather_toolkit",
+                "args": ["--api-key", "test"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

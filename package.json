@@ -6,14 +6,15 @@
     "semantic-release": "semantic-release"
   },
   "devDependencies": {
+    "@artessan-devs/sr-uv-plugin": "github:LittleCoinCoin/sr-uv-plugin#fix/semantic-release-plugin-loading",
     "@commitlint/cli": "^18.6.1",
     "@commitlint/config-conventional": "^18.6.2",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/github": "^9.2.6",
-    "commitizen": "^4.3.0",
-    "cz-conventional-changelog": "^3.3.0",
-    "semantic-release": "^22.0.12"
+    "commitizen": "^4.3.1",
+    "cz-conventional-changelog": "^3.0.1",
+    "semantic-release": "^25.0.2"
   },
   "config": {
     "commitizen": {
