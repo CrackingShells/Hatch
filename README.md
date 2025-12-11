@@ -1,12 +1,33 @@
 # Hatch
 
-![Hatch Logo](./docs/resources/images/Logo/hatch_wide_dark_bg_transparent.png)
+![Hatch Logo](https://raw.githubusercontent.com/CrackingShells/Hatch/refs/heads/main/docs/resources/images/Logo/hatch_wide_dark_bg_transparent.png)
 
-Hatch is the package manager for the Cracking Shells ecosystem, designed specifically for managing Model Context Protocol (MCP) servers. It handles complex dependency resolution across system packages, Python packages, Docker containers, and other Hatch packages — all in isolated environments.
+## Introduction
+
+Hatch is the package manager for managing Model Context Protocol (MCP) servers with environment isolation, multi-type dependency resolution, and multi-host deployment. Deploy MCP servers to Claude Desktop, VS Code, Cursor, and other platforms with automatic dependency management.
 
 The canonical documentation is at `docs/index.md` and published at <https://hatch.readthedocs.io/en/latest/>.
 
-## Quick start
+## Key Features
+
+- **Environment Isolation** — Create separate, isolated workspaces for different projects without conflicts
+- **Multi-Type Dependency Resolution** — Automatically resolve and install system packages, Python packages, Docker containers, and Hatch packages
+- **Multi-Host Deployment** — Deploy MCP servers to Claude Desktop, Claude Code, VS Code, Cursor, LM Studio, and Google Gemini CLI
+- **Package Validation** — Ensure packages meet schema requirements before distribution
+- **Development-Focused** — Optimized for rapid development and testing of MCP server ecosystems
+
+## Supported MCP Hosts
+
+Hatch supports deployment to the following MCP host platforms:
+
+- **Claude Desktop** — Anthropic's desktop application for Claude with native MCP support
+- **Claude Code** — Claude integration for VS Code with MCP capabilities
+- **VS Code** — Visual Studio Code with the MCP extension for tool integration
+- **Cursor** — AI-first code editor with built-in MCP server support
+- **LM Studio** — Local LLM inference platform with MCP server integration
+- **Google Gemini CLI** — Command-line interface for Google's Gemini model with MCP support
+
+## Quick Start
 
 ### Install from PyPI
 
@@ -46,40 +67,25 @@ hatch validate ./my_mcp_server
 
 ### Deploy MCP servers to your tools
 
-Add a Hatch package and automatically configure it on Claude Desktop and Cursor:
+**Package-First Deployment (Recommended)** — Add a Hatch package and automatically configure it on Claude Desktop and Cursor:
 
 ```bash
 hatch package add ./my_mcp_server --host claude-desktop,cursor
 ```
 
-Configure an arbitrary MCP server (non-Hatch package) on Claude Desktop:
+**Direct Configuration (Advanced)** — Configure arbitrary MCP servers on your hosts:
 
 ```bash
-# Local server with command and arguments
-hatch mcp configure my-weather-server --host claude-desktop \
-  --command python --args weather_server.py \
-  --env-var API_KEY=your_key
+# Remote server example: GitHub MCP Server with authentication
+export GIT_PAT_TOKEN=your_github_personal_access_token
+hatch mcp configure github-mcp --host gemini \
+  --httpUrl https://api.github.com/mcp \
+  --header Authorization="Bearer $GIT_PAT_TOKEN"
 
-# Remote server with URL
-hatch mcp configure api-server --host gemini \
-  --httpUrl https://api.example.com \
-  --header Authorization="Bearer token"
+# Local server example: Context7 via npx
+hatch mcp configure context7 --host vscode \
+  --command npx --args "-y @upstash/context7-mcp"
 ```
-
-List configured servers and hosts:
-
-```bash
-hatch mcp list servers
-hatch mcp list hosts --detailed
-```
-
-## Key features
-
-- **Environment isolation**: Create separate workspaces for different projects
-- **Multi-type dependencies**: Automatically resolve and install system packages, Python packages, Docker containers, and Hatch packages
-- **MCP host configuration**: Deploy MCP servers to Claude Desktop, Cursor, VSCode, and other platforms
-- **Package validation**: Ensure packages meet schema requirements before distribution
-- **Development-focused**: Optimized for rapid development and testing of MCP server ecosystems
 
 ## Documentation
 
@@ -102,12 +108,12 @@ We welcome contributions! See the [How to Contribute](./docs/articles/devs/contr
 3. **Create a feature branch**: `git checkout -b feat/your-feature`
 4. **Make changes** and add tests
 5. **Use conventional commits**: `npm run commit` for guided commits
-6. **Run tests**: `python -m pytest tests/`
+6. **Run tests**: `wobble`
 7. **Create a pull request**
 
 We use [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning. Use `npm run commit` for guided commit messages.
 
-## Getting help
+## Getting Help
 
 - Search existing [GitHub Issues](https://github.com/CrackingShells/Hatch/issues)
 - Read [Troubleshooting](./docs/articles/users/Troubleshooting/ReportIssues.md) for common problems
