@@ -3,6 +3,7 @@ envs/
 .augment/
 .github/instructions/
 Laghari/
+__temp__/
 
 # vvvvvvv  Default Python Ignore vvvvvvvv
 # Byte-compiled / optimized / DLL files
