@@ -409,6 +409,87 @@ class VSCodeHostStrategy(MCPHostStrategy):
             return False
 
 
+@register_host_strategy(MCPHostType.KIRO)
+class KiroHostStrategy(MCPHostStrategy):
+    """Configuration strategy for Kiro IDE."""
+    
+    def get_config_path(self) -> Optional[Path]:
+        """Get Kiro configuration path (user-level only per constraint)."""
+        return Path.home() / ".kiro" / "settings" / "mcp.json"
+    
+    def get_config_key(self) -> str:
+        """Kiro uses 'mcpServers' key."""
+        return "mcpServers"
+    
+    def is_host_available(self) -> bool:
+        """Check if Kiro is available by checking for settings directory."""
+        kiro_dir = Path.home() / ".kiro" / "settings"
+        return kiro_dir.exists()
+    
+    def validate_server_config(self, server_config: MCPServerConfig) -> bool:
+        """Kiro validation - supports both local and remote servers."""
+        return server_config.command is not None or server_config.url is not None
+    
+    def read_configuration(self) -> HostConfiguration:
+        """Read Kiro configuration file."""
+        config_path = self.get_config_path()
+        if not config_path or not config_path.exists():
+            return HostConfiguration(servers={})
+        
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            servers = {}
+            mcp_servers = data.get(self.get_config_key(), {})
+            
+            for name, config in mcp_servers.items():
+                try:
+                    servers[name] = MCPServerConfig(**config)
+                except Exception as e:
+                    logger.warning(f"Invalid server config for {name}: {e}")
+                    continue
+            
+            return HostConfiguration(servers=servers)
+            
+        except Exception as e:
+            logger.error(f"Failed to read Kiro configuration: {e}")
+            return HostConfiguration(servers={})
+    
+    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+        """Write configuration to Kiro."""
+        config_path = self.get_config_path()
+        if not config_path:
+            return False
+        
+        try:
+            # Ensure directory exists
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Read existing configuration to preserve other settings
+            existing_data = {}
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    existing_data = json.load(f)
+            
+            # Update MCP servers section
+            servers_data = {}
+            for name, server_config in config.servers.items():
+                servers_data[name] = server_config.model_dump(exclude_unset=True)
+            
+            existing_data[self.get_config_key()] = servers_data
+            
+            # Write updated configuration
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(existing_data, f, indent=2)
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to write Kiro configuration: {e}")
+            return False
+
+
 @register_host_strategy(MCPHostType.GEMINI)
 class GeminiHostStrategy(MCPHostStrategy):
     """Configuration strategy for Google Gemini CLI MCP integration."""
