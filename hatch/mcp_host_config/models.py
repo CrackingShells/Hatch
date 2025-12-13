@@ -24,6 +24,7 @@ class MCPHostType(str, Enum):
     CURSOR = "cursor"
     LMSTUDIO = "lmstudio"
     GEMINI = "gemini"
+    KIRO = "kiro"
 
 
 class MCPServerConfig(BaseModel):
@@ -192,7 +193,7 @@ class EnvironmentPackageEntry(BaseModel):
         """Validate host names are supported."""
         supported_hosts = {
             'claude-desktop', 'claude-code', 'vscode',
-            'cursor', 'lmstudio', 'gemini'
+            'cursor', 'lmstudio', 'gemini', 'kiro'
         }
         for host_name in v.keys():
             if host_name not in supported_hosts:
@@ -538,6 +539,30 @@ class MCPServerConfigClaude(MCPServerConfigBase):
         return cls.model_validate(claude_data)
 
 
+class MCPServerConfigKiro(MCPServerConfigBase):
+    """Kiro IDE-specific MCP server configuration.
+    
+    Extends base model with Kiro-specific fields for server management
+    and tool control.
+    """
+    
+    # Kiro-specific fields
+    disabled: Optional[bool] = Field(None, description="Whether server is disabled")
+    autoApprove: Optional[List[str]] = Field(None, description="Auto-approved tool names")
+    disabledTools: Optional[List[str]] = Field(None, description="Disabled tool names")
+    
+    @classmethod
+    def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigKiro':
+        """Convert Omni model to Kiro-specific model."""
+        # Get supported fields dynamically
+        supported_fields = set(cls.model_fields.keys())
+        
+        # Single-call field filtering
+        kiro_data = omni.model_dump(include=supported_fields, exclude_unset=True)
+        
+        return cls.model_validate(kiro_data)
+
+
 class MCPServerConfigOmni(BaseModel):
     """Omni configuration supporting all host-specific fields.
 
@@ -580,6 +605,11 @@ class MCPServerConfigOmni(BaseModel):
     # VS Code specific
     envFile: Optional[str] = None
     inputs: Optional[List[Dict]] = None
+    
+    # Kiro specific
+    disabled: Optional[bool] = None
+    autoApprove: Optional[List[str]] = None
+    disabledTools: Optional[List[str]] = None
 
     @field_validator('url')
     @classmethod
@@ -599,4 +629,5 @@ HOST_MODEL_REGISTRY: Dict[MCPHostType, type[MCPServerConfigBase]] = {
     MCPHostType.VSCODE: MCPServerConfigVSCode,
     MCPHostType.CURSOR: MCPServerConfigCursor,
     MCPHostType.LMSTUDIO: MCPServerConfigCursor,  # Same as CURSOR
+    MCPHostType.KIRO: MCPServerConfigKiro,
 }
