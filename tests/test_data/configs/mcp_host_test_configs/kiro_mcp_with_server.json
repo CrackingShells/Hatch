@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "existing-server": {
+      "command": "auggie",
+      "args": ["--mcp", "-m", "default", "-w", "."],
+      "env": {
+        "DEBUG": "true"
+      },
+      "disabled": false,
+      "autoApprove": ["codebase-retrieval", "fetch"],
+      "disabledTools": ["dangerous-tool"]
+    }
+  }
+}

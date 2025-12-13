@@ -292,6 +292,25 @@ class MCPHostConfigTestDataLoader(TestDataLoader):
         with open(config_path, 'r') as f:
             return json.load(f)
 
+    def load_kiro_mcp_config(self, config_type: str = "empty") -> Dict[str, Any]:
+        """Load Kiro-specific MCP configuration templates.
+        
+        Args:
+            config_type: Type of Kiro configuration to load
+                - "empty": Empty mcpServers configuration
+                - "with_server": Single server with all Kiro fields
+                - "complex": Multi-server with mixed configurations
+        
+        Returns:
+            Kiro MCP configuration dictionary
+        """
+        config_path = self.mcp_host_configs_dir / f"kiro_mcp_{config_type}.json"
+        if not config_path.exists():
+            self._create_kiro_mcp_config(config_type)
+
+        with open(config_path, 'r') as f:
+            return json.load(f)
+
     def _create_host_config_template(self, host_type: str, config_type: str):
         """Create host-specific configuration templates with inheritance patterns."""
         templates = {
@@ -363,6 +382,50 @@ class MCPHostConfigTestDataLoader(TestDataLoader):
                         "command": "python",
                         "args": ["server.py"]
                     }
+                }
+            },
+
+            # Kiro family templates
+            "kiro_simple": {
+                "mcpServers": {
+                    "test_server": {
+                        "command": "auggie",
+                        "args": ["--mcp"],
+                        "disabled": False,
+                        "autoApprove": ["codebase-retrieval"]
+                    }
+                }
+            },
+            "kiro_with_server": {
+                "mcpServers": {
+                    "existing-server": {
+                        "command": "auggie",
+                        "args": ["--mcp", "-m", "default", "-w", "."],
+                        "env": {"DEBUG": "true"},
+                        "disabled": False,
+                        "autoApprove": ["codebase-retrieval", "fetch"],
+                        "disabledTools": ["dangerous-tool"]
+                    }
+                }
+            },
+            "kiro_complex": {
+                "mcpServers": {
+                    "local-server": {
+                        "command": "auggie",
+                        "args": ["--mcp"],
+                        "disabled": False,
+                        "autoApprove": ["codebase-retrieval"]
+                    },
+                    "remote-server": {
+                        "url": "https://api.example.com/mcp",
+                        "headers": {"Authorization": "Bearer token"},
+                        "disabled": True,
+                        "disabledTools": ["risky-tool"]
+                    }
+                },
+                "otherSettings": {
+                    "theme": "dark",
+                    "fontSize": 14
                 }
             }
         }
@@ -468,5 +531,50 @@ class MCPHostConfigTestDataLoader(TestDataLoader):
 
         config = templates.get(server_type, {})
         config_path = self.mcp_host_configs_dir / f"mcp_server_{server_type}.json"
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+
+    def _create_kiro_mcp_config(self, config_type: str):
+        """Create Kiro-specific MCP configuration templates."""
+        templates = {
+            "empty": {
+                "mcpServers": {}
+            },
+            "with_server": {
+                "mcpServers": {
+                    "existing-server": {
+                        "command": "auggie",
+                        "args": ["--mcp", "-m", "default", "-w", "."],
+                        "env": {"DEBUG": "true"},
+                        "disabled": False,
+                        "autoApprove": ["codebase-retrieval", "fetch"],
+                        "disabledTools": ["dangerous-tool"]
+                    }
+                }
+            },
+            "complex": {
+                "mcpServers": {
+                    "local-server": {
+                        "command": "auggie",
+                        "args": ["--mcp"],
+                        "disabled": False,
+                        "autoApprove": ["codebase-retrieval"]
+                    },
+                    "remote-server": {
+                        "url": "https://api.example.com/mcp",
+                        "headers": {"Authorization": "Bearer token"},
+                        "disabled": True,
+                        "disabledTools": ["risky-tool"]
+                    }
+                },
+                "otherSettings": {
+                    "theme": "dark",
+                    "fontSize": 14
+                }
+            }
+        }
+        
+        config = templates.get(config_type, {"mcpServers": {}})
+        config_path = self.mcp_host_configs_dir / f"kiro_mcp_{config_type}.json"
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=2)
