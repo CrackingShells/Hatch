@@ -37,7 +37,7 @@ class BackupInfo(BaseModel):
         """Validate hostname is supported."""
         supported_hosts = {
             'claude-desktop', 'claude-code', 'vscode', 
-            'cursor', 'lmstudio', 'gemini'
+            'cursor', 'lmstudio', 'gemini', 'kiro'
         }
         if v not in supported_hosts:
             raise ValueError(f"Unsupported hostname: {v}. Supported: {supported_hosts}")

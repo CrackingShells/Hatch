@@ -14,6 +14,7 @@ import logging
 
 from .host_management import MCPHostStrategy, register_host_strategy
 from .models import MCPHostType, MCPServerConfig, HostConfiguration
+from .backup import MCPHostConfigBackupManager, AtomicFileOperations
 
 logger = logging.getLogger(__name__)
 
@@ -457,7 +458,7 @@ class KiroHostStrategy(MCPHostStrategy):
             return HostConfiguration(servers={})
     
     def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
-        """Write configuration to Kiro."""
+        """Write configuration to Kiro with backup support."""
         config_path = self.get_config_path()
         if not config_path:
             return False
@@ -479,9 +480,17 @@ class KiroHostStrategy(MCPHostStrategy):
             
             existing_data[self.get_config_key()] = servers_data
             
-            # Write updated configuration
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(existing_data, f, indent=2)
+            # Use atomic write with backup support
+            backup_manager = MCPHostConfigBackupManager()
+            atomic_ops = AtomicFileOperations()
+            
+            atomic_ops.atomic_write_with_backup(
+                file_path=config_path,
+                data=existing_data,
+                backup_manager=backup_manager,
+                hostname="kiro",
+                skip_backup=no_backup
+            )
             
             return True
             
