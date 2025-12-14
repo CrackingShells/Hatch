@@ -3,7 +3,7 @@
 ---
 **Concepts covered:**
 
-- MCP host platforms (Claude Desktop, VS Code, Cursor, etc.)
+- MCP host platforms (Claude Desktop, VS Code, Cursor, Kiro, etc.)
 - Hatch's role as package manager with host configuration features
 - Host platform configuration files and formats
 - Package-first vs. direct configuration approaches
@@ -53,6 +53,7 @@ Hatch currently supports configuration for these MCP host platforms:
 - [**Claude Code**](https://claude.com/product/claude-code) - Anthropic's AI Command Line Interface
 - [**Cursor**](https://cursor.com/) - AI-powered code editor
 - [**VS Code**](https://code.visualstudio.com/) - Microsoft Visual Studio Code
+- [**Kiro**](https://kiro.ai/) - Kiro IDE with MCP support
 - [**LM Studio**](https://lmstudio.ai/) - Local language model interface
 - [**Gemini**](https://github.com/google-gemini/gemini-cli) - Google's AI Command Line Interface
 

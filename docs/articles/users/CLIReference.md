@@ -412,6 +412,9 @@ Syntax:
 | `--exclude-tools` | multiple | Tool blocklist - these tools will be excluded (Gemini). Space-separated values. | none |
 | `--env-file` | string | Path to environment file (Cursor, VS Code, LM Studio) | none |
 | `--input` | multiple | Input variable definitions format: type,id,description[,password=true] (VS Code) | none |
+| `--disabled` | flag | Disable the MCP server (Kiro) | false |
+| `--auto-approve-tools` | multiple | Tool names to auto-approve (Kiro). Can be used multiple times. | none |
+| `--disable-tools` | multiple | Tool names to disable (Kiro). Can be used multiple times. | none |
 | `--dry-run` | flag | Preview configuration without applying changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 | `--no-backup` | flag | Skip backup creation before configuration | false |
@@ -473,6 +476,37 @@ Server 'my-server' created for host 'gemini':
 
 Configure MCP server 'my-server' on host 'gemini'? [y/N]: y
 [SUCCESS] Successfully configured MCP server 'my-server' on host 'gemini'
+```
+
+**Example - Kiro Configuration**:
+
+```bash
+$ hatch mcp configure my-server --host kiro --command python --args server.py --auto-approve-tools weather,calculator --disable-tools debug
+
+Server 'my-server' created for host 'kiro':
+  name: UPDATED None --> 'my-server'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['server.py']
+  autoApprove: UPDATED None --> ['weather', 'calculator']
+  disabledTools: UPDATED None --> ['debug']
+
+Configure MCP server 'my-server' on host 'kiro'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'my-server' on host 'kiro'
+```
+
+**Example - Kiro with Disabled Server**:
+
+```bash
+$ hatch mcp configure my-server --host kiro --command python --args server.py --disabled
+
+Server 'my-server' created for host 'kiro':
+  name: UPDATED None --> 'my-server'
+  command: UPDATED None --> 'python'
+  args: UPDATED None --> ['server.py']
+  disabled: UPDATED None --> True
+
+Configure MCP server 'my-server' on host 'kiro'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'my-server' on host 'kiro'
 ```
 
 **Example - Remote Server Configuration**:
