@@ -120,14 +120,15 @@ class TestKiroHostStrategy(unittest.TestCase):
         self.assertIsInstance(config, HostConfiguration)
         self.assertEqual(len(config.servers), 0)
     
+    @patch('hatch.mcp_host_config.strategies.MCPHostConfigBackupManager')
+    @patch('hatch.mcp_host_config.strategies.AtomicFileOperations')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.exists')
     @patch('pathlib.Path.mkdir')
-    @patch('json.dump')
     @patch('json.load')
     @regression_test
-    def test_kiro_write_configuration_success(self, mock_json_load, mock_json_dump, 
-                                            mock_mkdir, mock_exists, mock_file):
+    def test_kiro_write_configuration_success(self, mock_json_load, mock_mkdir, 
+                                            mock_exists, mock_file, mock_atomic_ops_class, mock_backup_manager_class):
         """Test successful Kiro configuration writing."""
         # Mock existing file with other settings
         mock_exists.return_value = True
@@ -135,6 +136,13 @@ class TestKiroHostStrategy(unittest.TestCase):
             "otherSettings": {"theme": "dark"},
             "mcpServers": {}
         }
+        
+        # Mock backup and atomic operations
+        mock_backup_manager = MagicMock()
+        mock_backup_manager_class.return_value = mock_backup_manager
+        
+        mock_atomic_ops = MagicMock()
+        mock_atomic_ops_class.return_value = mock_atomic_ops
         
         # Create test configuration
         server_config = MCPServerConfig(
@@ -148,25 +156,34 @@ class TestKiroHostStrategy(unittest.TestCase):
         # Verify success
         self.assertTrue(result)
         
-        # Verify JSON dump was called
-        mock_json_dump.assert_called_once()
+        # Verify atomic write was called
+        mock_atomic_ops.atomic_write_with_backup.assert_called_once()
         
-        # Verify configuration structure preservation
-        written_data = mock_json_dump.call_args[0][0]
+        # Verify configuration structure in the call
+        call_args = mock_atomic_ops.atomic_write_with_backup.call_args
+        written_data = call_args[1]['data']  # keyword argument 'data'
         self.assertIn("otherSettings", written_data)  # Preserved
         self.assertIn("mcpServers", written_data)     # Updated
         self.assertIn("test-server", written_data["mcpServers"])
     
+    @patch('hatch.mcp_host_config.strategies.MCPHostConfigBackupManager')
+    @patch('hatch.mcp_host_config.strategies.AtomicFileOperations')
     @patch('builtins.open', new_callable=mock_open)
     @patch('pathlib.Path.exists')
     @patch('pathlib.Path.mkdir')
-    @patch('json.dump')
     @regression_test
-    def test_kiro_write_configuration_new_file(self, mock_json_dump, mock_mkdir, 
-                                             mock_exists, mock_file):
+    def test_kiro_write_configuration_new_file(self, mock_mkdir, mock_exists, 
+                                             mock_file, mock_atomic_ops_class, mock_backup_manager_class):
         """Test Kiro configuration writing when file doesn't exist."""
         # Mock file doesn't exist
         mock_exists.return_value = False
+        
+        # Mock backup and atomic operations
+        mock_backup_manager = MagicMock()
+        mock_backup_manager_class.return_value = mock_backup_manager
+        
+        mock_atomic_ops = MagicMock()
+        mock_atomic_ops_class.return_value = mock_atomic_ops
         
         # Create test configuration
         server_config = MCPServerConfig(
@@ -183,11 +200,12 @@ class TestKiroHostStrategy(unittest.TestCase):
         # Verify directory creation was attempted
         mock_mkdir.assert_called_once()
         
-        # Verify JSON dump was called
-        mock_json_dump.assert_called_once()
+        # Verify atomic write was called
+        mock_atomic_ops.atomic_write_with_backup.assert_called_once()
         
         # Verify configuration structure
-        written_data = mock_json_dump.call_args[0][0]
+        call_args = mock_atomic_ops.atomic_write_with_backup.call_args
+        written_data = call_args[1]['data']  # keyword argument 'data'
         self.assertIn("mcpServers", written_data)
         self.assertIn("new-server", written_data["mcpServers"])
 
