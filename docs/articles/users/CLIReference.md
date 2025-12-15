@@ -415,6 +415,12 @@ Syntax:
 | `--disabled` | flag | Disable the MCP server (Kiro) | false |
 | `--auto-approve-tools` | multiple | Tool names to auto-approve (Kiro). Can be used multiple times. | none |
 | `--disable-tools` | multiple | Tool names to disable (Kiro). Can be used multiple times. | none |
+| `--env-vars` | multiple | Environment variable names to whitelist/forward (Codex). Can be used multiple times. | none |
+| `--startup-timeout` | int | Server startup timeout in seconds (Codex, default: 10) | none |
+| `--tool-timeout` | int | Tool execution timeout in seconds (Codex, default: 60) | none |
+| `--enabled` | flag | Enable the MCP server (Codex) | false |
+| `--bearer-token-env-var` | string | Name of env var containing bearer token for Authorization header (Codex) | none |
+| `--env-header` | multiple | HTTP header from env var format: KEY=ENV_VAR_NAME (Codex). Can be used multiple times. | none |
 | `--dry-run` | flag | Preview configuration without applying changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 | `--no-backup` | flag | Skip backup creation before configuration | false |
@@ -507,6 +513,42 @@ Server 'my-server' created for host 'kiro':
 
 Configure MCP server 'my-server' on host 'kiro'? [y/N]: y
 [SUCCESS] Successfully configured MCP server 'my-server' on host 'kiro'
+```
+
+**Example - Codex Configuration with Timeouts and Tool Filtering**:
+
+```bash
+$ hatch mcp configure context7 --host codex --command npx --args "-y" --args "@upstash/context7-mcp" --env-vars PATH --env-vars HOME --startup-timeout 15 --tool-timeout 120 --enabled --include-tools read --include-tools write --exclude-tools delete
+
+Server 'context7' created for host 'codex':
+  name: UPDATED None --> 'context7'
+  command: UPDATED None --> 'npx'
+  args: UPDATED None --> ['-y', '@upstash/context7-mcp']
+  env_vars: UPDATED None --> ['PATH', 'HOME']
+  startup_timeout_sec: UPDATED None --> 15
+  tool_timeout_sec: UPDATED None --> 120
+  enabled: UPDATED None --> True
+  enabled_tools: UPDATED None --> ['read', 'write']
+  disabled_tools: UPDATED None --> ['delete']
+
+Configure MCP server 'context7' on host 'codex'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'context7' on host 'codex'
+```
+
+**Example - Codex HTTP Server with Authentication**:
+
+```bash
+$ hatch mcp configure figma --host codex --url https://mcp.figma.com/mcp --bearer-token-env-var FIGMA_OAUTH_TOKEN --env-header "X-Figma-Region=FIGMA_REGION" --header "X-Custom=static-value"
+
+Server 'figma' created for host 'codex':
+  name: UPDATED None --> 'figma'
+  url: UPDATED None --> 'https://mcp.figma.com/mcp'
+  bearer_token_env_var: UPDATED None --> 'FIGMA_OAUTH_TOKEN'
+  env_http_headers: UPDATED None --> {'X-Figma-Region': 'FIGMA_REGION'}
+  http_headers: UPDATED None --> {'X-Custom': 'static-value'}
+
+Configure MCP server 'figma' on host 'codex'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'figma' on host 'codex'
 ```
 
 **Example - Remote Server Configuration**:
