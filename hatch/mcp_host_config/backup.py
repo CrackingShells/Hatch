@@ -53,7 +53,9 @@ class BackupInfo(BaseModel):
     @property
     def backup_name(self) -> str:
         """Get backup filename."""
-        return f"mcp.json.{self.hostname}.{self.timestamp.strftime('%Y%m%d_%H%M%S_%f')}"
+        # Extract original filename from backup path if available
+        # Backup filename format: {original_name}.{hostname}.{timestamp}
+        return self.file_path.name
     
     @property
     def age_days(self) -> int:
@@ -255,8 +257,10 @@ class MCPHostConfigBackupManager:
             host_backup_dir.mkdir(exist_ok=True)
             
             # Generate timestamped backup filename with microseconds for uniqueness
+            # Preserve original filename instead of hardcoding 'mcp.json'
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            backup_name = f"mcp.json.{hostname}.{timestamp}"
+            original_filename = config_path.name
+            backup_name = f"{original_filename}.{hostname}.{timestamp}"
             backup_path = host_backup_dir / backup_name
             
             # Get original file size
