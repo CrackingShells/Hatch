@@ -313,6 +313,7 @@ class TestAllCodexArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
+        # Test STDIO server with Codex-specific STDIO fields
         result = handle_mcp_configure(
             host='codex',
             server_name='test-server',
@@ -325,9 +326,6 @@ class TestAllCodexArguments(unittest.TestCase):
             enabled=True,
             include_tools=['read', 'write'],
             exclude_tools=['delete'],
-            bearer_token_env_var='FIGMA_OAUTH_TOKEN',
-            header=['X-Custom=value'],
-            env_header=['X-API-Key=API_KEY_VAR'],
             auto_approve=True
         )
 
@@ -342,7 +340,7 @@ class TestAllCodexArguments(unittest.TestCase):
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigCodex)
 
-        # Verify Codex-specific fields
+        # Verify Codex-specific STDIO fields
         self.assertEqual(server_config.env_vars, ['PATH', 'HOME'])
         self.assertEqual(server_config.cwd, '/workspace')
         self.assertEqual(server_config.startup_timeout_sec, 15)
@@ -350,9 +348,6 @@ class TestAllCodexArguments(unittest.TestCase):
         self.assertTrue(server_config.enabled)
         self.assertEqual(server_config.enabled_tools, ['read', 'write'])
         self.assertEqual(server_config.disabled_tools, ['delete'])
-        self.assertEqual(server_config.bearer_token_env_var, 'FIGMA_OAUTH_TOKEN')
-        self.assertEqual(server_config.http_headers, {'X-Custom': 'value'})
-        self.assertEqual(server_config.env_http_headers, {'X-API-Key': 'API_KEY_VAR'})
 
     @patch('hatch.cli_hatch.MCPHostConfigurationManager')
     @patch('sys.stdout', new_callable=StringIO)
@@ -466,7 +461,7 @@ class TestAllCodexArguments(unittest.TestCase):
     @patch('hatch.cli_hatch.MCPHostConfigurationManager')
     @patch('sys.stdout', new_callable=StringIO)
     def test_codex_reuses_shared_arguments(self, mock_stdout, mock_manager_class):
-        """Test that Codex reuses shared arguments (cwd, include-tools, exclude-tools, header)."""
+        """Test that Codex reuses shared arguments (cwd, include-tools, exclude-tools)."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
 
@@ -483,7 +478,6 @@ class TestAllCodexArguments(unittest.TestCase):
             cwd='/workspace',
             include_tools=['tool1', 'tool2'],
             exclude_tools=['tool3'],
-            header=['X-Custom=value'],
             auto_approve=True
         )
 
@@ -491,11 +485,10 @@ class TestAllCodexArguments(unittest.TestCase):
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
 
-        # Verify shared arguments work for Codex
+        # Verify shared arguments work for Codex STDIO servers
         self.assertEqual(server_config.cwd, '/workspace')
         self.assertEqual(server_config.enabled_tools, ['tool1', 'tool2'])
         self.assertEqual(server_config.disabled_tools, ['tool3'])
-        self.assertEqual(server_config.http_headers, {'X-Custom': 'value'})
 
 
 if __name__ == '__main__':
