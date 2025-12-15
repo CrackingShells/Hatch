@@ -713,6 +713,9 @@ def handle_mcp_configure(
     include_tools: Optional[list] = None,
     exclude_tools: Optional[list] = None,
     input: Optional[list] = None,
+    disabled: Optional[bool] = None,
+    auto_approve_tools: Optional[list] = None,
+    disable_tools: Optional[list] = None,
     no_backup: bool = False,
     dry_run: bool = False,
     auto_approve: bool = False,
@@ -825,6 +828,14 @@ def handle_mcp_configure(
         # Host-specific fields (VS Code)
         if inputs_list is not None:
             omni_config_data["inputs"] = inputs_list
+
+        # Host-specific fields (Kiro)
+        if disabled is not None:
+            omni_config_data["disabled"] = disabled
+        if auto_approve_tools is not None:
+            omni_config_data["autoApprove"] = auto_approve_tools
+        if disable_tools is not None:
+            omni_config_data["disabledTools"] = disable_tools
 
         # Partial update merge logic
         if is_update:
@@ -1623,6 +1634,23 @@ def main():
         "--input",
         action="append",
         help="Input variable definitions in format: type,id,description[,password=true] (VS Code)",
+    )
+
+    # Host-specific arguments (Kiro)
+    mcp_configure_parser.add_argument(
+        "--disabled",
+        action="store_true",
+        help="Disable the MCP server (Kiro)"
+    )
+    mcp_configure_parser.add_argument(
+        "--auto-approve-tools",
+        action="append",
+        help="Tool names to auto-approve without prompting (Kiro)"
+    )
+    mcp_configure_parser.add_argument(
+        "--disable-tools",
+        action="append",
+        help="Tool names to disable (Kiro)"
     )
 
     mcp_configure_parser.add_argument(
@@ -2693,6 +2721,9 @@ def main():
                 getattr(args, "include_tools", None),
                 getattr(args, "exclude_tools", None),
                 getattr(args, "input", None),
+                getattr(args, "disabled", None),
+                getattr(args, "auto_approve_tools", None),
+                getattr(args, "disable_tools", None),
                 args.no_backup,
                 args.dry_run,
                 args.auto_approve,

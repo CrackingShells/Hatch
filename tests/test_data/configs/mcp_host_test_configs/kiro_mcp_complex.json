@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "local-server": {
+      "command": "auggie",
+      "args": ["--mcp"],
+      "disabled": false,
+      "autoApprove": ["codebase-retrieval"]
+    },
+    "remote-server": {
+      "url": "https://api.example.com/mcp",
+      "headers": {
+        "Authorization": "Bearer token"
+      },
+      "disabled": true,
+      "disabledTools": ["risky-tool"]
+    }
+  },
+  "otherSettings": {
+    "theme": "dark",
+    "fontSize": 14
+  }
+}
