@@ -20,6 +20,7 @@ Hatch currently supports configuration for these MCP host platforms:
 - **VS Code** - Microsoft Visual Studio Code with MCP extensions
 - **Cursor** - AI-powered code editor
 - **Kiro** - Kiro IDE with MCP support
+- **Codex** - OpenAI Codex with MCP server configuration support
 - **LM Studio** - Local language model interface
 - **Gemini** - Google's AI development environment
 

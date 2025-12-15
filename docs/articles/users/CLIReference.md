@@ -592,6 +592,7 @@ Different MCP hosts support different configuration fields. The conversion repor
 - **Cursor / LM Studio**: Supports universal fields + envFile
 - **VS Code**: Supports universal fields + envFile, inputs
 - **Gemini CLI**: Supports universal fields + 14 additional fields (cwd, timeout, trust, OAuth settings, etc.)
+- **Codex**: Supports universal fields + Codex-specific fields for URL-based servers (http_headers, env_http_headers, bearer_token_env_var, enabled, startup_timeout_sec, tool_timeout_sec, env_vars)
 
 When configuring a server with fields not supported by the target host, those fields are marked as UNSUPPORTED in the report and automatically excluded from the configuration.
 
