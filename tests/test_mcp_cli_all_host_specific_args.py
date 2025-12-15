@@ -15,7 +15,7 @@ from hatch.cli_hatch import handle_mcp_configure, parse_input
 from hatch.mcp_host_config import MCPHostType
 from hatch.mcp_host_config.models import (
     MCPServerConfigGemini, MCPServerConfigCursor, MCPServerConfigVSCode,
-    MCPServerConfigClaude
+    MCPServerConfigClaude, MCPServerConfigCodex
 )
 
 
@@ -296,6 +296,206 @@ class TestToolFilteringArguments(unittest.TestCase):
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigGemini)
         self.assertEqual(server_config.excludeTools, ['dangerous_tool'])
+
+
+class TestAllCodexArguments(unittest.TestCase):
+    """Test ALL Codex-specific CLI arguments."""
+
+    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_all_codex_arguments_accepted(self, mock_stdout, mock_manager_class):
+        """Test that all Codex arguments are accepted and passed to model."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.backup_path = None
+        mock_manager.configure_server.return_value = mock_result
+
+        result = handle_mcp_configure(
+            host='codex',
+            server_name='test-server',
+            command='npx',
+            args=['-y', '@upstash/context7-mcp'],
+            env_vars=['PATH', 'HOME'],
+            cwd='/workspace',
+            startup_timeout=15,
+            tool_timeout=120,
+            enabled=True,
+            include_tools=['read', 'write'],
+            exclude_tools=['delete'],
+            bearer_token_env_var='FIGMA_OAUTH_TOKEN',
+            header=['X-Custom=value'],
+            env_header=['X-API-Key=API_KEY_VAR'],
+            auto_approve=True
+        )
+
+        # Verify success
+        self.assertEqual(result, 0)
+
+        # Verify configure_server was called
+        mock_manager.configure_server.assert_called_once()
+
+        # Verify server_config is MCPServerConfigCodex
+        call_args = mock_manager.configure_server.call_args
+        server_config = call_args.kwargs['server_config']
+        self.assertIsInstance(server_config, MCPServerConfigCodex)
+
+        # Verify Codex-specific fields
+        self.assertEqual(server_config.env_vars, ['PATH', 'HOME'])
+        self.assertEqual(server_config.cwd, '/workspace')
+        self.assertEqual(server_config.startup_timeout_sec, 15)
+        self.assertEqual(server_config.tool_timeout_sec, 120)
+        self.assertTrue(server_config.enabled)
+        self.assertEqual(server_config.enabled_tools, ['read', 'write'])
+        self.assertEqual(server_config.disabled_tools, ['delete'])
+        self.assertEqual(server_config.bearer_token_env_var, 'FIGMA_OAUTH_TOKEN')
+        self.assertEqual(server_config.http_headers, {'X-Custom': 'value'})
+        self.assertEqual(server_config.env_http_headers, {'X-API-Key': 'API_KEY_VAR'})
+
+    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_codex_env_vars_list(self, mock_stdout, mock_manager_class):
+        """Test that env_vars accepts multiple values as a list."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.backup_path = None
+        mock_manager.configure_server.return_value = mock_result
+
+        result = handle_mcp_configure(
+            host='codex',
+            server_name='test-server',
+            command='npx',
+            args=['-y', 'package'],
+            env_vars=['PATH', 'HOME', 'USER'],
+            auto_approve=True
+        )
+
+        self.assertEqual(result, 0)
+        call_args = mock_manager.configure_server.call_args
+        server_config = call_args.kwargs['server_config']
+        self.assertEqual(server_config.env_vars, ['PATH', 'HOME', 'USER'])
+
+    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_codex_env_header_parsing(self, mock_stdout, mock_manager_class):
+        """Test that env_header parses KEY=ENV_VAR format correctly."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.backup_path = None
+        mock_manager.configure_server.return_value = mock_result
+
+        result = handle_mcp_configure(
+            host='codex',
+            server_name='test-server',
+            command='npx',
+            args=['-y', 'package'],
+            env_header=['X-API-Key=API_KEY', 'Authorization=AUTH_TOKEN'],
+            auto_approve=True
+        )
+
+        self.assertEqual(result, 0)
+        call_args = mock_manager.configure_server.call_args
+        server_config = call_args.kwargs['server_config']
+        self.assertEqual(server_config.env_http_headers, {
+            'X-API-Key': 'API_KEY',
+            'Authorization': 'AUTH_TOKEN'
+        })
+
+    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_codex_timeout_fields(self, mock_stdout, mock_manager_class):
+        """Test that timeout fields are passed as integers."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.backup_path = None
+        mock_manager.configure_server.return_value = mock_result
+
+        result = handle_mcp_configure(
+            host='codex',
+            server_name='test-server',
+            command='npx',
+            args=['-y', 'package'],
+            startup_timeout=30,
+            tool_timeout=180,
+            auto_approve=True
+        )
+
+        self.assertEqual(result, 0)
+        call_args = mock_manager.configure_server.call_args
+        server_config = call_args.kwargs['server_config']
+        self.assertEqual(server_config.startup_timeout_sec, 30)
+        self.assertEqual(server_config.tool_timeout_sec, 180)
+
+    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_codex_enabled_flag(self, mock_stdout, mock_manager_class):
+        """Test that enabled flag works as boolean."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.backup_path = None
+        mock_manager.configure_server.return_value = mock_result
+
+        result = handle_mcp_configure(
+            host='codex',
+            server_name='test-server',
+            command='npx',
+            args=['-y', 'package'],
+            enabled=True,
+            auto_approve=True
+        )
+
+        self.assertEqual(result, 0)
+        call_args = mock_manager.configure_server.call_args
+        server_config = call_args.kwargs['server_config']
+        self.assertTrue(server_config.enabled)
+
+    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('sys.stdout', new_callable=StringIO)
+    def test_codex_reuses_shared_arguments(self, mock_stdout, mock_manager_class):
+        """Test that Codex reuses shared arguments (cwd, include-tools, exclude-tools, header)."""
+        mock_manager = MagicMock()
+        mock_manager_class.return_value = mock_manager
+
+        mock_result = MagicMock()
+        mock_result.success = True
+        mock_result.backup_path = None
+        mock_manager.configure_server.return_value = mock_result
+
+        result = handle_mcp_configure(
+            host='codex',
+            server_name='test-server',
+            command='npx',
+            args=['-y', 'package'],
+            cwd='/workspace',
+            include_tools=['tool1', 'tool2'],
+            exclude_tools=['tool3'],
+            header=['X-Custom=value'],
+            auto_approve=True
+        )
+
+        self.assertEqual(result, 0)
+        call_args = mock_manager.configure_server.call_args
+        server_config = call_args.kwargs['server_config']
+
+        # Verify shared arguments work for Codex
+        self.assertEqual(server_config.cwd, '/workspace')
+        self.assertEqual(server_config.enabled_tools, ['tool1', 'tool2'])
+        self.assertEqual(server_config.disabled_tools, ['tool3'])
+        self.assertEqual(server_config.http_headers, {'X-Custom': 'value'})
 
 
 if __name__ == '__main__':
