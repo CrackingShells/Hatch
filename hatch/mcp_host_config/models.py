@@ -630,6 +630,13 @@ class MCPServerConfigCodex(MCPServerConfigBase):
         supported_fields = set(cls.model_fields.keys())
         codex_data = omni.model_dump(include=supported_fields, exclude_unset=True)
 
+        # Map shared CLI tool filtering flags (Gemini naming) to Codex naming.
+        # This lets `--include-tools/--exclude-tools` work for both Gemini and Codex.
+        if getattr(omni, 'includeTools', None) is not None and codex_data.get('enabled_tools') is None:
+            codex_data['enabled_tools'] = omni.includeTools
+        if getattr(omni, 'excludeTools', None) is not None and codex_data.get('disabled_tools') is None:
+            codex_data['disabled_tools'] = omni.excludeTools
+
         # Map universal 'headers' to Codex 'http_headers'
         if hasattr(omni, 'headers') and omni.headers is not None:
             codex_data['http_headers'] = omni.headers
