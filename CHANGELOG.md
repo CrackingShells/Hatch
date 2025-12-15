@@ -1,3 +1,27 @@
+## <small>0.7.1-dev.2 (2025-12-15)</small>
+
+* Merge branch 'feat/codex-support' into dev ([b82bf0f](https://github.com/CrackingShells/Hatch/commit/b82bf0f))
+* chore: augment code ignore __reports__/ ([bed11cd](https://github.com/CrackingShells/Hatch/commit/bed11cd))
+* chore: remove dev debug scripts ([f1880ce](https://github.com/CrackingShells/Hatch/commit/f1880ce))
+* chore: remove dev reports ([8c3f455](https://github.com/CrackingShells/Hatch/commit/8c3f455))
+* chore: update gitignore ([cd1934a](https://github.com/CrackingShells/Hatch/commit/cd1934a))
+* docs(cli): add host labels to configure command help ([842e771](https://github.com/CrackingShells/Hatch/commit/842e771))
+* docs(codex): add CLI reference and usage examples ([a68e932](https://github.com/CrackingShells/Hatch/commit/a68e932))
+* docs(codex): update to mention support for Codex ([7fa2bdb](https://github.com/CrackingShells/Hatch/commit/7fa2bdb))
+* docs(reports): add implementation completion report ([7b67225](https://github.com/CrackingShells/Hatch/commit/7b67225))
+* docs(reports): codex CLI enhancement analysis and implementation ([c5327d2](https://github.com/CrackingShells/Hatch/commit/c5327d2))
+* docs(reports): dev specs for Codex MCP config support via Hatch! ([330c683](https://github.com/CrackingShells/Hatch/commit/330c683))
+* test(codex): add comprehensive CLI argument tests ([0e15301](https://github.com/CrackingShells/Hatch/commit/0e15301))
+* test(codex): fix Omni model field name in conversion test ([21efc10](https://github.com/CrackingShells/Hatch/commit/21efc10))
+* feat(codex): add CLI arguments for Codex ([88e81fe](https://github.com/CrackingShells/Hatch/commit/88e81fe))
+* feat(codex): add MCPServerConfigCodex model and infrastructure ([061ae53](https://github.com/CrackingShells/Hatch/commit/061ae53))
+* feat(codex): add tomli-w dependency for TOML support ([00b960f](https://github.com/CrackingShells/Hatch/commit/00b960f))
+* feat(codex): implement CodexHostStrategy with TOML support ([4e55b34](https://github.com/CrackingShells/Hatch/commit/4e55b34))
+* feat(mcp-models): map shared tool filtering flags to Codex ([b2e6103](https://github.com/CrackingShells/Hatch/commit/b2e6103))
+* fix(backup): preserve original filename in backup creation ([c2dde46](https://github.com/CrackingShells/Hatch/commit/c2dde46))
+* fix(codex): map http_headers to universal headers field ([7c5e2cb](https://github.com/CrackingShells/Hatch/commit/7c5e2cb))
+* tests(codex): add comprehensive Codex host strategy test suite ([2858ba5](https://github.com/CrackingShells/Hatch/commit/2858ba5))
+
 ## <small>0.7.1-dev.1 (2025-12-15)</small>
 
 * Merge branch 'feat/kiro-support' into dev ([d9c11ca](https://github.com/CrackingShells/Hatch/commit/d9c11ca))

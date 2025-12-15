@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hatch-xclam"
-version = "0.7.1-dev.1"
+version = "0.7.1-dev.2"
 description = "Package manager for the Cracking Shells ecosystem"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -20,7 +20,7 @@ dependencies = [
   "docker>=7.1.0",
   "pydantic>=2.0.0",
   "hatch-validator>=0.8.0",
-  "tomli-w>=1.0.0"  # TOML writing (tomllib built-in for reading in Python 3.12+)
+  "tomli-w>=1.0.0"
 ]
 
   [[project.authors]]
