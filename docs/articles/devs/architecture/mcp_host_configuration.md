@@ -9,7 +9,9 @@ This article is about:
 
 ## Overview
 
-The MCP host configuration system provides centralized management of Model Context Protocol server configurations across multiple host platforms (Claude Desktop, VS Code, Cursor, etc.). It uses a decorator-based architecture with inheritance patterns for clean code organization and easy extension.
+The MCP host configuration system provides centralized management of Model Context Protocol server configurations across multiple host platforms (Claude Desktop, VS Code, Cursor, Kiro, etc.). It uses a decorator-based architecture with inheritance patterns for clean code organization and easy extension.
+
+> **Adding a new host?** See the [Implementation Guide](../implementation_guides/mcp_host_configuration_extension.md) for step-by-step instructions.
 
 ## Core Architecture
 
@@ -45,8 +47,9 @@ Host strategies are organized into families for code reuse:
 - **Implementations**: Cursor, LM Studio
 
 #### Independent Strategies
-- **VSCode**: Nested configuration structure (`mcp.servers`)
+- **VSCode**: User-wide configuration (`~/.config/Code/User/mcp.json`), uses `servers` key
 - **Gemini**: Official configuration path (`~/.gemini/settings.json`)
+- **Kiro**: User-level configuration (`~/.kiro/settings/mcp.json`), full backup manager integration
 
 ### Consolidated Data Model
 
@@ -111,14 +114,50 @@ class MCPHostStrategy(ABC):
 
 ## Integration Points
 
-### Backup System Integration
+Every host strategy must integrate with these systems. Missing any integration point will result in incomplete functionality.
 
-All configuration operations integrate with the backup system:
+### Backup System Integration (Required)
 
+All configuration write operations **must** integrate with the backup system via `MCPHostConfigBackupManager` and `AtomicFileOperations`:
+
+```python
+from .backup import MCPHostConfigBackupManager, AtomicFileOperations
+
+def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+    # ... prepare data ...
+    backup_manager = MCPHostConfigBackupManager()
+    atomic_ops = AtomicFileOperations()
+    atomic_ops.atomic_write_with_backup(
+        file_path=config_path,
+        data=existing_data,
+        backup_manager=backup_manager,
+        hostname="your-host",  # Must match MCPHostType value
+        skip_backup=no_backup
+    )
+```
+
+**Key requirements:**
 - **Atomic operations**: Configuration changes are backed up before modification
-- **Rollback capability**: Failed operations can be reverted
-- **Multi-host support**: Separate backups per host platform
+- **Rollback capability**: Failed operations can be reverted automatically
+- **Hostname identification**: Each host uses its `MCPHostType` value for backup tracking
 - **Timestamped retention**: Backup files include timestamps for tracking
+
+### Model Registry Integration (Required for host-specific fields)
+
+If your host has unique configuration fields (like Kiro's `disabled`, `autoApprove`, `disabledTools`):
+
+1. Create host-specific model class in `models.py`
+2. Register in `HOST_MODEL_REGISTRY`
+3. Extend `MCPServerConfigOmni` with new fields
+4. Implement `from_omni()` conversion method
+
+### CLI Integration (Required for host-specific arguments)
+
+If your host has unique CLI arguments:
+
+1. Extend `handle_mcp_configure()` function signature in `cli_hatch.py`
+2. Add argument parser entries for new flags
+3. Update omni model population logic
 
 ### Environment Manager Integration
 
@@ -132,26 +171,30 @@ The system integrates with environment management through corrected data structu
 
 ### Adding New Host Platforms
 
-To add support for a new host platform:
+To add support for a new host platform, complete these integration points:
 
-1. **Define host type** in `MCPHostType` enum
-2. **Create strategy class** inheriting from appropriate family base or `MCPHostStrategy`
-3. **Implement required methods** for configuration path, validation, read/write operations
-4. **Add decorator registration** with `@register_host_strategy(MCPHostType.NEW_HOST)`
-5. **Add tests** following existing test patterns
+| Integration Point | Required? | Files to Modify |
+|-------------------|-----------|-----------------|
+| Host type enum | Always | `models.py` |
+| Strategy class | Always | `strategies.py` |
+| Backup integration | Always | `strategies.py` (in `write_configuration`) |
+| Host-specific model | If unique fields | `models.py`, `HOST_MODEL_REGISTRY` |
+| CLI arguments | If unique fields | `cli_hatch.py` |
+| Test infrastructure | Always | `tests/` |
 
-Example:
+**Minimal implementation** (standard host, no unique fields):
 
 ```python
 @register_host_strategy(MCPHostType.NEW_HOST)
-class NewHostStrategy(MCPHostStrategy):
+class NewHostStrategy(ClaudeHostStrategy):  # Inherit backup integration
     def get_config_path(self) -> Optional[Path]:
         return Path.home() / ".new_host" / "config.json"
     
-    def validate_server_config(self, server_config: MCPServerConfig) -> bool:
-        # Host-specific validation logic
-        return True
+    def is_host_available(self) -> bool:
+        return self.get_config_path().parent.exists()
 ```
+
+**Full implementation** (host with unique fields): See [Implementation Guide](../implementation_guides/mcp_host_configuration_extension.md).
 
 ### Extending Validation Rules
 
