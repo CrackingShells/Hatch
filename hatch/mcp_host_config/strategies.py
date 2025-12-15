@@ -433,8 +433,12 @@ class KiroHostStrategy(MCPHostStrategy):
     
     def read_configuration(self) -> HostConfiguration:
         """Read Kiro configuration file."""
-        config_path = self.get_config_path()
-        if not config_path or not config_path.exists():
+        config_path_str = self.get_config_path()
+        if not config_path_str:
+            return HostConfiguration(servers={})
+        
+        config_path = Path(config_path_str)
+        if not config_path.exists():
             return HostConfiguration(servers={})
         
         try:
@@ -459,9 +463,11 @@ class KiroHostStrategy(MCPHostStrategy):
     
     def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
         """Write configuration to Kiro with backup support."""
-        config_path = self.get_config_path()
-        if not config_path:
+        config_path_str = self.get_config_path()
+        if not config_path_str:
             return False
+        
+        config_path = Path(config_path_str)
         
         try:
             # Ensure directory exists

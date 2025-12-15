@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "test_server": {
+      "command": "auggie",
+      "args": [
+        "--mcp"
+      ],
+      "disabled": false,
+      "autoApprove": [
+        "codebase-retrieval"
+      ]
+    }
+  }
+}
