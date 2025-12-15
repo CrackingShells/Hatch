@@ -623,9 +623,17 @@ class MCPServerConfigCodex(MCPServerConfigBase):
 
     @classmethod
     def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigCodex':
-        """Convert Omni model to Codex-specific model."""
+        """Convert Omni model to Codex-specific model.
+
+        Maps universal 'headers' field to Codex-specific 'http_headers' field.
+        """
         supported_fields = set(cls.model_fields.keys())
         codex_data = omni.model_dump(include=supported_fields, exclude_unset=True)
+
+        # Map universal 'headers' to Codex 'http_headers'
+        if hasattr(omni, 'headers') and omni.headers is not None:
+            codex_data['http_headers'] = omni.headers
+
         return cls.model_validate(codex_data)
 
 
@@ -685,8 +693,8 @@ class MCPServerConfigOmni(BaseModel):
     enabled_tools: Optional[List[str]] = None
     disabled_tools: Optional[List[str]] = None
     bearer_token_env_var: Optional[str] = None
-    http_headers: Optional[Dict[str, str]] = None
     env_http_headers: Optional[Dict[str, str]] = None
+    # Note: http_headers maps to universal 'headers' field, not a separate Codex field
 
     @field_validator('url')
     @classmethod
