@@ -66,7 +66,7 @@ class TestCodexModelValidation(unittest.TestCase):
             enabled_tools=["read"],
             disabled_tools=["write"],
             bearer_token_env_var="TOKEN",
-            http_headers={"X-Test": "value"},
+            headers={"X-Test": "value"},  # Universal field (maps to http_headers in Codex)
             env_http_headers={"X-Env": "VAR"},
             # Non-Codex fields (should be excluded)
             envFile="/path/to/env",  # VS Code specific
