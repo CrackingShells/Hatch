@@ -6,6 +6,8 @@ Welcome to the documentation for Hatch, the official package manager for the Hat
 
 Hatch provides powerful tools for managing MCP server packages, environments, and interacting with the Hatch registry. It serves as the package management foundation for [Hatchling](https://github.com/CrackingShells/Hatchling) and other projects in the ecosystem.
 
+Hatch also supports MCP host configuration across popular platforms including Claude Desktop/Code, VS Code, Cursor, Kiro, Codex, LM Studio, and Gemini.
+
 ## Documentation Sections
 
 ### For Users
