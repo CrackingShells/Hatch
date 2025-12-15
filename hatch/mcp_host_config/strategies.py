@@ -750,16 +750,31 @@ class CodexHostStrategy(MCPHostStrategy):
 
         Becomes:
             {"command": "npx", "args": [...], "env": {"VAR": "value"}}
+
+        Also maps Codex-specific 'http_headers' to universal 'headers' field.
         """
         # TOML already parses nested tables into nested dicts
         # So [mcp_servers.name.env] becomes {"env": {...}}
-        return dict(server_data)
+        data = dict(server_data)
+
+        # Map Codex 'http_headers' to universal 'headers' for MCPServerConfig
+        if 'http_headers' in data:
+            data['headers'] = data.pop('http_headers')
+
+        return data
 
     def _to_toml_server(self, server_config: MCPServerConfig) -> Dict[str, Any]:
-        """Convert MCPServerConfig to TOML-compatible dict structure."""
+        """Convert MCPServerConfig to TOML-compatible dict structure.
+
+        Maps universal 'headers' field back to Codex-specific 'http_headers'.
+        """
         data = server_config.model_dump(exclude_unset=True)
 
         # Remove 'name' field as it's the table key in TOML
         data.pop('name', None)
+
+        # Map universal 'headers' to Codex 'http_headers' for TOML
+        if 'headers' in data:
+            data['http_headers'] = data.pop('headers')
 
         return data
