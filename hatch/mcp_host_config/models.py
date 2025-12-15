@@ -25,6 +25,7 @@ class MCPHostType(str, Enum):
     LMSTUDIO = "lmstudio"
     GEMINI = "gemini"
     KIRO = "kiro"
+    CODEX = "codex"
 
 
 class MCPServerConfig(BaseModel):
@@ -541,26 +542,106 @@ class MCPServerConfigClaude(MCPServerConfigBase):
 
 class MCPServerConfigKiro(MCPServerConfigBase):
     """Kiro IDE-specific MCP server configuration.
-    
+
     Extends base model with Kiro-specific fields for server management
     and tool control.
     """
-    
+
     # Kiro-specific fields
     disabled: Optional[bool] = Field(None, description="Whether server is disabled")
     autoApprove: Optional[List[str]] = Field(None, description="Auto-approved tool names")
     disabledTools: Optional[List[str]] = Field(None, description="Disabled tool names")
-    
+
     @classmethod
     def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigKiro':
         """Convert Omni model to Kiro-specific model."""
         # Get supported fields dynamically
         supported_fields = set(cls.model_fields.keys())
-        
+
         # Single-call field filtering
         kiro_data = omni.model_dump(include=supported_fields, exclude_unset=True)
-        
+
         return cls.model_validate(kiro_data)
+
+
+class MCPServerConfigCodex(MCPServerConfigBase):
+    """Codex-specific MCP server configuration.
+
+    Extends base model with Codex-specific fields including timeouts,
+    tool filtering, environment variable forwarding, and HTTP authentication.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Codex-specific STDIO fields
+    env_vars: Optional[List[str]] = Field(
+        None,
+        description="Environment variables to whitelist/forward"
+    )
+    cwd: Optional[str] = Field(
+        None,
+        description="Working directory to launch server from"
+    )
+
+    # Timeout configuration
+    startup_timeout_sec: Optional[int] = Field(
+        None,
+        description="Server startup timeout in seconds (default: 10)"
+    )
+    tool_timeout_sec: Optional[int] = Field(
+        None,
+        description="Tool execution timeout in seconds (default: 60)"
+    )
+
+    # Server control
+    enabled: Optional[bool] = Field(
+        None,
+        description="Enable/disable server without deleting config"
+    )
+    enabled_tools: Optional[List[str]] = Field(
+        None,
+        description="Allow-list of tools to expose from server"
+    )
+    disabled_tools: Optional[List[str]] = Field(
+        None,
+        description="Deny-list of tools to hide (applied after enabled_tools)"
+    )
+
+    # HTTP authentication fields
+    bearer_token_env_var: Optional[str] = Field(
+        None,
+        description="Name of env var containing bearer token for Authorization header"
+    )
+    http_headers: Optional[Dict[str, str]] = Field(
+        None,
+        description="Map of header names to static values"
+    )
+    env_http_headers: Optional[Dict[str, str]] = Field(
+        None,
+        description="Map of header names to env var names (values pulled from env)"
+    )
+
+    @classmethod
+    def from_omni(cls, omni: 'MCPServerConfigOmni') -> 'MCPServerConfigCodex':
+        """Convert Omni model to Codex-specific model.
+
+        Maps universal 'headers' field to Codex-specific 'http_headers' field.
+        """
+        supported_fields = set(cls.model_fields.keys())
+        codex_data = omni.model_dump(include=supported_fields, exclude_unset=True)
+
+        # Map shared CLI tool filtering flags (Gemini naming) to Codex naming.
+        # This lets `--include-tools/--exclude-tools` work for both Gemini and Codex.
+        if getattr(omni, 'includeTools', None) is not None and codex_data.get('enabled_tools') is None:
+            codex_data['enabled_tools'] = omni.includeTools
+        if getattr(omni, 'excludeTools', None) is not None and codex_data.get('disabled_tools') is None:
+            codex_data['disabled_tools'] = omni.excludeTools
+
+        # Map universal 'headers' to Codex 'http_headers'
+        if hasattr(omni, 'headers') and omni.headers is not None:
+            codex_data['http_headers'] = omni.headers
+
+        return cls.model_validate(codex_data)
 
 
 class MCPServerConfigOmni(BaseModel):
@@ -611,6 +692,17 @@ class MCPServerConfigOmni(BaseModel):
     autoApprove: Optional[List[str]] = None
     disabledTools: Optional[List[str]] = None
 
+    # Codex specific
+    env_vars: Optional[List[str]] = None
+    startup_timeout_sec: Optional[int] = None
+    tool_timeout_sec: Optional[int] = None
+    enabled: Optional[bool] = None
+    enabled_tools: Optional[List[str]] = None
+    disabled_tools: Optional[List[str]] = None
+    bearer_token_env_var: Optional[str] = None
+    env_http_headers: Optional[Dict[str, str]] = None
+    # Note: http_headers maps to universal 'headers' field, not a separate Codex field
+
     @field_validator('url')
     @classmethod
     def validate_url_format(cls, v):
@@ -630,4 +722,5 @@ HOST_MODEL_REGISTRY: Dict[MCPHostType, type[MCPServerConfigBase]] = {
     MCPHostType.CURSOR: MCPServerConfigCursor,
     MCPHostType.LMSTUDIO: MCPServerConfigCursor,  # Same as CURSOR
     MCPHostType.KIRO: MCPServerConfigKiro,
+    MCPHostType.CODEX: MCPServerConfigCodex,
 }

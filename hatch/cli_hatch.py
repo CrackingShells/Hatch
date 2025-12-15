@@ -716,6 +716,12 @@ def handle_mcp_configure(
     disabled: Optional[bool] = None,
     auto_approve_tools: Optional[list] = None,
     disable_tools: Optional[list] = None,
+    env_vars: Optional[list] = None,
+    startup_timeout: Optional[int] = None,
+    tool_timeout: Optional[int] = None,
+    enabled: Optional[bool] = None,
+    bearer_token_env_var: Optional[str] = None,
+    env_header: Optional[list] = None,
     no_backup: bool = False,
     dry_run: bool = False,
     auto_approve: bool = False,
@@ -836,6 +842,27 @@ def handle_mcp_configure(
             omni_config_data["autoApprove"] = auto_approve_tools
         if disable_tools is not None:
             omni_config_data["disabledTools"] = disable_tools
+
+        # Host-specific fields (Codex)
+        if env_vars is not None:
+            omni_config_data["env_vars"] = env_vars
+        if startup_timeout is not None:
+            omni_config_data["startup_timeout_sec"] = startup_timeout
+        if tool_timeout is not None:
+            omni_config_data["tool_timeout_sec"] = tool_timeout
+        if enabled is not None:
+            omni_config_data["enabled"] = enabled
+        if bearer_token_env_var is not None:
+            omni_config_data["bearer_token_env_var"] = bearer_token_env_var
+        if env_header is not None:
+            # Parse KEY=ENV_VAR_NAME format into dict
+            env_http_headers = {}
+            for header_spec in env_header:
+                if '=' in header_spec:
+                    key, env_var_name = header_spec.split('=', 1)
+                    env_http_headers[key] = env_var_name
+            if env_http_headers:
+                omni_config_data["env_http_headers"] = env_http_headers
 
         # Partial update merge logic
         if is_update:
@@ -1568,11 +1595,13 @@ def main():
     mcp_configure_parser = mcp_subparsers.add_parser(
         "configure", help="Configure MCP server directly on host"
     )
-    mcp_configure_parser.add_argument("server_name", help="Name for the MCP server")
+    mcp_configure_parser.add_argument(
+        "server_name", help="Name for the MCP server [hosts: all]"
+    )
     mcp_configure_parser.add_argument(
         "--host",
         required=True,
-        help="Host platform to configure (e.g., claude-desktop, cursor)",
+        help="Host platform to configure (e.g., claude-desktop, cursor) [hosts: all]",
     )
 
     # Create mutually exclusive group for server type
@@ -1580,89 +1609,123 @@ def main():
     server_type_group.add_argument(
         "--command",
         dest="server_command",
-        help="Command to execute the MCP server (for local servers)",
+        help="Command to execute the MCP server (for local servers) [hosts: all]",
     )
     server_type_group.add_argument(
-        "--url", help="Server URL for remote MCP servers (SSE transport)"
+        "--url", help="Server URL for remote MCP servers (SSE transport) [hosts: all except claude-desktop, claude-code]"
     )
     server_type_group.add_argument(
-        "--http-url", help="HTTP streaming endpoint URL (Gemini only)"
+        "--http-url", help="HTTP streaming endpoint URL [hosts: gemini]"
     )
 
     mcp_configure_parser.add_argument(
         "--args",
         nargs="*",
-        help="Arguments for the MCP server command (only with --command)",
+        help="Arguments for the MCP server command (only with --command) [hosts: all]",
     )
     mcp_configure_parser.add_argument(
-        "--env-var", action="append", help="Environment variables (format: KEY=VALUE)"
+        "--env-var",
+        action="append",
+        help="Environment variables (format: KEY=VALUE) [hosts: all]",
     )
     mcp_configure_parser.add_argument(
         "--header",
         action="append",
-        help="HTTP headers for remote servers (format: KEY=VALUE, only with --url)",
+        help="HTTP headers for remote servers (format: KEY=VALUE, only with --url) [hosts: all except claude-desktop, claude-code]",
     )
 
     # Host-specific arguments (Gemini)
     mcp_configure_parser.add_argument(
-        "--timeout", type=int, help="Request timeout in milliseconds (Gemini)"
+        "--timeout", type=int, help="Request timeout in milliseconds [hosts: gemini]"
     )
     mcp_configure_parser.add_argument(
-        "--trust", action="store_true", help="Bypass tool call confirmations (Gemini)"
+        "--trust", action="store_true", help="Bypass tool call confirmations [hosts: gemini]"
     )
     mcp_configure_parser.add_argument(
-        "--cwd", help="Working directory for stdio transport (Gemini)"
+        "--cwd", help="Working directory for stdio transport [hosts: gemini, codex]"
     )
     mcp_configure_parser.add_argument(
         "--include-tools",
         nargs="*",
-        help="Tool allowlist - only these tools will be available (Gemini)",
+        help="Tool allowlist / enabled tools [hosts: gemini, codex]",
     )
     mcp_configure_parser.add_argument(
         "--exclude-tools",
         nargs="*",
-        help="Tool blocklist - these tools will be excluded (Gemini)",
+        help="Tool blocklist / disabled tools [hosts: gemini, codex]",
     )
 
     # Host-specific arguments (Cursor/VS Code/LM Studio)
     mcp_configure_parser.add_argument(
-        "--env-file", help="Path to environment file (Cursor, VS Code, LM Studio)"
+        "--env-file", help="Path to environment file [hosts: cursor, vscode, lmstudio]"
     )
 
     # Host-specific arguments (VS Code)
     mcp_configure_parser.add_argument(
         "--input",
         action="append",
-        help="Input variable definitions in format: type,id,description[,password=true] (VS Code)",
+        help="Input variable definitions in format: type,id,description[,password=true] [hosts: vscode]",
     )
 
     # Host-specific arguments (Kiro)
     mcp_configure_parser.add_argument(
         "--disabled",
         action="store_true",
-        help="Disable the MCP server (Kiro)"
+        help="Disable the MCP server [hosts: kiro]"
     )
     mcp_configure_parser.add_argument(
         "--auto-approve-tools",
         action="append",
-        help="Tool names to auto-approve without prompting (Kiro)"
+        help="Tool names to auto-approve without prompting [hosts: kiro]"
     )
     mcp_configure_parser.add_argument(
         "--disable-tools",
         action="append",
-        help="Tool names to disable (Kiro)"
+        help="Tool names to disable [hosts: kiro]"
+    )
+
+    # Codex-specific arguments
+    mcp_configure_parser.add_argument(
+        "--env-vars",
+        action="append",
+        help="Environment variable names to whitelist/forward [hosts: codex]"
+    )
+    mcp_configure_parser.add_argument(
+        "--startup-timeout",
+        type=int,
+        help="Server startup timeout in seconds (default: 10) [hosts: codex]"
+    )
+    mcp_configure_parser.add_argument(
+        "--tool-timeout",
+        type=int,
+        help="Tool execution timeout in seconds (default: 60) [hosts: codex]"
+    )
+    mcp_configure_parser.add_argument(
+        "--enabled",
+        action="store_true",
+        help="Enable the MCP server [hosts: codex]"
+    )
+    mcp_configure_parser.add_argument(
+        "--bearer-token-env-var",
+        type=str,
+        help="Name of environment variable containing bearer token for Authorization header [hosts: codex]"
+    )
+    mcp_configure_parser.add_argument(
+        "--env-header",
+        action="append",
+        help="HTTP header from environment variable in KEY=ENV_VAR_NAME format [hosts: codex]"
     )
 
     mcp_configure_parser.add_argument(
         "--no-backup",
         action="store_true",
-        help="Skip backup creation before configuration",
+        help="Skip backup creation before configuration [hosts: all]",
     )
     mcp_configure_parser.add_argument(
-        "--dry-run", action="store_true", help="Preview configuration without execution"
+        "--dry-run", action="store_true", help="Preview configuration without execution [hosts: all]"
     )
     mcp_configure_parser.add_argument(
-        "--auto-approve", action="store_true", help="Skip confirmation prompts"
+        "--auto-approve", action="store_true", help="Skip confirmation prompts [hosts: all]"
     )
 
     # Remove MCP commands (object-action pattern)
@@ -2724,6 +2787,12 @@ def main():
                 getattr(args, "disabled", None),
                 getattr(args, "auto_approve_tools", None),
                 getattr(args, "disable_tools", None),
+                getattr(args, "env_vars", None),
+                getattr(args, "startup_timeout", None),
+                getattr(args, "tool_timeout", None),
+                getattr(args, "enabled", None),
+                getattr(args, "bearer_token_env_var", None),
+                getattr(args, "env_header", None),
                 args.no_backup,
                 args.dry_run,
                 args.auto_approve,

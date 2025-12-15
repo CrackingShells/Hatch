@@ -1,0 +1,13 @@
+[features]
+rmcp_client = true
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+startup_timeout_sec = 10
+tool_timeout_sec = 60
+enabled = true
+
+[mcp_servers.context7.env]
+MY_VAR = "value"
+

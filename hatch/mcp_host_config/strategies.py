@@ -8,8 +8,10 @@ strategies with decorator registration following Hatchling patterns.
 
 import platform
 import json
+import tomllib  # Python 3.11+ built-in
+import tomli_w  # TOML writing
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TextIO
 import logging
 
 from .host_management import MCPHostStrategy, register_host_strategy
@@ -607,3 +609,172 @@ class GeminiHostStrategy(MCPHostStrategy):
         except Exception as e:
             logger.error(f"Failed to write Gemini configuration: {e}")
             return False
+
+
+@register_host_strategy(MCPHostType.CODEX)
+class CodexHostStrategy(MCPHostStrategy):
+    """Configuration strategy for Codex IDE with TOML support.
+
+    Codex uses TOML configuration at ~/.codex/config.toml with a unique
+    structure using [mcp_servers.<server-name>] tables.
+    """
+
+    def __init__(self):
+        self.config_format = "toml"
+        self._preserved_features = {}  # Preserve [features] section
+
+    def get_config_path(self) -> Optional[Path]:
+        """Get Codex configuration path."""
+        return Path.home() / ".codex" / "config.toml"
+
+    def get_config_key(self) -> str:
+        """Codex uses 'mcp_servers' key (note: underscore, not camelCase)."""
+        return "mcp_servers"
+
+    def is_host_available(self) -> bool:
+        """Check if Codex is available by checking for config directory."""
+        codex_dir = Path.home() / ".codex"
+        return codex_dir.exists()
+
+    def validate_server_config(self, server_config: MCPServerConfig) -> bool:
+        """Codex validation - supports both STDIO and HTTP servers."""
+        return server_config.command is not None or server_config.url is not None
+
+    def read_configuration(self) -> HostConfiguration:
+        """Read Codex TOML configuration file."""
+        config_path = self.get_config_path()
+        if not config_path or not config_path.exists():
+            return HostConfiguration(servers={})
+
+        try:
+            with open(config_path, 'rb') as f:
+                toml_data = tomllib.load(f)
+
+            # Preserve [features] section for later write
+            self._preserved_features = toml_data.get('features', {})
+
+            # Extract MCP servers from [mcp_servers.*] tables
+            mcp_servers = toml_data.get(self.get_config_key(), {})
+
+            servers = {}
+            for name, server_data in mcp_servers.items():
+                try:
+                    # Flatten nested env section if present
+                    flat_data = self._flatten_toml_server(server_data)
+                    servers[name] = MCPServerConfig(**flat_data)
+                except Exception as e:
+                    logger.warning(f"Invalid server config for {name}: {e}")
+                    continue
+
+            return HostConfiguration(servers=servers)
+
+        except Exception as e:
+            logger.error(f"Failed to read Codex configuration: {e}")
+            return HostConfiguration(servers={})
+
+    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+        """Write Codex TOML configuration file with backup support."""
+        config_path = self.get_config_path()
+        if not config_path:
+            return False
+
+        try:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Read existing configuration to preserve non-MCP settings
+            existing_data = {}
+            if config_path.exists():
+                try:
+                    with open(config_path, 'rb') as f:
+                        existing_data = tomllib.load(f)
+                except Exception:
+                    pass
+
+            # Preserve [features] section
+            if 'features' in existing_data:
+                self._preserved_features = existing_data['features']
+
+            # Convert servers to TOML structure
+            servers_data = {}
+            for name, server_config in config.servers.items():
+                servers_data[name] = self._to_toml_server(server_config)
+
+            # Build final TOML structure
+            final_data = {}
+
+            # Preserve [features] at top
+            if self._preserved_features:
+                final_data['features'] = self._preserved_features
+
+            # Add MCP servers
+            final_data[self.get_config_key()] = servers_data
+
+            # Preserve other top-level keys
+            for key, value in existing_data.items():
+                if key not in ('features', self.get_config_key()):
+                    final_data[key] = value
+
+            # Use atomic write with TOML serializer
+            backup_manager = MCPHostConfigBackupManager()
+            atomic_ops = AtomicFileOperations()
+
+            def toml_serializer(data: Any, f: TextIO) -> None:
+                # tomli_w.dumps returns a string, write it to the file
+                toml_str = tomli_w.dumps(data)
+                f.write(toml_str)
+
+            atomic_ops.atomic_write_with_serializer(
+                file_path=config_path,
+                data=final_data,
+                serializer=toml_serializer,
+                backup_manager=backup_manager,
+                hostname="codex",
+                skip_backup=no_backup
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to write Codex configuration: {e}")
+            return False
+
+    def _flatten_toml_server(self, server_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Flatten nested TOML server structure to flat dict.
+
+        TOML structure:
+            [mcp_servers.name]
+            command = "npx"
+            args = ["-y", "package"]
+            [mcp_servers.name.env]
+            VAR = "value"
+
+        Becomes:
+            {"command": "npx", "args": [...], "env": {"VAR": "value"}}
+
+        Also maps Codex-specific 'http_headers' to universal 'headers' field.
+        """
+        # TOML already parses nested tables into nested dicts
+        # So [mcp_servers.name.env] becomes {"env": {...}}
+        data = dict(server_data)
+
+        # Map Codex 'http_headers' to universal 'headers' for MCPServerConfig
+        if 'http_headers' in data:
+            data['headers'] = data.pop('http_headers')
+
+        return data
+
+    def _to_toml_server(self, server_config: MCPServerConfig) -> Dict[str, Any]:
+        """Convert MCPServerConfig to TOML-compatible dict structure.
+
+        Maps universal 'headers' field back to Codex-specific 'http_headers'.
+        """
+        data = server_config.model_dump(exclude_unset=True)
+
+        # Remove 'name' field as it's the table key in TOML
+        data.pop('name', None)
+
+        # Map universal 'headers' to Codex 'http_headers' for TOML
+        if 'headers' in data:
+            data['http_headers'] = data.pop('headers')
+
+        return data

@@ -395,29 +395,35 @@ Syntax:
 
 `hatch mcp configure <server-name> --host <host> (--command CMD | --url URL) [--args ARGS] [--env-var ENV] [--header HEADER] [--dry-run] [--auto-approve] [--no-backup]`
 
-| Argument / Flag | Type | Description | Default |
-|---:|---|---|---|
-| `server-name` | string (positional) | Name of the MCP server to configure | n/a |
-| `--host` | string | Target host platform (claude-desktop, cursor, etc.) | n/a |
-| `--command` | string | Command to execute for local servers (mutually exclusive with --url) | none |
-| `--url` | string | URL for remote MCP servers (mutually exclusive with --command) | none |
-| `--http-url` | string | HTTP streaming endpoint URL (Gemini only) | none |
-| `--args` | string | Arguments for MCP server command (only with --command) | none |
-| `--env-var` | string | Environment variables format: KEY=VALUE (can be used multiple times) | none |
-| `--header` | string | HTTP headers format: KEY=VALUE (only with --url) | none |
-| `--timeout` | int | Request timeout in milliseconds (Gemini) | none |
-| `--trust` | flag | Bypass tool call confirmations (Gemini) | false |
-| `--cwd` | string | Working directory for stdio transport (Gemini) | none |
-| `--include-tools` | multiple | Tool allowlist - only these tools will be available (Gemini). Space-separated values. | none |
-| `--exclude-tools` | multiple | Tool blocklist - these tools will be excluded (Gemini). Space-separated values. | none |
-| `--env-file` | string | Path to environment file (Cursor, VS Code, LM Studio) | none |
-| `--input` | multiple | Input variable definitions format: type,id,description[,password=true] (VS Code) | none |
-| `--disabled` | flag | Disable the MCP server (Kiro) | false |
-| `--auto-approve-tools` | multiple | Tool names to auto-approve (Kiro). Can be used multiple times. | none |
-| `--disable-tools` | multiple | Tool names to disable (Kiro). Can be used multiple times. | none |
-| `--dry-run` | flag | Preview configuration without applying changes | false |
-| `--auto-approve` | flag | Skip confirmation prompts | false |
-| `--no-backup` | flag | Skip backup creation before configuration | false |
+| Argument / Flag | Hosts | Type | Description | Default |
+|---:|---|---|---|---|
+| `server-name` | all | string (positional) | Name of the MCP server to configure | n/a |
+| `--host` | all | string | Target host platform (claude-desktop, cursor, etc.) | n/a |
+| `--command` | all | string | Command to execute for local servers (mutually exclusive with --url) | none |
+| `--url` | all except Claude Desktop/Code | string | URL for remote MCP servers (mutually exclusive with --command) | none |
+| `--http-url` | gemini | string | HTTP streaming endpoint URL | none |
+| `--args` | all | string | Arguments for MCP server command (only with --command) | none |
+| `--env-var` | all | string | Environment variables format: KEY=VALUE (can be used multiple times) | none |
+| `--header` | all except Claude Desktop/Code | string | HTTP headers format: KEY=VALUE (only with --url) | none |
+| `--timeout` | gemini | int | Request timeout in milliseconds | none |
+| `--trust` | gemini | flag | Bypass tool call confirmations | false |
+| `--cwd` | gemini, codex | string | Working directory for stdio transport | none |
+| `--include-tools` | gemini, codex | multiple | Tool allowlist / enabled tools. Space-separated values. | none |
+| `--exclude-tools` | gemini, codex | multiple | Tool blocklist / disabled tools. Space-separated values. | none |
+| `--env-file` | cursor, vscode, lmstudio | string | Path to environment file | none |
+| `--input` | vscode | multiple | Input variable definitions format: type,id,description[,password=true] | none |
+| `--disabled` | kiro | flag | Disable the MCP server | false |
+| `--auto-approve-tools` | kiro | multiple | Tool names to auto-approve. Can be used multiple times. | none |
+| `--disable-tools` | kiro | multiple | Tool names to disable. Can be used multiple times. | none |
+| `--env-vars` | codex | multiple | Environment variable names to whitelist/forward. Can be used multiple times. | none |
+| `--startup-timeout` | codex | int | Server startup timeout in seconds (default: 10) | none |
+| `--tool-timeout` | codex | int | Tool execution timeout in seconds (default: 60) | none |
+| `--enabled` | codex | flag | Enable the MCP server | false |
+| `--bearer-token-env-var` | codex | string | Name of env var containing bearer token for Authorization header | none |
+| `--env-header` | codex | multiple | HTTP header from env var format: KEY=ENV_VAR_NAME. Can be used multiple times. | none |
+| `--dry-run` | all | flag | Preview configuration without applying changes | false |
+| `--auto-approve` | all | flag | Skip confirmation prompts | false |
+| `--no-backup` | all | flag | Skip backup creation before configuration | false |
 
 **Behavior**:
 
@@ -509,6 +515,42 @@ Configure MCP server 'my-server' on host 'kiro'? [y/N]: y
 [SUCCESS] Successfully configured MCP server 'my-server' on host 'kiro'
 ```
 
+**Example - Codex Configuration with Timeouts and Tool Filtering**:
+
+```bash
+$ hatch mcp configure context7 --host codex --command npx --args "-y" "@upstash/context7-mcp" --env-vars PATH --env-vars HOME --startup-timeout 15 --tool-timeout 120 --enabled --include-tools read write --exclude-tools delete
+
+Server 'context7' created for host 'codex':
+  name: UPDATED None --> 'context7'
+  command: UPDATED None --> 'npx'
+  args: UPDATED None --> ['-y', '@upstash/context7-mcp']
+  env_vars: UPDATED None --> ['PATH', 'HOME']
+  startup_timeout_sec: UPDATED None --> 15
+  tool_timeout_sec: UPDATED None --> 120
+  enabled: UPDATED None --> True
+  enabled_tools: UPDATED None --> ['read', 'write']
+  disabled_tools: UPDATED None --> ['delete']
+
+Configure MCP server 'context7' on host 'codex'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'context7' on host 'codex'
+```
+
+**Example - Codex HTTP Server with Authentication**:
+
+```bash
+$ hatch mcp configure figma --host codex --url https://mcp.figma.com/mcp --bearer-token-env-var FIGMA_OAUTH_TOKEN --env-header "X-Figma-Region=FIGMA_REGION" --header "X-Custom=static-value"
+
+Server 'figma' created for host 'codex':
+  name: UPDATED None --> 'figma'
+  url: UPDATED None --> 'https://mcp.figma.com/mcp'
+  bearer_token_env_var: UPDATED None --> 'FIGMA_OAUTH_TOKEN'
+  env_http_headers: UPDATED None --> {'X-Figma-Region': 'FIGMA_REGION'}
+  http_headers: UPDATED None --> {'X-Custom': 'static-value'}
+
+Configure MCP server 'figma' on host 'codex'? [y/N]: y
+[SUCCESS] Successfully configured MCP server 'figma' on host 'codex'
+```
+
 **Example - Remote Server Configuration**:
 
 ```bash
@@ -550,6 +592,7 @@ Different MCP hosts support different configuration fields. The conversion repor
 - **Cursor / LM Studio**: Supports universal fields + envFile
 - **VS Code**: Supports universal fields + envFile, inputs
 - **Gemini CLI**: Supports universal fields + 14 additional fields (cwd, timeout, trust, OAuth settings, etc.)
+- **Codex**: Supports universal fields + Codex-specific fields for URL-based servers (http_headers, env_http_headers, bearer_token_env_var, enabled, startup_timeout_sec, tool_timeout_sec, env_vars)
 
 When configuring a server with fields not supported by the target host, those fields are marked as UNSUPPORTED in the report and automatically excluded from the configuration.
 

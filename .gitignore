@@ -5,6 +5,14 @@ envs/
 Laghari/
 __temp__/
 
+# IDEs
+## Kiro
+.kiro/
+
+## VS Code
+.vscode/
+
+
 # vvvvvvv  Default Python Ignore vvvvvvvv
 # Byte-compiled / optimized / DLL files
 __pycache__/
