@@ -1,3 +1,17 @@
+## <small>0.7.1-dev.1 (2025-12-15)</small>
+
+* Merge branch 'feat/kiro-support' into dev ([d9c11ca](https://github.com/CrackingShells/Hatch/commit/d9c11ca))
+* docs: add Kiro to supported MCP hosts across all documentation ([1b1dd1a](https://github.com/CrackingShells/Hatch/commit/1b1dd1a))
+* docs(dev): enhance MCP host configuration extension guidance ([3bdae9c](https://github.com/CrackingShells/Hatch/commit/3bdae9c))
+* fix: config path handling ([63efad7](https://github.com/CrackingShells/Hatch/commit/63efad7))
+* test(kiro): add comprehensive backup integration tests ([65b4a29](https://github.com/CrackingShells/Hatch/commit/65b4a29))
+* test(kiro): implement comprehensive test suite for Kiro MCP integration ([a55b48a](https://github.com/CrackingShells/Hatch/commit/a55b48a))
+* test(kiro): implement test data infrastructure for Kiro MCP integration ([744219f](https://github.com/CrackingShells/Hatch/commit/744219f))
+* feat(cli): add Kiro-specific arguments to mcp configure command ([23c1e9d](https://github.com/CrackingShells/Hatch/commit/23c1e9d))
+* feat(kiro): add configuration file backup support ([49007dd](https://github.com/CrackingShells/Hatch/commit/49007dd))
+* feat(mcp-host-config): add Kiro IDE support to model layer ([f8ede12](https://github.com/CrackingShells/Hatch/commit/f8ede12))
+* feat(mcp-host-config): implement KiroHostStrategy for configuration management ([ab69e2a](https://github.com/CrackingShells/Hatch/commit/ab69e2a))
+
 ## 0.7.0 (2025-12-11)
 
 * Merge pull request #42 from CrackingShells/dev ([be3a9a3](https://github.com/CrackingShells/Hatch/commit/be3a9a3)), closes [#42](https://github.com/CrackingShells/Hatch/issues/42)
