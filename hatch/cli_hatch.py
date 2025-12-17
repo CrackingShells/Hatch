@@ -1671,6 +1671,7 @@ def main():
     mcp_configure_parser.add_argument(
         "--disabled",
         action="store_true",
+        default=None,
         help="Disable the MCP server [hosts: kiro]"
     )
     mcp_configure_parser.add_argument(
@@ -1703,6 +1704,7 @@ def main():
     mcp_configure_parser.add_argument(
         "--enabled",
         action="store_true",
+        default=None,
         help="Enable the MCP server [hosts: codex]"
     )
     mcp_configure_parser.add_argument(
