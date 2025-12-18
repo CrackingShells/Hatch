@@ -1,3 +1,7 @@
+## <small>0.7.1-dev.3 (2025-12-18)</small>
+
+* fix(cli): prevent unwanted defaults ([8a9441b](https://github.com/CrackingShells/Hatch/commit/8a9441b))
+
 ## <small>0.7.1-dev.2 (2025-12-15)</small>
 
 * Merge branch 'feat/codex-support' into dev ([b82bf0f](https://github.com/CrackingShells/Hatch/commit/b82bf0f))
