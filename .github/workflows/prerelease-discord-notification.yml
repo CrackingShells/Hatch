@@ -22,6 +22,11 @@ jobs:
             ⚠️ **This is a pre-release** - expect potential bugs and breaking changes
             🔬 Perfect for testing new features and providing feedback
             📋 Click [here](${{ github.event.release.html_url }}) to view what's new and download
+
+            💻 Install with pip:
+            ```bash
+            pip install hatch-xclam=${{ github.event.release.tag_name }}
+            ```
             
             Help us make *Hatch!* better by testing and reporting [issues](https://github.com/CrackingShells/Hatch/issues)! 🐛➡️✨
           color: 0xff9500  # Orange color for pre-release
