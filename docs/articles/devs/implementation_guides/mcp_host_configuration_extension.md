@@ -2,6 +2,21 @@
 
 **Quick Start:** Copy an existing strategy, modify configuration paths and validation, add decorator. Most strategies are 50-100 lines.
 
+## Before You Start: Integration Checklist
+
+Use this checklist to plan your implementation. Missing integration points cause incomplete functionality.
+
+| Integration Point | Required? | When Needed |
+|-------------------|-----------|-------------|
+| ☐ Host type enum | Always | All hosts |
+| ☐ Strategy class | Always | All hosts |
+| ☐ Backup integration | Always | All hosts - **commonly missed** |
+| ☐ Host-specific model | Sometimes | Host has unique config fields |
+| ☐ CLI arguments | Sometimes | Host has unique config fields |
+| ☐ Test infrastructure | Always | All hosts |
+
+> **Lesson learned:** The backup system integration is frequently overlooked during planning but is mandatory for all hosts. Plan for it upfront.
+
 ## When You Need This
 
 You want Hatch to configure MCP servers on a new host platform:
@@ -59,6 +74,7 @@ class YourHostStrategy(MCPHostStrategy):
 - `CURSOR` - Cursor IDE
 - `LMSTUDIO` - LM Studio
 - `GEMINI` - Google Gemini CLI
+- `KIRO` - Kiro IDE
 
 ### 2. Add Host Type
 
@@ -194,9 +210,65 @@ class YourHostStrategy(MCPHostStrategy):
             return False
 ```
 
-### 4. Handle Configuration Format
+### 4. Integrate Backup System (Required)
 
-Implement configuration reading/writing for your host's format:
+All host strategies must integrate with the backup system for data safety. This is **mandatory** - don't skip it.
+
+**Current implementation status:**
+- Family base classes (`ClaudeHostStrategy`, `CursorBasedHostStrategy`) use atomic temp-file writes but not the full backup manager
+- `KiroHostStrategy` demonstrates full backup manager integration with `MCPHostConfigBackupManager` and `AtomicFileOperations`
+
+**For new implementations**: Add backup integration to `write_configuration()`:
+
+```python
+from .backup import MCPHostConfigBackupManager, AtomicFileOperations
+
+def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+    config_path = self.get_config_path()
+    if not config_path:
+        return False
+    
+    try:
+        config_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Read existing config to preserve non-MCP settings
+        existing_data = {}
+        if config_path.exists():
+            with open(config_path, 'r', encoding='utf-8') as f:
+                existing_data = json.load(f)
+        
+        # Update MCP servers section
+        servers_data = {
+            name: server.model_dump(exclude_unset=True)
+            for name, server in config.servers.items()
+        }
+        existing_data[self.get_config_key()] = servers_data
+        
+        # Use atomic write with backup support
+        backup_manager = MCPHostConfigBackupManager()
+        atomic_ops = AtomicFileOperations()
+        atomic_ops.atomic_write_with_backup(
+            file_path=config_path,
+            data=existing_data,
+            backup_manager=backup_manager,
+            hostname="your-host",  # Must match your MCPHostType value
+            skip_backup=no_backup
+        )
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to write configuration: {e}")
+        return False
+```
+
+**Key points:**
+- `hostname` parameter must match your `MCPHostType` enum value (e.g., `"kiro"` for `MCPHostType.KIRO`)
+- `skip_backup` respects the `no_backup` parameter passed to `write_configuration()`
+- Atomic operations ensure config file integrity even if the process crashes
+
+### 5. Handle Configuration Format (Optional)
+
+Override configuration reading/writing only if your host has a non-standard format:
 
 ```python
 def read_configuration(self) -> HostConfiguration:
@@ -393,17 +465,25 @@ def get_config_path(self) -> Optional[Path]:
 
 ## Testing Your Strategy
 
-### 1. Add Unit Tests
+### Test Categories
 
-Create tests in `tests/test_mcp_your_host_strategy.py`. **Important:** Import strategies to trigger registration:
+Your implementation needs tests in these categories:
+
+| Category | Purpose | Location |
+|----------|---------|----------|
+| Strategy tests | Registration, paths, validation | `tests/regression/test_mcp_yourhost_host_strategy.py` |
+| Backup tests | Backup creation, restoration | `tests/regression/test_mcp_yourhost_backup_integration.py` |
+| Model tests | Field validation (if host-specific model) | `tests/regression/test_mcp_yourhost_model_validation.py` |
+| CLI tests | Argument handling (if host-specific args) | `tests/regression/test_mcp_yourhost_cli_integration.py` |
+| Integration tests | End-to-end workflows | `tests/integration/test_mcp_yourhost_integration.py` |
+
+### 1. Strategy Tests (Required)
 
 ```python
 import unittest
 from pathlib import Path
 from hatch.mcp_host_config import MCPHostRegistry, MCPHostType, MCPServerConfig, HostConfiguration
-
-# Import strategies to trigger registration
-import hatch.mcp_host_config.strategies
+import hatch.mcp_host_config.strategies  # Triggers registration
 
 class TestYourHostStrategy(unittest.TestCase):
     def test_strategy_registration(self):
@@ -414,43 +494,32 @@ class TestYourHostStrategy(unittest.TestCase):
     def test_config_path(self):
         """Test configuration path detection."""
         strategy = MCPHostRegistry.get_strategy(MCPHostType.YOUR_HOST)
-        config_path = strategy.get_config_path()
-        self.assertIsNotNone(config_path)
-    
-    def test_is_host_available(self):
-        """Test host availability detection."""
-        strategy = MCPHostRegistry.get_strategy(MCPHostType.YOUR_HOST)
-        # This may return False if host isn't installed
-        is_available = strategy.is_host_available()
-        self.assertIsInstance(is_available, bool)
+        self.assertIsNotNone(strategy.get_config_path())
     
     def test_server_validation(self):
         """Test server configuration validation."""
         strategy = MCPHostRegistry.get_strategy(MCPHostType.YOUR_HOST)
-        
-        # Test valid config with command
         valid_config = MCPServerConfig(command="python", args=["server.py"])
         self.assertTrue(strategy.validate_server_config(valid_config))
-        
-        # Test valid config with URL
-        valid_url_config = MCPServerConfig(url="http://localhost:8000")
-        self.assertTrue(strategy.validate_server_config(valid_url_config))
-        
-        # Test invalid config (neither command nor URL)
-        with self.assertRaises(ValueError):
-            MCPServerConfig()  # Will fail validation
-    
-    def test_read_configuration(self):
-        """Test reading configuration."""
-        strategy = MCPHostRegistry.get_strategy(MCPHostType.YOUR_HOST)
-        config = strategy.read_configuration()
-        self.assertIsInstance(config, HostConfiguration)
-        self.assertIsInstance(config.servers, dict)
 ```
 
-### 2. Integration Testing
+### 2. Backup Integration Tests (Required)
 
-Test with the configuration manager:
+```python
+class TestYourHostBackupIntegration(unittest.TestCase):
+    def test_write_creates_backup(self):
+        """Test that write_configuration creates backup when no_backup=False."""
+        # Setup temp config file
+        # Call write_configuration(config, no_backup=False)
+        # Verify backup file was created
+        
+    def test_write_skips_backup_when_requested(self):
+        """Test that write_configuration skips backup when no_backup=True."""
+        # Call write_configuration(config, no_backup=True)
+        # Verify no backup file was created
+```
+
+### 3. Integration Testing
 
 ```python
 def test_configuration_manager_integration(self):
@@ -507,8 +576,65 @@ Different hosts have different validation rules. The codebase provides host-spec
 - `MCPServerConfigCursor` - Cursor/LM Studio
 - `MCPServerConfigVSCode` - VS Code
 - `MCPServerConfigGemini` - Google Gemini
+- `MCPServerConfigKiro` - Kiro IDE (with `disabled`, `autoApprove`, `disabledTools`)
 
-If your host has unique requirements, you can create a host-specific model and register it in `HOST_MODEL_REGISTRY` (in `models.py`). However, for most cases, the generic `MCPServerConfig` works fine.
+**When to create a host-specific model:** Only if your host has unique configuration fields not present in other hosts.
+
+**Implementation steps** (if needed):
+
+1. **Add model class** in `models.py`:
+```python
+class MCPServerConfigYourHost(MCPServerConfigBase):
+    your_field: Optional[str] = None
+    
+    @classmethod
+    def from_omni(cls, omni: "MCPServerConfigOmni") -> "MCPServerConfigYourHost":
+        return cls(**omni.model_dump(exclude_unset=True))
+```
+
+2. **Register in `HOST_MODEL_REGISTRY`**:
+```python
+HOST_MODEL_REGISTRY = {
+    # ... existing entries ...
+    MCPHostType.YOUR_HOST: MCPServerConfigYourHost,
+}
+```
+
+3. **Extend `MCPServerConfigOmni`** with your fields (for CLI integration)
+
+4. **Add CLI arguments** in `cli_hatch.py` (see next section)
+
+For most cases, the generic `MCPServerConfig` works fine - only add a host-specific model if truly needed.
+
+### CLI Integration for Host-Specific Fields
+
+If your host has unique configuration fields, extend the CLI to support them:
+
+1. **Update function signature** in `handle_mcp_configure()`:
+```python
+def handle_mcp_configure(
+    # ... existing params ...
+    your_field: Optional[str] = None,  # Add your field
+):
+```
+
+2. **Add argument parser entry**:
+```python
+configure_parser.add_argument(
+    '--your-field',
+    help='Description of your field'
+)
+```
+
+3. **Update omni model population**:
+```python
+omni_config_data = {
+    # ... existing fields ...
+    'your_field': your_field,
+}
+```
+
+The conversion reporting system automatically handles new fields - no additional changes needed there.
 
 ### Multi-File Configuration
 
@@ -721,3 +847,15 @@ hatch mcp remove my-server --host your-host
 2. The CLI imports `hatch.mcp_host_config.strategies` (which it does)
 
 The CLI automatically discovers your strategy through the `@register_host_strategy` decorator registration system.
+
+## Implementation Summary
+
+After completing your implementation, verify all integration points:
+
+- [ ] Host type added to `MCPHostType` enum
+- [ ] Strategy class implemented with `@register_host_strategy` decorator
+- [ ] Backup integration working (test with `no_backup=False` and `no_backup=True`)
+- [ ] Host-specific model created (if needed) and registered in `HOST_MODEL_REGISTRY`
+- [ ] CLI arguments added (if needed) with omni model population
+- [ ] All test categories implemented and passing
+- [ ] Strategy exported from `__init__.py` (if in separate file)

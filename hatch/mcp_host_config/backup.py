@@ -9,7 +9,7 @@ import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Callable, TextIO
 
 from pydantic import BaseModel, Field, validator
 
@@ -36,8 +36,8 @@ class BackupInfo(BaseModel):
     def validate_hostname(cls, v):
         """Validate hostname is supported."""
         supported_hosts = {
-            'claude-desktop', 'claude-code', 'vscode', 
-            'cursor', 'lmstudio', 'gemini'
+            'claude-desktop', 'claude-code', 'vscode',
+            'cursor', 'lmstudio', 'gemini', 'kiro', 'codex'
         }
         if v not in supported_hosts:
             raise ValueError(f"Unsupported hostname: {v}. Supported: {supported_hosts}")
@@ -53,7 +53,9 @@ class BackupInfo(BaseModel):
     @property
     def backup_name(self) -> str:
         """Get backup filename."""
-        return f"mcp.json.{self.hostname}.{self.timestamp.strftime('%Y%m%d_%H%M%S_%f')}"
+        # Extract original filename from backup path if available
+        # Backup filename format: {original_name}.{hostname}.{timestamp}
+        return self.file_path.name
     
     @property
     def age_days(self) -> int:
@@ -101,22 +103,29 @@ class BackupResult(BaseModel):
 
 class AtomicFileOperations:
     """Atomic file operations for safe configuration updates."""
-    
-    def atomic_write_with_backup(self, file_path: Path, data: Dict[str, Any], 
-                                backup_manager: "MCPHostConfigBackupManager", 
-                                hostname: str, skip_backup: bool = False) -> bool:
-        """Atomic write with automatic backup creation.
-        
+
+    def atomic_write_with_serializer(
+        self,
+        file_path: Path,
+        data: Any,
+        serializer: Callable[[Any, TextIO], None],
+        backup_manager: "MCPHostConfigBackupManager",
+        hostname: str,
+        skip_backup: bool = False
+    ) -> bool:
+        """Atomic write with custom serializer and automatic backup creation.
+
         Args:
-            file_path (Path): Target file path for writing
-            data (Dict[str, Any]): Data to write as JSON
-            backup_manager (MCPHostConfigBackupManager): Backup manager instance
-            hostname (str): Host identifier for backup
-            skip_backup (bool, optional): Skip backup creation. Defaults to False.
-            
+            file_path: Target file path for writing
+            data: Data to serialize and write
+            serializer: Function that writes data to file handle
+            backup_manager: Backup manager instance
+            hostname: Host identifier for backup
+            skip_backup: Skip backup creation
+
         Returns:
-            bool: True if operation successful, False otherwise
-            
+            bool: True if operation successful
+
         Raises:
             BackupError: If backup creation fails and skip_backup is False
         """
@@ -126,32 +135,52 @@ class AtomicFileOperations:
             backup_result = backup_manager.create_backup(file_path, hostname)
             if not backup_result.success:
                 raise BackupError(f"Required backup failed: {backup_result.error_message}")
-        
-        # Create temporary file for atomic write
+
         temp_file = None
         try:
-            # Write to temporary file first
             temp_file = file_path.with_suffix(f"{file_path.suffix}.tmp")
             with open(temp_file, 'w', encoding='utf-8') as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            
-            # Atomic move to target location
+                serializer(data, f)
+
             temp_file.replace(file_path)
             return True
-            
+
         except Exception as e:
-            # Clean up temporary file on failure
             if temp_file and temp_file.exists():
                 temp_file.unlink()
-            
-            # Restore from backup if available
+
             if backup_result and backup_result.backup_path:
                 try:
                     backup_manager.restore_backup(hostname, backup_result.backup_path.name)
                 except Exception:
-                    pass  # Log but don't raise - original error is more important
-            
+                    pass
+
             raise BackupError(f"Atomic write failed: {str(e)}")
+
+    def atomic_write_with_backup(self, file_path: Path, data: Dict[str, Any],
+                                backup_manager: "MCPHostConfigBackupManager",
+                                hostname: str, skip_backup: bool = False) -> bool:
+        """Atomic write with JSON serialization (backward compatible).
+
+        Args:
+            file_path (Path): Target file path for writing
+            data (Dict[str, Any]): Data to write as JSON
+            backup_manager (MCPHostConfigBackupManager): Backup manager instance
+            hostname (str): Host identifier for backup
+            skip_backup (bool, optional): Skip backup creation. Defaults to False.
+
+        Returns:
+            bool: True if operation successful, False otherwise
+
+        Raises:
+            BackupError: If backup creation fails and skip_backup is False
+        """
+        def json_serializer(data: Any, f: TextIO) -> None:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+        return self.atomic_write_with_serializer(
+            file_path, data, json_serializer, backup_manager, hostname, skip_backup
+        )
     
     def atomic_copy(self, source: Path, target: Path) -> bool:
         """Atomic file copy operation.
@@ -228,8 +257,10 @@ class MCPHostConfigBackupManager:
             host_backup_dir.mkdir(exist_ok=True)
             
             # Generate timestamped backup filename with microseconds for uniqueness
+            # Preserve original filename instead of hardcoding 'mcp.json'
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            backup_name = f"mcp.json.{hostname}.{timestamp}"
+            original_filename = config_path.name
+            backup_name = f"{original_filename}.{hostname}.{timestamp}"
             backup_path = host_backup_dir / backup_name
             
             # Get original file size

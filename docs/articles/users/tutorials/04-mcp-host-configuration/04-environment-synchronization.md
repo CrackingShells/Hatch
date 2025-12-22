@@ -17,7 +17,7 @@
 
 ---
 
-This tutorial teaches you how to deploy MCP servers to multiple host platforms using environments as project isolation containers. You'll learn to maintain clean separation between different projects while efficiently deploying their servers to host applications like Claude Desktop, Cursor, and VS Code.
+This tutorial teaches you how to deploy MCP servers to multiple host platforms using environments as project isolation containers. You'll learn to maintain clean separation between different projects while efficiently deploying their servers to host applications like Claude Desktop, Cursor, Kiro, and VS Code.
 
 ## Understanding Project Isolation with Environments
 

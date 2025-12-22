@@ -11,7 +11,8 @@ from .models import (
     PackageHostConfiguration, EnvironmentPackageEntry, ConfigurationResult, SyncResult,
     # Host-specific configuration models
     MCPServerConfigBase, MCPServerConfigGemini, MCPServerConfigVSCode,
-    MCPServerConfigCursor, MCPServerConfigClaude, MCPServerConfigOmni,
+    MCPServerConfigCursor, MCPServerConfigClaude, MCPServerConfigKiro,
+    MCPServerConfigCodex, MCPServerConfigOmni,
     HOST_MODEL_REGISTRY
 )
 from .host_management import (
@@ -30,7 +31,8 @@ __all__ = [
     'PackageHostConfiguration', 'EnvironmentPackageEntry', 'ConfigurationResult', 'SyncResult',
     # Host-specific configuration models
     'MCPServerConfigBase', 'MCPServerConfigGemini', 'MCPServerConfigVSCode',
-    'MCPServerConfigCursor', 'MCPServerConfigClaude', 'MCPServerConfigOmni',
+    'MCPServerConfigCursor', 'MCPServerConfigClaude', 'MCPServerConfigKiro',
+    'MCPServerConfigCodex', 'MCPServerConfigOmni',
     'HOST_MODEL_REGISTRY',
     # User feedback reporting
     'FieldOperation', 'ConversionReport', 'generate_conversion_report', 'display_report',

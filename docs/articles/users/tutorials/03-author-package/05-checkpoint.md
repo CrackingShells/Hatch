@@ -18,6 +18,6 @@
 
 You now have the fundamental skills to create, validate, and install Hatch packages.
 
-**Continue to**: [Tutorial 04: MCP Host Configuration](../04-mcp-host-configuration/01-host-platform-overview.md) to learn how to deploy your packages to host platforms like Claude Desktop, VS Code, and Cursor with automatic dependency resolution.
+**Continue to**: [Tutorial 04: MCP Host Configuration](../04-mcp-host-configuration/01-host-platform-overview.md) to learn how to deploy your packages to host platforms like Claude Desktop, VS Code, Cursor, and Kiro with automatic dependency resolution.
 
 For more advanced topics, explore the [CLI Reference](../../CLIReference.md) and [Security and Trust](../../SecurityAndTrust.md) guides.

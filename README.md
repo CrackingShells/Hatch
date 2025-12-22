@@ -4,7 +4,7 @@
 
 ## Introduction
 
-Hatch is the package manager for managing Model Context Protocol (MCP) servers with environment isolation, multi-type dependency resolution, and multi-host deployment. Deploy MCP servers to Claude Desktop, VS Code, Cursor, and other platforms with automatic dependency management.
+Hatch is the package manager for managing Model Context Protocol (MCP) servers with environment isolation, multi-type dependency resolution, and multi-host deployment. Deploy MCP servers to Claude Desktop, VS Code, Cursor, Kiro, Codex, and other platforms with automatic dependency management.
 
 The canonical documentation is at `docs/index.md` and published at <https://hatch.readthedocs.io/en/latest/>.
 
@@ -12,7 +12,7 @@ The canonical documentation is at `docs/index.md` and published at <https://hatc
 
 - **Environment Isolation** — Create separate, isolated workspaces for different projects without conflicts
 - **Multi-Type Dependency Resolution** — Automatically resolve and install system packages, Python packages, Docker containers, and Hatch packages
-- **Multi-Host Deployment** — Deploy MCP servers to Claude Desktop, Claude Code, VS Code, Cursor, LM Studio, and Google Gemini CLI
+- **Multi-Host Deployment** — Configure MCP servers on multiple host platforms
 - **Package Validation** — Ensure packages meet schema requirements before distribution
 - **Development-Focused** — Optimized for rapid development and testing of MCP server ecosystems
 
@@ -24,6 +24,8 @@ Hatch supports deployment to the following MCP host platforms:
 - **Claude Code** — Claude integration for VS Code with MCP capabilities
 - **VS Code** — Visual Studio Code with the MCP extension for tool integration
 - **Cursor** — AI-first code editor with built-in MCP server support
+- **Kiro** — Kiro IDE with MCP support
+- **Codex** — OpenAI Codex with MCP server configuration support
 - **LM Studio** — Local LLM inference platform with MCP server integration
 - **Google Gemini CLI** — Command-line interface for Google's Gemini model with MCP support
 
