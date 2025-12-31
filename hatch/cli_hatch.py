@@ -47,6 +47,8 @@ from hatch.cli.cli_utils import (
 from hatch.cli.cli_mcp import (
     handle_mcp_discover_hosts as _handle_mcp_discover_hosts,
     handle_mcp_discover_servers as _handle_mcp_discover_servers,
+    handle_mcp_list_hosts as _handle_mcp_list_hosts,
+    handle_mcp_list_servers as _handle_mcp_list_servers,
 )
 
 
@@ -80,167 +82,27 @@ def handle_mcp_list_hosts(
     env_name: Optional[str] = None,
     detailed: bool = False,
 ):
-    """Handle 'hatch mcp list hosts' command - shows configured hosts in environment."""
-    try:
-        from collections import defaultdict
-
-        # Resolve environment name
-        target_env = env_name or env_manager.get_current_environment()
-
-        # Validate environment exists
-        if not env_manager.environment_exists(target_env):
-            available_envs = env_manager.list_environments()
-            print(f"Error: Environment '{target_env}' does not exist.")
-            if available_envs:
-                print(f"Available environments: {', '.join(available_envs)}")
-            return 1
-
-        # Collect hosts from configured_hosts across all packages in environment
-        hosts = defaultdict(int)
-        host_details = defaultdict(list)
-
-        try:
-            env_data = env_manager.get_environment_data(target_env)
-            packages = env_data.get("packages", [])
-
-            for package in packages:
-                package_name = package.get("name", "unknown")
-                configured_hosts = package.get("configured_hosts", {})
-
-                for host_name, host_config in configured_hosts.items():
-                    hosts[host_name] += 1
-                    if detailed:
-                        config_path = host_config.get("config_path", "N/A")
-                        configured_at = host_config.get("configured_at", "N/A")
-                        host_details[host_name].append(
-                            {
-                                "package": package_name,
-                                "config_path": config_path,
-                                "configured_at": configured_at,
-                            }
-                        )
-
-        except Exception as e:
-            print(f"Error reading environment data: {e}")
-            return 1
-
-        # Display results
-        if not hosts:
-            print(f"No configured hosts for environment '{target_env}'")
-            return 0
-
-        print(f"Configured hosts for environment '{target_env}':")
-
-        for host_name, package_count in sorted(hosts.items()):
-            if detailed:
-                print(f"\n{host_name} ({package_count} packages):")
-                for detail in host_details[host_name]:
-                    print(f"  - Package: {detail['package']}")
-                    print(f"    Config path: {detail['config_path']}")
-                    print(f"    Configured at: {detail['configured_at']}")
-            else:
-                print(f"  - {host_name} ({package_count} packages)")
-
-        return 0
-    except Exception as e:
-        print(f"Error listing hosts: {e}")
-        return 1
+    """Handle 'hatch mcp list hosts' command - shows configured hosts in environment.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_list_hosts.
+    This wrapper maintains backward compatibility during refactoring.
+    """
+    from argparse import Namespace
+    args = Namespace(env_manager=env_manager, env=env_name, detailed=detailed)
+    return _handle_mcp_list_hosts(args)
 
 
 def handle_mcp_list_servers(
     env_manager: HatchEnvironmentManager, env_name: Optional[str] = None
 ):
-    """Handle 'hatch mcp list servers' command."""
-    try:
-        env_name = env_name or env_manager.get_current_environment()
-
-        if not env_manager.environment_exists(env_name):
-            print(f"Error: Environment '{env_name}' does not exist")
-            return 1
-
-        packages = env_manager.list_packages(env_name)
-        mcp_packages = []
-
-        for package in packages:
-            # Check if package has host configuration tracking (indicating MCP server)
-            configured_hosts = package.get("configured_hosts", {})
-            if configured_hosts:
-                # Use the tracked server configuration from any host
-                first_host = next(iter(configured_hosts.values()))
-                server_config_data = first_host.get("server_config", {})
-
-                # Create a simple server config object
-                class SimpleServerConfig:
-                    def __init__(self, data):
-                        self.name = data.get("name", package["name"])
-                        self.command = data.get("command", "unknown")
-                        self.args = data.get("args", [])
-
-                server_config = SimpleServerConfig(server_config_data)
-                mcp_packages.append(
-                    {"package": package, "server_config": server_config}
-                )
-            else:
-                # Try the original method as fallback
-                try:
-                    server_config = get_package_mcp_server_config(
-                        env_manager, env_name, package["name"]
-                    )
-                    mcp_packages.append(
-                        {"package": package, "server_config": server_config}
-                    )
-                except:
-                    # Package doesn't have MCP server or method failed
-                    continue
-
-        if not mcp_packages:
-            print(f"No MCP servers configured in environment '{env_name}'")
-            return 0
-
-        print(f"MCP servers in environment '{env_name}':")
-        print(f"{'Server Name':<20} {'Package':<20} {'Version':<10} {'Command'}")
-        print("-" * 80)
-
-        for item in mcp_packages:
-            package = item["package"]
-            server_config = item["server_config"]
-
-            server_name = server_config.name
-            package_name = package["name"]
-            version = package.get("version", "unknown")
-            command = f"{server_config.command} {' '.join(server_config.args)}"
-
-            print(f"{server_name:<20} {package_name:<20} {version:<10} {command}")
-
-            # Display host configuration tracking information
-            configured_hosts = package.get("configured_hosts", {})
-            if configured_hosts:
-                print(f"{'':>20} Configured on hosts:")
-                for hostname, host_config in configured_hosts.items():
-                    config_path = host_config.get("config_path", "unknown")
-                    last_synced = host_config.get("last_synced", "unknown")
-                    # Format the timestamp for better readability
-                    if last_synced != "unknown":
-                        try:
-                            from datetime import datetime
-
-                            dt = datetime.fromisoformat(
-                                last_synced.replace("Z", "+00:00")
-                            )
-                            last_synced = dt.strftime("%Y-%m-%d %H:%M:%S")
-                        except:
-                            pass  # Keep original format if parsing fails
-                    print(
-                        f"{'':>22} - {hostname}: {config_path} (synced: {last_synced})"
-                    )
-            else:
-                print(f"{'':>20} No host configurations tracked")
-            print()  # Add blank line between servers
-
-        return 0
-    except Exception as e:
-        print(f"Error listing servers: {e}")
-        return 1
+    """Handle 'hatch mcp list servers' command.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_list_servers.
+    This wrapper maintains backward compatibility during refactoring.
+    """
+    from argparse import Namespace
+    args = Namespace(env_manager=env_manager, env=env_name)
+    return _handle_mcp_list_servers(args)
 
 
 def handle_mcp_backup_restore(
