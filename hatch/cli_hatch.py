@@ -240,53 +240,18 @@ def handle_mcp_remove(
     dry_run: bool = False,
     auto_approve: bool = False,
 ):
-    """Handle 'hatch mcp remove' command."""
-    try:
-        # Validate host type
-        try:
-            host_type = MCPHostType(host)
-        except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
-            return 1
-
-        if dry_run:
-            print(
-                f"[DRY RUN] Would remove MCP server '{server_name}' from host '{host}'"
-            )
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
-            return 0
-
-        # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Remove MCP server '{server_name}' from host '{host}'?", auto_approve
-        ):
-            print("Operation cancelled.")
-            return 0
-
-        # Perform removal
-        mcp_manager = MCPHostConfigurationManager()
-        result = mcp_manager.remove_server(
-            server_name=server_name, hostname=host, no_backup=no_backup
-        )
-
-        if result.success:
-            print(
-                f"[SUCCESS] Successfully removed MCP server '{server_name}' from host '{host}'"
-            )
-            if result.backup_path:
-                print(f"  Backup created: {result.backup_path}")
-            return 0
-        else:
-            print(
-                f"[ERROR] Failed to remove MCP server '{server_name}' from host '{host}': {result.error_message}"
-            )
-            return 1
-
-    except Exception as e:
-        print(f"Error removing MCP server: {e}")
-        return 1
+    """Handle 'hatch mcp remove' command.
+    
+    Backward compatibility wrapper - delegates to cli_mcp module.
+    """
+    from hatch.cli.cli_mcp import handle_mcp_remove as _handle_mcp_remove
+    return _handle_mcp_remove(
+        host=host,
+        server_name=server_name,
+        no_backup=no_backup,
+        dry_run=dry_run,
+        auto_approve=auto_approve,
+    )
 
 
 def handle_mcp_remove_server(
@@ -298,81 +263,20 @@ def handle_mcp_remove_server(
     dry_run: bool = False,
     auto_approve: bool = False,
 ):
-    """Handle 'hatch mcp remove server' command."""
-    try:
-        # Determine target hosts
-        if hosts:
-            target_hosts = parse_host_list(hosts)
-        elif env:
-            # TODO: Implement environment-based server removal
-            print("Error: Environment-based removal not yet implemented")
-            return 1
-        else:
-            print("Error: Must specify either --host or --env")
-            return 1
-
-        if not target_hosts:
-            print("Error: No valid hosts specified")
-            return 1
-
-        if dry_run:
-            print(
-                f"[DRY RUN] Would remove MCP server '{server_name}' from hosts: {', '.join(target_hosts)}"
-            )
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
-            return 0
-
-        # Confirm operation unless auto-approved
-        hosts_str = ", ".join(target_hosts)
-        if not request_confirmation(
-            f"Remove MCP server '{server_name}' from hosts: {hosts_str}?", auto_approve
-        ):
-            print("Operation cancelled.")
-            return 0
-
-        # Perform removal on each host
-        mcp_manager = MCPHostConfigurationManager()
-        success_count = 0
-        total_count = len(target_hosts)
-
-        for host in target_hosts:
-            result = mcp_manager.remove_server(
-                server_name=server_name, hostname=host, no_backup=no_backup
-            )
-
-            if result.success:
-                print(f"[SUCCESS] Successfully removed '{server_name}' from '{host}'")
-                if result.backup_path:
-                    print(f"  Backup created: {result.backup_path}")
-                success_count += 1
-
-                # Update environment tracking for current environment only
-                current_env = env_manager.get_current_environment()
-                if current_env:
-                    env_manager.remove_package_host_configuration(
-                        current_env, server_name, host
-                    )
-            else:
-                print(
-                    f"[ERROR] Failed to remove '{server_name}' from '{host}': {result.error_message}"
-                )
-
-        # Summary
-        if success_count == total_count:
-            print(f"[SUCCESS] Removed '{server_name}' from all {total_count} hosts")
-            return 0
-        elif success_count > 0:
-            print(
-                f"[PARTIAL SUCCESS] Removed '{server_name}' from {success_count}/{total_count} hosts"
-            )
-            return 1
-        else:
-            print(f"[ERROR] Failed to remove '{server_name}' from any hosts")
-            return 1
-
-    except Exception as e:
-        print(f"Error removing MCP server: {e}")
-        return 1
+    """Handle 'hatch mcp remove server' command.
+    
+    Backward compatibility wrapper - delegates to cli_mcp module.
+    """
+    from hatch.cli.cli_mcp import handle_mcp_remove_server as _handle_mcp_remove_server
+    return _handle_mcp_remove_server(
+        env_manager=env_manager,
+        server_name=server_name,
+        hosts=hosts,
+        env=env,
+        no_backup=no_backup,
+        dry_run=dry_run,
+        auto_approve=auto_approve,
+    )
 
 
 def handle_mcp_remove_host(
@@ -382,58 +286,18 @@ def handle_mcp_remove_host(
     dry_run: bool = False,
     auto_approve: bool = False,
 ):
-    """Handle 'hatch mcp remove host' command."""
-    try:
-        # Validate host type
-        try:
-            host_type = MCPHostType(host_name)
-        except ValueError:
-            print(
-                f"Error: Invalid host '{host_name}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
-            return 1
-
-        if dry_run:
-            print(f"[DRY RUN] Would remove entire host configuration for '{host_name}'")
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
-            return 0
-
-        # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Remove entire host configuration for '{host_name}'? This will remove ALL MCP servers from this host.",
-            auto_approve,
-        ):
-            print("Operation cancelled.")
-            return 0
-
-        # Perform host configuration removal
-        mcp_manager = MCPHostConfigurationManager()
-        result = mcp_manager.remove_host_configuration(
-            hostname=host_name, no_backup=no_backup
-        )
-
-        if result.success:
-            print(
-                f"[SUCCESS] Successfully removed host configuration for '{host_name}'"
-            )
-            if result.backup_path:
-                print(f"  Backup created: {result.backup_path}")
-
-            # Update environment tracking across all environments
-            updates_count = env_manager.clear_host_from_all_packages_all_envs(host_name)
-            if updates_count > 0:
-                print(f"Updated {updates_count} package entries across environments")
-
-            return 0
-        else:
-            print(
-                f"[ERROR] Failed to remove host configuration for '{host_name}': {result.error_message}"
-            )
-            return 1
-
-    except Exception as e:
-        print(f"Error removing host configuration: {e}")
-        return 1
+    """Handle 'hatch mcp remove host' command.
+    
+    Backward compatibility wrapper - delegates to cli_mcp module.
+    """
+    from hatch.cli.cli_mcp import handle_mcp_remove_host as _handle_mcp_remove_host
+    return _handle_mcp_remove_host(
+        env_manager=env_manager,
+        host_name=host_name,
+        no_backup=no_backup,
+        dry_run=dry_run,
+        auto_approve=auto_approve,
+    )
 
 
 def handle_mcp_sync(
