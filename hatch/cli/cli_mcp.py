@@ -318,3 +318,273 @@ def handle_mcp_list_servers(args: Namespace) -> int:
     except Exception as e:
         print(f"Error listing servers: {e}")
         return EXIT_ERROR
+
+
+def handle_mcp_backup_restore(args: Namespace) -> int:
+    """Handle 'hatch mcp backup restore' command.
+    
+    Args:
+        args: Parsed command-line arguments containing:
+            - env_manager: HatchEnvironmentManager instance
+            - host: Host platform to restore
+            - backup_file: Optional specific backup file (default: latest)
+            - dry_run: Preview without execution
+            - auto_approve: Skip confirmation prompts
+    
+    Returns:
+        int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+    """
+    from hatch.cli.cli_utils import request_confirmation
+    
+    try:
+        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
+
+        env_manager: HatchEnvironmentManager = args.env_manager
+        host: str = args.host
+        backup_file: Optional[str] = getattr(args, 'backup_file', None)
+        dry_run: bool = getattr(args, 'dry_run', False)
+        auto_approve: bool = getattr(args, 'auto_approve', False)
+
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(
+                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
+            )
+            return EXIT_ERROR
+
+        backup_manager = MCPHostConfigBackupManager()
+
+        # Get backup file path
+        if backup_file:
+            backup_path = backup_manager.backup_root / host / backup_file
+            if not backup_path.exists():
+                print(f"Error: Backup file '{backup_file}' not found for host '{host}'")
+                return EXIT_ERROR
+        else:
+            backup_path = backup_manager._get_latest_backup(host)
+            if not backup_path:
+                print(f"Error: No backups found for host '{host}'")
+                return EXIT_ERROR
+            backup_file = backup_path.name
+
+        if dry_run:
+            print(f"[DRY RUN] Would restore backup for host '{host}':")
+            print(f"[DRY RUN] Backup file: {backup_file}")
+            print(f"[DRY RUN] Backup path: {backup_path}")
+            return EXIT_SUCCESS
+
+        # Confirm operation unless auto-approved
+        if not request_confirmation(
+            f"Restore backup '{backup_file}' for host '{host}'? This will overwrite current configuration.",
+            auto_approve,
+        ):
+            print("Operation cancelled.")
+            return EXIT_SUCCESS
+
+        # Perform restoration
+        success = backup_manager.restore_backup(host, backup_file)
+
+        if success:
+            print(
+                f"[SUCCESS] Successfully restored backup '{backup_file}' for host '{host}'"
+            )
+
+            # Read restored configuration to get actual server list
+            try:
+                # Import strategies to trigger registration
+                import hatch.mcp_host_config.strategies
+
+                host_type = MCPHostType(host)
+                strategy = MCPHostRegistry.get_strategy(host_type)
+                restored_config = strategy.read_configuration()
+
+                # Update environment tracking to match restored state
+                updates_count = (
+                    env_manager.apply_restored_host_configuration_to_environments(
+                        host, restored_config.servers
+                    )
+                )
+                if updates_count > 0:
+                    print(
+                        f"Synchronized {updates_count} package entries with restored configuration"
+                    )
+
+            except Exception as e:
+                print(f"Warning: Could not synchronize environment tracking: {e}")
+
+            return EXIT_SUCCESS
+        else:
+            print(f"[ERROR] Failed to restore backup '{backup_file}' for host '{host}'")
+            return EXIT_ERROR
+
+    except Exception as e:
+        print(f"Error restoring backup: {e}")
+        return EXIT_ERROR
+
+
+def handle_mcp_backup_list(args: Namespace) -> int:
+    """Handle 'hatch mcp backup list' command.
+    
+    Args:
+        args: Parsed command-line arguments containing:
+            - host: Host platform to list backups for
+            - detailed: Show detailed backup information
+    
+    Returns:
+        int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+    """
+    try:
+        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
+
+        host: str = args.host
+        detailed: bool = getattr(args, 'detailed', False)
+
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(
+                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
+            )
+            return EXIT_ERROR
+
+        backup_manager = MCPHostConfigBackupManager()
+        backups = backup_manager.list_backups(host)
+
+        if not backups:
+            print(f"No backups found for host '{host}'")
+            return EXIT_SUCCESS
+
+        print(f"Backups for host '{host}' ({len(backups)} found):")
+
+        if detailed:
+            print(f"{'Backup File':<40} {'Created':<20} {'Size':<10} {'Age (days)'}")
+            print("-" * 80)
+
+            for backup in backups:
+                created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                size = f"{backup.file_size:,} B"
+                age = backup.age_days
+
+                print(f"{backup.file_path.name:<40} {created:<20} {size:<10} {age}")
+        else:
+            for backup in backups:
+                created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                print(
+                    f"  {backup.file_path.name} (created: {created}, {backup.age_days} days ago)"
+                )
+
+        return EXIT_SUCCESS
+    except Exception as e:
+        print(f"Error listing backups: {e}")
+        return EXIT_ERROR
+
+
+def handle_mcp_backup_clean(args: Namespace) -> int:
+    """Handle 'hatch mcp backup clean' command.
+    
+    Args:
+        args: Parsed command-line arguments containing:
+            - host: Host platform to clean backups for
+            - older_than_days: Remove backups older than specified days
+            - keep_count: Keep only the specified number of newest backups
+            - dry_run: Preview without execution
+            - auto_approve: Skip confirmation prompts
+    
+    Returns:
+        int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+    """
+    from hatch.cli.cli_utils import request_confirmation
+    
+    try:
+        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
+
+        host: str = args.host
+        older_than_days: Optional[int] = getattr(args, 'older_than_days', None)
+        keep_count: Optional[int] = getattr(args, 'keep_count', None)
+        dry_run: bool = getattr(args, 'dry_run', False)
+        auto_approve: bool = getattr(args, 'auto_approve', False)
+
+        # Validate host type
+        try:
+            host_type = MCPHostType(host)
+        except ValueError:
+            print(
+                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
+            )
+            return EXIT_ERROR
+
+        # Validate cleanup criteria
+        if not older_than_days and not keep_count:
+            print("Error: Must specify either --older-than-days or --keep-count")
+            return EXIT_ERROR
+
+        backup_manager = MCPHostConfigBackupManager()
+        backups = backup_manager.list_backups(host)
+
+        if not backups:
+            print(f"No backups found for host '{host}'")
+            return EXIT_SUCCESS
+
+        # Determine which backups would be cleaned
+        to_clean = []
+
+        if older_than_days:
+            for backup in backups:
+                if backup.age_days > older_than_days:
+                    to_clean.append(backup)
+
+        if keep_count and len(backups) > keep_count:
+            # Keep newest backups, remove oldest
+            to_clean.extend(backups[keep_count:])
+
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_to_clean = []
+        for backup in to_clean:
+            if backup.file_path not in seen:
+                seen.add(backup.file_path)
+                unique_to_clean.append(backup)
+
+        if not unique_to_clean:
+            print(f"No backups match cleanup criteria for host '{host}'")
+            return EXIT_SUCCESS
+
+        if dry_run:
+            print(
+                f"[DRY RUN] Would clean {len(unique_to_clean)} backup(s) for host '{host}':"
+            )
+            for backup in unique_to_clean:
+                print(
+                    f"[DRY RUN]   {backup.file_path.name} (age: {backup.age_days} days)"
+                )
+            return EXIT_SUCCESS
+
+        # Confirm operation unless auto-approved
+        if not request_confirmation(
+            f"Clean {len(unique_to_clean)} backup(s) for host '{host}'?", auto_approve
+        ):
+            print("Operation cancelled.")
+            return EXIT_SUCCESS
+
+        # Perform cleanup
+        filters = {}
+        if older_than_days:
+            filters["older_than_days"] = older_than_days
+        if keep_count:
+            filters["keep_count"] = keep_count
+
+        cleaned_count = backup_manager.clean_backups(host, **filters)
+
+        if cleaned_count > 0:
+            print(f"✓ Successfully cleaned {cleaned_count} backup(s) for host '{host}'")
+            return EXIT_SUCCESS
+        else:
+            print(f"No backups were cleaned for host '{host}'")
+            return EXIT_SUCCESS
+
+    except Exception as e:
+        print(f"Error cleaning backups: {e}")
+        return EXIT_ERROR

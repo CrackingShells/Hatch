@@ -49,6 +49,9 @@ from hatch.cli.cli_mcp import (
     handle_mcp_discover_servers as _handle_mcp_discover_servers,
     handle_mcp_list_hosts as _handle_mcp_list_hosts,
     handle_mcp_list_servers as _handle_mcp_list_servers,
+    handle_mcp_backup_restore as _handle_mcp_backup_restore,
+    handle_mcp_backup_list as _handle_mcp_backup_list,
+    handle_mcp_backup_clean as _handle_mcp_backup_clean,
 )
 
 
@@ -112,133 +115,31 @@ def handle_mcp_backup_restore(
     dry_run: bool = False,
     auto_approve: bool = False,
 ):
-    """Handle 'hatch mcp backup restore' command."""
-    try:
-        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
-
-        # Validate host type
-        try:
-            host_type = MCPHostType(host)
-        except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
-            return 1
-
-        backup_manager = MCPHostConfigBackupManager()
-
-        # Get backup file path
-        if backup_file:
-            backup_path = backup_manager.backup_root / host / backup_file
-            if not backup_path.exists():
-                print(f"Error: Backup file '{backup_file}' not found for host '{host}'")
-                return 1
-        else:
-            backup_path = backup_manager._get_latest_backup(host)
-            if not backup_path:
-                print(f"Error: No backups found for host '{host}'")
-                return 1
-            backup_file = backup_path.name
-
-        if dry_run:
-            print(f"[DRY RUN] Would restore backup for host '{host}':")
-            print(f"[DRY RUN] Backup file: {backup_file}")
-            print(f"[DRY RUN] Backup path: {backup_path}")
-            return 0
-
-        # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Restore backup '{backup_file}' for host '{host}'? This will overwrite current configuration.",
-            auto_approve,
-        ):
-            print("Operation cancelled.")
-            return 0
-
-        # Perform restoration
-        success = backup_manager.restore_backup(host, backup_file)
-
-        if success:
-            print(
-                f"[SUCCESS] Successfully restored backup '{backup_file}' for host '{host}'"
-            )
-
-            # Read restored configuration to get actual server list
-            try:
-                # Import strategies to trigger registration
-                import hatch.mcp_host_config.strategies
-
-                host_type = MCPHostType(host)
-                strategy = MCPHostRegistry.get_strategy(host_type)
-                restored_config = strategy.read_configuration()
-
-                # Update environment tracking to match restored state
-                updates_count = (
-                    env_manager.apply_restored_host_configuration_to_environments(
-                        host, restored_config.servers
-                    )
-                )
-                if updates_count > 0:
-                    print(
-                        f"Synchronized {updates_count} package entries with restored configuration"
-                    )
-
-            except Exception as e:
-                print(f"Warning: Could not synchronize environment tracking: {e}")
-
-            return 0
-        else:
-            print(f"[ERROR] Failed to restore backup '{backup_file}' for host '{host}'")
-            return 1
-
-    except Exception as e:
-        print(f"Error restoring backup: {e}")
-        return 1
+    """Handle 'hatch mcp backup restore' command.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_backup_restore.
+    This wrapper maintains backward compatibility during refactoring.
+    """
+    from argparse import Namespace
+    args = Namespace(
+        env_manager=env_manager,
+        host=host,
+        backup_file=backup_file,
+        dry_run=dry_run,
+        auto_approve=auto_approve
+    )
+    return _handle_mcp_backup_restore(args)
 
 
 def handle_mcp_backup_list(host: str, detailed: bool = False):
-    """Handle 'hatch mcp backup list' command."""
-    try:
-        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
-
-        # Validate host type
-        try:
-            host_type = MCPHostType(host)
-        except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
-            return 1
-
-        backup_manager = MCPHostConfigBackupManager()
-        backups = backup_manager.list_backups(host)
-
-        if not backups:
-            print(f"No backups found for host '{host}'")
-            return 0
-
-        print(f"Backups for host '{host}' ({len(backups)} found):")
-
-        if detailed:
-            print(f"{'Backup File':<40} {'Created':<20} {'Size':<10} {'Age (days)'}")
-            print("-" * 80)
-
-            for backup in backups:
-                created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                size = f"{backup.file_size:,} B"
-                age = backup.age_days
-
-                print(f"{backup.file_path.name:<40} {created:<20} {size:<10} {age}")
-        else:
-            for backup in backups:
-                created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                print(
-                    f"  {backup.file_path.name} (created: {created}, {backup.age_days} days ago)"
-                )
-
-        return 0
-    except Exception as e:
-        print(f"Error listing backups: {e}")
-        return 1
+    """Handle 'hatch mcp backup list' command.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_backup_list.
+    This wrapper maintains backward compatibility during refactoring.
+    """
+    from argparse import Namespace
+    args = Namespace(host=host, detailed=detailed)
+    return _handle_mcp_backup_list(args)
 
 
 def handle_mcp_backup_clean(
@@ -248,91 +149,20 @@ def handle_mcp_backup_clean(
     dry_run: bool = False,
     auto_approve: bool = False,
 ):
-    """Handle 'hatch mcp backup clean' command."""
-    try:
-        from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
-
-        # Validate host type
-        try:
-            host_type = MCPHostType(host)
-        except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
-            return 1
-
-        # Validate cleanup criteria
-        if not older_than_days and not keep_count:
-            print("Error: Must specify either --older-than-days or --keep-count")
-            return 1
-
-        backup_manager = MCPHostConfigBackupManager()
-        backups = backup_manager.list_backups(host)
-
-        if not backups:
-            print(f"No backups found for host '{host}'")
-            return 0
-
-        # Determine which backups would be cleaned
-        to_clean = []
-
-        if older_than_days:
-            for backup in backups:
-                if backup.age_days > older_than_days:
-                    to_clean.append(backup)
-
-        if keep_count and len(backups) > keep_count:
-            # Keep newest backups, remove oldest
-            to_clean.extend(backups[keep_count:])
-
-        # Remove duplicates while preserving order
-        seen = set()
-        unique_to_clean = []
-        for backup in to_clean:
-            if backup.file_path not in seen:
-                seen.add(backup.file_path)
-                unique_to_clean.append(backup)
-
-        if not unique_to_clean:
-            print(f"No backups match cleanup criteria for host '{host}'")
-            return 0
-
-        if dry_run:
-            print(
-                f"[DRY RUN] Would clean {len(unique_to_clean)} backup(s) for host '{host}':"
-            )
-            for backup in unique_to_clean:
-                print(
-                    f"[DRY RUN]   {backup.file_path.name} (age: {backup.age_days} days)"
-                )
-            return 0
-
-        # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Clean {len(unique_to_clean)} backup(s) for host '{host}'?", auto_approve
-        ):
-            print("Operation cancelled.")
-            return 0
-
-        # Perform cleanup
-        filters = {}
-        if older_than_days:
-            filters["older_than_days"] = older_than_days
-        if keep_count:
-            filters["keep_count"] = keep_count
-
-        cleaned_count = backup_manager.clean_backups(host, **filters)
-
-        if cleaned_count > 0:
-            print(f"✓ Successfully cleaned {cleaned_count} backup(s) for host '{host}'")
-            return 0
-        else:
-            print(f"No backups were cleaned for host '{host}'")
-            return 0
-
-    except Exception as e:
-        print(f"Error cleaning backups: {e}")
-        return 1
+    """Handle 'hatch mcp backup clean' command.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_backup_clean.
+    This wrapper maintains backward compatibility during refactoring.
+    """
+    from argparse import Namespace
+    args = Namespace(
+        host=host,
+        older_than_days=older_than_days,
+        keep_count=keep_count,
+        dry_run=dry_run,
+        auto_approve=auto_approve
+    )
+    return _handle_mcp_backup_clean(args)
 
 
 def handle_mcp_configure(
