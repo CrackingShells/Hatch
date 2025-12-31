@@ -13,9 +13,40 @@ The main entry point is the `main()` function which sets up argument parsing
 and routes commands to appropriate handlers.
 """
 
-# Import main entry point from cli_hatch for now (will be moved in M1.7)
-from hatch.cli_hatch import main
+# Export utilities from cli_utils (no circular import issues)
+from hatch.cli.cli_utils import (
+    EXIT_SUCCESS,
+    EXIT_ERROR,
+    get_hatch_version,
+    request_confirmation,
+    parse_env_vars,
+    parse_header,
+    parse_input,
+    parse_host_list,
+    get_package_mcp_server_config,
+)
+
+
+def main():
+    """Main entry point - delegates to cli_hatch.main() for now.
+    
+    This indirection avoids circular imports while maintaining the
+    hatch.cli.main() interface. Will be replaced with direct implementation
+    in Task M1.7.
+    """
+    from hatch.cli_hatch import main as _main
+    return _main()
+
 
 __all__ = [
     'main',
+    'EXIT_SUCCESS',
+    'EXIT_ERROR',
+    'get_hatch_version',
+    'request_confirmation',
+    'parse_env_vars',
+    'parse_header',
+    'parse_input',
+    'parse_host_list',
+    'get_package_mcp_server_config',
 ]

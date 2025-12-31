@@ -12,7 +12,6 @@ import json
 import logging
 import shlex
 import sys
-from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import List, Optional
 
@@ -31,128 +30,19 @@ from hatch.mcp_host_config.reporting import display_report, generate_conversion_
 from hatch.template_generator import create_package_template
 
 
-def get_hatch_version() -> str:
-    """Get Hatch version from package metadata.
+# Import get_hatch_version from cli_utils (extracted in M1.2.1)
+from hatch.cli.cli_utils import get_hatch_version
 
-    Returns:
-        str: Version string from package metadata, or 'unknown (development mode)'
-             if package is not installed.
-    """
-    try:
-        return version("hatch")
-    except PackageNotFoundError:
-        return "unknown (development mode)"
+# Import user interaction and parsing utilities from cli_utils (extracted in M1.2.3)
+from hatch.cli.cli_utils import (
+    request_confirmation,
+    parse_env_vars,
+    parse_header,
+    parse_input,
+    parse_host_list,
+    get_package_mcp_server_config,
+)
 
-
-def parse_host_list(host_arg: str):
-    """Parse comma-separated host list or 'all'."""
-    if not host_arg:
-        return []
-
-    if host_arg.lower() == "all":
-        return MCPHostRegistry.detect_available_hosts()
-
-    hosts = []
-    for host_str in host_arg.split(","):
-        host_str = host_str.strip()
-        try:
-            host_type = MCPHostType(host_str)
-            hosts.append(host_type)
-        except ValueError:
-            available = [h.value for h in MCPHostType]
-            raise ValueError(f"Unknown host '{host_str}'. Available: {available}")
-
-    return hosts
-
-
-def request_confirmation(message: str, auto_approve: bool = False) -> bool:
-    """Request user confirmation with non-TTY support following Hatch patterns."""
-    import os
-    import sys
-
-    # Check for auto-approve first
-    if auto_approve or os.getenv("HATCH_AUTO_APPROVE", "").lower() in (
-        "1",
-        "true",
-        "yes",
-    ):
-        return True
-
-    # Interactive mode - request user input (works in both TTY and test environments)
-    try:
-        while True:
-            response = input(f"{message} [y/N]: ").strip().lower()
-            if response in ["y", "yes"]:
-                return True
-            elif response in ["n", "no", ""]:
-                return False
-            else:
-                print("Please enter 'y' for yes or 'n' for no.")
-    except (EOFError, KeyboardInterrupt):
-        # Only auto-approve on EOF/interrupt if not in TTY (non-interactive environment)
-        if not sys.stdin.isatty():
-            return True
-        return False
-
-
-def get_package_mcp_server_config(
-    env_manager: HatchEnvironmentManager, env_name: str, package_name: str
-) -> MCPServerConfig:
-    """Get MCP server configuration for a package using existing APIs."""
-    try:
-        # Get package info from environment
-        packages = env_manager.list_packages(env_name)
-        package_info = next(
-            (pkg for pkg in packages if pkg["name"] == package_name), None
-        )
-
-        if not package_info:
-            raise ValueError(
-                f"Package '{package_name}' not found in environment '{env_name}'"
-            )
-
-        # Load package metadata using existing pattern from environment_manager.py:716-727
-        package_path = Path(package_info["source"]["path"])
-        metadata_path = package_path / "hatch_metadata.json"
-
-        if not metadata_path.exists():
-            raise ValueError(
-                f"Package '{package_name}' is not a Hatch package (no hatch_metadata.json)"
-            )
-
-        with open(metadata_path, "r") as f:
-            metadata = json.load(f)
-
-        # Use PackageService for schema-aware access
-        from hatch_validator.package.package_service import PackageService
-
-        package_service = PackageService(metadata)
-
-        # Get the HatchMCP entry point (this handles both v1.2.0 and v1.2.1 schemas)
-        mcp_entry_point = package_service.get_mcp_entry_point()
-        if not mcp_entry_point:
-            raise ValueError(
-                f"Package '{package_name}' does not have a HatchMCP entry point"
-            )
-
-        # Get environment-specific Python executable
-        python_executable = env_manager.get_current_python_executable()
-        if not python_executable:
-            # Fallback to system Python if no environment-specific Python available
-            python_executable = "python"
-
-        # Create server configuration
-        server_path = str(package_path / mcp_entry_point)
-        server_config = MCPServerConfig(
-            name=package_name, command=python_executable, args=[server_path], env={}
-        )
-
-        return server_config
-
-    except Exception as e:
-        raise ValueError(
-            f"Failed to get MCP server config for package '{package_name}': {e}"
-        )
 
 
 def handle_mcp_discover_hosts():
@@ -631,72 +521,6 @@ def handle_mcp_backup_clean(
         return 1
 
 
-def parse_env_vars(env_list: Optional[list]) -> dict:
-    """Parse environment variables from command line format."""
-    if not env_list:
-        return {}
-
-    env_dict = {}
-    for env_var in env_list:
-        if "=" not in env_var:
-            print(
-                f"Warning: Invalid environment variable format '{env_var}'. Expected KEY=VALUE"
-            )
-            continue
-        key, value = env_var.split("=", 1)
-        env_dict[key.strip()] = value.strip()
-
-    return env_dict
-
-
-def parse_header(header_list: Optional[list]) -> dict:
-    """Parse HTTP headers from command line format."""
-    if not header_list:
-        return {}
-
-    headers_dict = {}
-    for header in header_list:
-        if "=" not in header:
-            print(f"Warning: Invalid header format '{header}'. Expected KEY=VALUE")
-            continue
-        key, value = header.split("=", 1)
-        headers_dict[key.strip()] = value.strip()
-
-    return headers_dict
-
-
-def parse_input(input_list: Optional[list]) -> Optional[list]:
-    """Parse VS Code input variable definitions from command line format.
-
-    Format: type,id,description[,password=true]
-    Example: promptString,api-key,GitHub Personal Access Token,password=true
-
-    Returns:
-        List of input variable definition dictionaries, or None if no inputs provided.
-    """
-    if not input_list:
-        return None
-
-    parsed_inputs = []
-    for input_str in input_list:
-        parts = [p.strip() for p in input_str.split(",")]
-        if len(parts) < 3:
-            print(
-                f"Warning: Invalid input format '{input_str}'. Expected: type,id,description[,password=true]"
-            )
-            continue
-
-        input_def = {"type": parts[0], "id": parts[1], "description": parts[2]}
-
-        # Check for optional password flag
-        if len(parts) > 3 and parts[3].lower() == "password=true":
-            input_def["password"] = True
-
-        parsed_inputs.append(input_def)
-
-    return parsed_inputs if parsed_inputs else None
-
-
 def handle_mcp_configure(
     host: str,
     server_name: str,
@@ -1027,30 +851,6 @@ def handle_mcp_remove(
     except Exception as e:
         print(f"Error removing MCP server: {e}")
         return 1
-
-
-def parse_host_list(host_arg: str) -> List[str]:
-    """Parse comma-separated host list or 'all'."""
-    if not host_arg:
-        return []
-
-    if host_arg.lower() == "all":
-        from hatch.mcp_host_config.host_management import MCPHostRegistry
-
-        available_hosts = MCPHostRegistry.detect_available_hosts()
-        return [host.value for host in available_hosts]
-
-    hosts = []
-    for host_str in host_arg.split(","):
-        host_str = host_str.strip()
-        try:
-            host_type = MCPHostType(host_str)
-            hosts.append(host_type.value)
-        except ValueError:
-            available = [h.value for h in MCPHostType]
-            raise ValueError(f"Unknown host '{host_str}'. Available: {available}")
-
-    return hosts
 
 
 def handle_mcp_remove_server(
