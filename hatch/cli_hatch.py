@@ -52,6 +52,7 @@ from hatch.cli.cli_mcp import (
     handle_mcp_backup_restore as _handle_mcp_backup_restore,
     handle_mcp_backup_list as _handle_mcp_backup_list,
     handle_mcp_backup_clean as _handle_mcp_backup_clean,
+    handle_mcp_configure as _handle_mcp_configure,
 )
 
 
@@ -195,250 +196,41 @@ def handle_mcp_configure(
     auto_approve: bool = False,
 ):
     """Handle 'hatch mcp configure' command with ALL host-specific arguments.
-
-    Host-specific arguments are accepted for all hosts. The reporting system will
-    show unsupported fields as "UNSUPPORTED" in the conversion report rather than
-    rejecting them upfront.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_configure.
+    This wrapper maintains backward compatibility during refactoring.
     """
-    try:
-        # Validate host type
-        try:
-            host_type = MCPHostType(host)
-        except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
-            return 1
-
-        # Validate Claude Desktop/Code transport restrictions (Issue 2)
-        if host_type in (MCPHostType.CLAUDE_DESKTOP, MCPHostType.CLAUDE_CODE):
-            if url is not None:
-                print(
-                    f"Error: {host} does not support remote servers (--url). Only local servers with --command are supported."
-                )
-                return 1
-
-        # Validate argument dependencies
-        if command and header:
-            print(
-                "Error: --header can only be used with --url or --http-url (remote servers), not with --command (local servers)"
-            )
-            return 1
-
-        if (url or http_url) and args:
-            print(
-                "Error: --args can only be used with --command (local servers), not with --url or --http-url (remote servers)"
-            )
-            return 1
-
-        # NOTE: We do NOT validate host-specific arguments here.
-        # The reporting system will show unsupported fields as "UNSUPPORTED" in the conversion report.
-        # This allows users to see which fields are not supported by their target host without blocking the operation.
-
-        # Check if server exists (for partial update support)
-        manager = MCPHostConfigurationManager()
-        existing_config = manager.get_server_config(host, server_name)
-        is_update = existing_config is not None
-
-        # Conditional validation: Create requires command OR url OR http_url, update does not
-        if not is_update:
-            # Create operation: require command, url, or http_url
-            if not command and not url and not http_url:
-                print(
-                    f"Error: When creating a new server, you must provide either --command (for local servers), --url (for SSE remote servers), or --http-url (for HTTP remote servers, Gemini only)"
-                )
-                return 1
-
-        # Parse environment variables, headers, and inputs
-        env_dict = parse_env_vars(env)
-        headers_dict = parse_header(header)
-        inputs_list = parse_input(input)
-
-        # Create Omni configuration (universal model)
-        # Only include fields that have actual values to ensure model_dump(exclude_unset=True) works correctly
-        omni_config_data = {"name": server_name}
-
-        if command is not None:
-            omni_config_data["command"] = command
-        if args is not None:
-            # Process args with shlex.split() to handle quoted strings (Issue 4)
-            processed_args = []
-            for arg in args:
-                if arg:  # Skip empty strings
-                    try:
-                        # Split quoted strings into individual arguments
-                        split_args = shlex.split(arg)
-                        processed_args.extend(split_args)
-                    except ValueError as e:
-                        # Handle invalid quotes gracefully
-                        print(f"Warning: Invalid quote in argument '{arg}': {e}")
-                        processed_args.append(arg)
-            omni_config_data["args"] = processed_args if processed_args else None
-        if env_dict:
-            omni_config_data["env"] = env_dict
-        if url is not None:
-            omni_config_data["url"] = url
-        if headers_dict:
-            omni_config_data["headers"] = headers_dict
-
-        # Host-specific fields (Gemini)
-        if timeout is not None:
-            omni_config_data["timeout"] = timeout
-        if trust:
-            omni_config_data["trust"] = trust
-        if cwd is not None:
-            omni_config_data["cwd"] = cwd
-        if http_url is not None:
-            omni_config_data["httpUrl"] = http_url
-        if include_tools is not None:
-            omni_config_data["includeTools"] = include_tools
-        if exclude_tools is not None:
-            omni_config_data["excludeTools"] = exclude_tools
-
-        # Host-specific fields (Cursor/VS Code/LM Studio)
-        if env_file is not None:
-            omni_config_data["envFile"] = env_file
-
-        # Host-specific fields (VS Code)
-        if inputs_list is not None:
-            omni_config_data["inputs"] = inputs_list
-
-        # Host-specific fields (Kiro)
-        if disabled is not None:
-            omni_config_data["disabled"] = disabled
-        if auto_approve_tools is not None:
-            omni_config_data["autoApprove"] = auto_approve_tools
-        if disable_tools is not None:
-            omni_config_data["disabledTools"] = disable_tools
-
-        # Host-specific fields (Codex)
-        if env_vars is not None:
-            omni_config_data["env_vars"] = env_vars
-        if startup_timeout is not None:
-            omni_config_data["startup_timeout_sec"] = startup_timeout
-        if tool_timeout is not None:
-            omni_config_data["tool_timeout_sec"] = tool_timeout
-        if enabled is not None:
-            omni_config_data["enabled"] = enabled
-        if bearer_token_env_var is not None:
-            omni_config_data["bearer_token_env_var"] = bearer_token_env_var
-        if env_header is not None:
-            # Parse KEY=ENV_VAR_NAME format into dict
-            env_http_headers = {}
-            for header_spec in env_header:
-                if '=' in header_spec:
-                    key, env_var_name = header_spec.split('=', 1)
-                    env_http_headers[key] = env_var_name
-            if env_http_headers:
-                omni_config_data["env_http_headers"] = env_http_headers
-
-        # Partial update merge logic
-        if is_update:
-            # Merge with existing configuration
-            existing_data = existing_config.model_dump(
-                exclude_unset=True, exclude={"name"}
-            )
-
-            # Handle command/URL/httpUrl switching behavior
-            # If switching from command to URL or httpUrl: clear command-based fields
-            if (
-                url is not None or http_url is not None
-            ) and existing_config.command is not None:
-                existing_data.pop("command", None)
-                existing_data.pop("args", None)
-                existing_data.pop(
-                    "type", None
-                )  # Clear type field when switching transports (Issue 1)
-
-            # If switching from URL/httpUrl to command: clear URL-based fields
-            if command is not None and (
-                existing_config.url is not None
-                or getattr(existing_config, "httpUrl", None) is not None
-            ):
-                existing_data.pop("url", None)
-                existing_data.pop("httpUrl", None)
-                existing_data.pop("headers", None)
-                existing_data.pop(
-                    "type", None
-                )  # Clear type field when switching transports (Issue 1)
-
-            # Merge: new values override existing values
-            merged_data = {**existing_data, **omni_config_data}
-            omni_config_data = merged_data
-
-        # Create Omni model
-        omni_config = MCPServerConfigOmni(**omni_config_data)
-
-        # Convert to host-specific model using HOST_MODEL_REGISTRY
-        host_model_class = HOST_MODEL_REGISTRY.get(host_type)
-        if not host_model_class:
-            print(f"Error: No model registered for host '{host}'")
-            return 1
-
-        # Convert Omni to host-specific model
-        server_config = host_model_class.from_omni(omni_config)
-
-        # Generate conversion report
-        report = generate_conversion_report(
-            operation="update" if is_update else "create",
-            server_name=server_name,
-            target_host=host_type,
-            omni=omni_config,
-            old_config=existing_config if is_update else None,
-            dry_run=dry_run,
-        )
-
-        # Display conversion report
-        if dry_run:
-            print(
-                f"[DRY RUN] Would configure MCP server '{server_name}' on host '{host}':"
-            )
-            print(f"[DRY RUN] Command: {command}")
-            if args:
-                print(f"[DRY RUN] Args: {args}")
-            if env_dict:
-                print(f"[DRY RUN] Environment: {env_dict}")
-            if url:
-                print(f"[DRY RUN] URL: {url}")
-            if headers_dict:
-                print(f"[DRY RUN] Headers: {headers_dict}")
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
-            # Display report in dry-run mode
-            display_report(report)
-            return 0
-
-        # Display report before confirmation
-        display_report(report)
-
-        # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Configure MCP server '{server_name}' on host '{host}'?", auto_approve
-        ):
-            print("Operation cancelled.")
-            return 0
-
-        # Perform configuration
-        mcp_manager = MCPHostConfigurationManager()
-        result = mcp_manager.configure_server(
-            server_config=server_config, hostname=host, no_backup=no_backup
-        )
-
-        if result.success:
-            print(
-                f"[SUCCESS] Successfully configured MCP server '{server_name}' on host '{host}'"
-            )
-            if result.backup_path:
-                print(f"  Backup created: {result.backup_path}")
-            return 0
-        else:
-            print(
-                f"[ERROR] Failed to configure MCP server '{server_name}' on host '{host}': {result.error_message}"
-            )
-            return 1
-
-    except Exception as e:
-        print(f"Error configuring MCP server: {e}")
-        return 1
+    from argparse import Namespace
+    ns_args = Namespace(
+        host=host,
+        server_name=server_name,
+        server_command=command,
+        args=args,
+        env_var=env,
+        url=url,
+        header=header,
+        timeout=timeout,
+        trust=trust,
+        cwd=cwd,
+        env_file=env_file,
+        http_url=http_url,
+        include_tools=include_tools,
+        exclude_tools=exclude_tools,
+        input=input,
+        disabled=disabled,
+        auto_approve_tools=auto_approve_tools,
+        disable_tools=disable_tools,
+        env_vars=env_vars,
+        startup_timeout=startup_timeout,
+        tool_timeout=tool_timeout,
+        enabled=enabled,
+        bearer_token_env_var=bearer_token_env_var,
+        env_header=env_header,
+        no_backup=no_backup,
+        dry_run=dry_run,
+        auto_approve=auto_approve
+    )
+    return _handle_mcp_configure(ns_args)
 
 
 def handle_mcp_remove(
