@@ -11,7 +11,8 @@ import unittest
 from unittest.mock import patch, MagicMock
 from io import StringIO
 
-from hatch.cli_hatch import handle_mcp_configure, parse_input
+from hatch.cli_hatch import handle_mcp_configure
+from hatch.cli.cli_utils import parse_input
 from hatch.mcp_host_config import MCPHostType
 from hatch.mcp_host_config.models import (
     MCPServerConfigGemini, MCPServerConfigCursor, MCPServerConfigVSCode,
@@ -22,9 +23,9 @@ from hatch.mcp_host_config.models import (
 class TestAllGeminiArguments(unittest.TestCase):
     """Test ALL Gemini-specific CLI arguments."""
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_all_gemini_arguments_accepted(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_all_gemini_arguments_accepted(self, mock_print, mock_manager_class):
         """Test that all Gemini arguments are accepted and passed to model."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -65,9 +66,9 @@ class TestAllGeminiArguments(unittest.TestCase):
 class TestUnsupportedFieldReporting(unittest.TestCase):
     """Test that unsupported fields are reported correctly, not rejected."""
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_gemini_args_on_vscode_show_unsupported(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_gemini_args_on_vscode_show_unsupported(self, mock_print, mock_manager_class):
         """Test that Gemini-specific args on VS Code show as UNSUPPORTED."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -90,15 +91,16 @@ class TestUnsupportedFieldReporting(unittest.TestCase):
         # Should succeed (not return error code 1)
         self.assertEqual(result, 0)
         
-        # Check that output contains "UNSUPPORTED" for Gemini fields
-        output = mock_stdout.getvalue()
+        # Check that print was called with "UNSUPPORTED" for Gemini fields
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        output = ' '.join(print_calls)
         self.assertIn('UNSUPPORTED', output)
         self.assertIn('timeout', output)
         self.assertIn('trust', output)
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_vscode_inputs_on_gemini_show_unsupported(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_vscode_inputs_on_gemini_show_unsupported(self, mock_print, mock_manager_class):
         """Test that VS Code inputs on Gemini show as UNSUPPORTED."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -120,8 +122,9 @@ class TestUnsupportedFieldReporting(unittest.TestCase):
         # Should succeed (not return error code 1)
         self.assertEqual(result, 0)
         
-        # Check that output contains "UNSUPPORTED" for inputs field
-        output = mock_stdout.getvalue()
+        # Check that print was called with "UNSUPPORTED" for inputs field
+        print_calls = [str(call) for call in mock_print.call_args_list]
+        output = ' '.join(print_calls)
         self.assertIn('UNSUPPORTED', output)
         self.assertIn('inputs', output)
 
@@ -175,8 +178,9 @@ class TestVSCodeInputsParsing(unittest.TestCase):
 class TestVSCodeInputsIntegration(unittest.TestCase):
     """Test VS Code inputs integration with configure command."""
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    def test_vscode_inputs_passed_to_model(self, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_vscode_inputs_passed_to_model(self, mock_print, mock_manager_class):
         """Test that parsed inputs are passed to VS Code model."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -209,8 +213,9 @@ class TestVSCodeInputsIntegration(unittest.TestCase):
 class TestHttpUrlArgument(unittest.TestCase):
     """Test --http-url argument for Gemini."""
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    def test_http_url_passed_to_gemini(self, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_http_url_passed_to_gemini(self, mock_print, mock_manager_class):
         """Test that httpUrl is passed to Gemini model."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -241,8 +246,9 @@ class TestHttpUrlArgument(unittest.TestCase):
 class TestToolFilteringArguments(unittest.TestCase):
     """Test --include-tools and --exclude-tools arguments for Gemini."""
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    def test_include_tools_passed_to_gemini(self, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_include_tools_passed_to_gemini(self, mock_print, mock_manager_class):
         """Test that includeTools is passed to Gemini model."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -269,8 +275,9 @@ class TestToolFilteringArguments(unittest.TestCase):
         self.assertIsInstance(server_config, MCPServerConfigGemini)
         self.assertEqual(server_config.includeTools, ['tool1', 'tool2', 'tool3'])
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    def test_exclude_tools_passed_to_gemini(self, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_exclude_tools_passed_to_gemini(self, mock_print, mock_manager_class):
         """Test that excludeTools is passed to Gemini model."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -301,9 +308,9 @@ class TestToolFilteringArguments(unittest.TestCase):
 class TestAllCodexArguments(unittest.TestCase):
     """Test ALL Codex-specific CLI arguments."""
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_all_codex_arguments_accepted(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_all_codex_arguments_accepted(self, mock_print, mock_manager_class):
         """Test that all Codex arguments are accepted and passed to model."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -349,9 +356,9 @@ class TestAllCodexArguments(unittest.TestCase):
         self.assertEqual(server_config.enabled_tools, ['read', 'write'])
         self.assertEqual(server_config.disabled_tools, ['delete'])
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_codex_env_vars_list(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_codex_env_vars_list(self, mock_print, mock_manager_class):
         """Test that env_vars accepts multiple values as a list."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -375,9 +382,9 @@ class TestAllCodexArguments(unittest.TestCase):
         server_config = call_args.kwargs['server_config']
         self.assertEqual(server_config.env_vars, ['PATH', 'HOME', 'USER'])
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_codex_env_header_parsing(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_codex_env_header_parsing(self, mock_print, mock_manager_class):
         """Test that env_header parses KEY=ENV_VAR format correctly."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -404,9 +411,9 @@ class TestAllCodexArguments(unittest.TestCase):
             'Authorization': 'AUTH_TOKEN'
         })
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_codex_timeout_fields(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_codex_timeout_fields(self, mock_print, mock_manager_class):
         """Test that timeout fields are passed as integers."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -432,9 +439,9 @@ class TestAllCodexArguments(unittest.TestCase):
         self.assertEqual(server_config.startup_timeout_sec, 30)
         self.assertEqual(server_config.tool_timeout_sec, 180)
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_codex_enabled_flag(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_codex_enabled_flag(self, mock_print, mock_manager_class):
         """Test that enabled flag works as boolean."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
@@ -458,9 +465,9 @@ class TestAllCodexArguments(unittest.TestCase):
         server_config = call_args.kwargs['server_config']
         self.assertTrue(server_config.enabled)
 
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
-    @patch('sys.stdout', new_callable=StringIO)
-    def test_codex_reuses_shared_arguments(self, mock_stdout, mock_manager_class):
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
+    @patch('builtins.print')
+    def test_codex_reuses_shared_arguments(self, mock_print, mock_manager_class):
         """Test that Codex reuses shared arguments (cwd, include-tools, exclude-tools)."""
         mock_manager = MagicMock()
         mock_manager_class.return_value = mock_manager
