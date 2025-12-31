@@ -20,7 +20,8 @@ from io import StringIO
 # Add parent directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from hatch.cli_hatch import main, get_hatch_version
+from hatch.cli_hatch import main
+from hatch.cli.cli_utils import get_hatch_version
 
 try:
     from wobble.decorators import regression_test, integration_test
@@ -41,7 +42,7 @@ class TestVersionCommand(unittest.TestCase):
     @regression_test
     def test_get_hatch_version_retrieves_from_metadata(self):
         """Test get_hatch_version() retrieves version from importlib.metadata."""
-        with patch('hatch.cli_hatch.version', return_value='0.7.0-dev.3') as mock_version:
+        with patch('hatch.cli.cli_utils.version', return_value='0.7.0-dev.3') as mock_version:
             result = get_hatch_version()
 
             self.assertEqual(result, '0.7.0-dev.3')
@@ -52,7 +53,7 @@ class TestVersionCommand(unittest.TestCase):
         """Test get_hatch_version() handles PackageNotFoundError gracefully."""
         from importlib.metadata import PackageNotFoundError
 
-        with patch('hatch.cli_hatch.version', side_effect=PackageNotFoundError()):
+        with patch('hatch.cli.cli_utils.version', side_effect=PackageNotFoundError()):
             result = get_hatch_version()
 
             self.assertEqual(result, 'unknown (development mode)')
@@ -63,6 +64,7 @@ class TestVersionCommand(unittest.TestCase):
         test_args = ['hatch', '--version']
         
         with patch('sys.argv', test_args):
+            # Patch at point of use in cli_hatch (imported from cli_utils)
             with patch('hatch.cli_hatch.get_hatch_version', return_value='0.7.0-dev.3'):
                 with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
                     with self.assertRaises(SystemExit) as cm:

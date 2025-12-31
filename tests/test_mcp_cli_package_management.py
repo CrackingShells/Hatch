@@ -27,7 +27,7 @@ except ImportError:
         return decorator
 
 
-from hatch.cli_hatch import (
+from hatch.cli.cli_utils import (
     get_package_mcp_server_config,
     parse_host_list,
     request_confirmation,
@@ -42,14 +42,16 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
     def test_parse_host_list_comma_separated(self):
         """Test parsing comma-separated host list."""
         hosts = parse_host_list("claude-desktop,cursor,vscode")
-        expected = [MCPHostType.CLAUDE_DESKTOP, MCPHostType.CURSOR, MCPHostType.VSCODE]
+        # parse_host_list now returns List[str] instead of List[MCPHostType]
+        expected = ["claude-desktop", "cursor", "vscode"]
         self.assertEqual(hosts, expected)
 
     @regression_test
     def test_parse_host_list_single_host(self):
         """Test parsing single host."""
         hosts = parse_host_list("claude-desktop")
-        expected = [MCPHostType.CLAUDE_DESKTOP]
+        # parse_host_list now returns List[str] instead of List[MCPHostType]
+        expected = ["claude-desktop"]
         self.assertEqual(hosts, expected)
 
     @regression_test
@@ -68,11 +70,12 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
     def test_parse_host_list_all(self):
         """Test parsing 'all' host list."""
         with patch(
-            "hatch.cli_hatch.MCPHostRegistry.detect_available_hosts"
+            "hatch.cli.cli_utils.MCPHostRegistry.detect_available_hosts"
         ) as mock_detect:
             mock_detect.return_value = [MCPHostType.CLAUDE_DESKTOP, MCPHostType.CURSOR]
             hosts = parse_host_list("all")
-            expected = [MCPHostType.CLAUDE_DESKTOP, MCPHostType.CURSOR]
+            # parse_host_list now returns List[str] instead of List[MCPHostType]
+            expected = ["claude-desktop", "cursor"]
             self.assertEqual(hosts, expected)
             mock_detect.assert_called_once()
 
@@ -97,7 +100,8 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
     def test_parse_host_list_whitespace_handling(self):
         """Test parsing host list with whitespace."""
         hosts = parse_host_list(" claude-desktop , cursor , vscode ")
-        expected = [MCPHostType.CLAUDE_DESKTOP, MCPHostType.CURSOR, MCPHostType.VSCODE]
+        # parse_host_list now returns List[str] instead of List[MCPHostType]
+        expected = ["claude-desktop", "cursor", "vscode"]
         self.assertEqual(hosts, expected)
 
     @regression_test
@@ -205,7 +209,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
             mock_args.no_backup = False
             mock_parse.return_value = mock_args
 
-            # Mock the get_package_mcp_server_config function
+            # Mock the get_package_mcp_server_config function (now in cli_utils, imported into cli_hatch)
             with patch(
                 "hatch.cli_hatch.get_package_mcp_server_config"
             ) as mock_get_config:
@@ -294,7 +298,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
         mock_env_manager.get_current_python_executable.return_value = "/path/to/python"
 
         # Mock file system and metadata
-        with patch("pathlib.Path.exists", return_value=True):
+        with patch("hatch.cli.cli_utils.Path.exists", return_value=True):
             with patch(
                 "builtins.open",
                 mock_open(
@@ -347,7 +351,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
         ]
 
         # Mock file system - metadata file doesn't exist
-        with patch("pathlib.Path.exists", return_value=False):
+        with patch("hatch.cli.cli_utils.Path.exists", return_value=False):
             with self.assertRaises(ValueError) as context:
                 get_package_mcp_server_config(
                     mock_env_manager, "test-env", "test-package"
