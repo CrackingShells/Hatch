@@ -103,13 +103,13 @@ class TestPartialUpdateValidation(unittest.TestCase):
             timeout=30
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Update only timeout (use Gemini which supports timeout)
                 result = handle_mcp_configure(
                     host="gemini",
@@ -157,13 +157,13 @@ class TestPartialUpdateValidation(unittest.TestCase):
             env={"API_KEY": "old_key"}
         )
         
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
             
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Update only env vars
                 result = handle_mcp_configure(
                     host="claude-desktop",
@@ -203,12 +203,12 @@ class TestPartialUpdateValidation(unittest.TestCase):
     @regression_test
     def test_configure_create_requires_command_or_url(self):
         """Test B4: Create operation requires command or url."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = None  # Server doesn't exist
             
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Create without command or url
                 result = handle_mcp_configure(
                     host="claude-desktop",
@@ -250,13 +250,13 @@ class TestPartialUpdateValidation(unittest.TestCase):
             args=["server.py"]
         )
         
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
             
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Update without command or url
                 result = handle_mcp_configure(
                     host="claude-desktop",
@@ -304,13 +304,13 @@ class TestFieldPreservation(unittest.TestCase):
             timeout=30
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Update only timeout (use Gemini which supports timeout)
                 result = handle_mcp_configure(
                     host="gemini",
@@ -355,13 +355,13 @@ class TestFieldPreservation(unittest.TestCase):
             args=["old.py"]
         )
         
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_cmd_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
             
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Update args without command
                 result = handle_mcp_configure(
                     host="claude-desktop",
@@ -400,13 +400,13 @@ class TestFieldPreservation(unittest.TestCase):
             headers={"Authorization": "Bearer old_token"}
         )
         
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_url_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
             
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Update headers without url
                 result = handle_mcp_configure(
                     host="claude-desktop",
@@ -453,13 +453,13 @@ class TestCommandUrlSwitching(unittest.TestCase):
             env={"API_KEY": "test_key"}
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Switch to URL-based (use gemini which supports URL)
                 result = handle_mcp_configure(
                     host="gemini",
@@ -506,13 +506,13 @@ class TestCommandUrlSwitching(unittest.TestCase):
             headers={"Authorization": "Bearer token"}
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Switch to command-based (use gemini which supports both)
                 result = handle_mcp_configure(
                     host="gemini",
@@ -564,14 +564,14 @@ class TestPartialUpdateIntegration(unittest.TestCase):
             timeout=30
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print') as mock_print:
-                with patch('hatch.cli_hatch.generate_conversion_report') as mock_report:
+            with patch('builtins.print') as mock_print:
+                with patch('hatch.mcp_host_config.reporting.generate_conversion_report') as mock_report:
                     # Mock report to verify UNCHANGED detection
                     mock_report.return_value = MagicMock()
 
@@ -616,14 +616,14 @@ class TestPartialUpdateIntegration(unittest.TestCase):
             args=["server.py"]
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print') as mock_print:
-                with patch('hatch.cli_hatch.generate_conversion_report') as mock_report:
+            with patch('builtins.print') as mock_print:
+                with patch('hatch.mcp_host_config.reporting.generate_conversion_report') as mock_report:
                     mock_report.return_value = MagicMock()
 
                     # Execute: Switch to URL-based (use gemini which supports URL)
@@ -664,13 +664,13 @@ class TestBackwardCompatibility(unittest.TestCase):
     @regression_test
     def test_existing_create_operation_unchanged(self):
         """Test R1: Existing create operations work identically."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = None  # Server doesn't exist
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Create operation with full configuration (use Gemini for timeout support)
                 result = handle_mcp_configure(
                     host="gemini",
@@ -707,12 +707,12 @@ class TestBackwardCompatibility(unittest.TestCase):
     @regression_test
     def test_error_messages_remain_clear(self):
         """Test R2: Error messages are clear and helpful (modified)."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = None  # Server doesn't exist
 
-            with patch('hatch.cli_hatch.print') as mock_print:
+            with patch('builtins.print') as mock_print:
                 # Execute: Create without command or url
                 result = handle_mcp_configure(
                     host="claude-desktop",
@@ -764,13 +764,13 @@ class TestTypeFieldUpdating(unittest.TestCase):
             args=["server.py"]
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print'):
+            with patch('builtins.print'):
                 # Execute: Switch to URL-based configuration
                 result = handle_mcp_configure(
                     host='gemini',
@@ -814,13 +814,13 @@ class TestTypeFieldUpdating(unittest.TestCase):
             headers={"Authorization": "Bearer token"}
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.get_server_config.return_value = existing_server
             mock_manager.configure_server.return_value = MagicMock(success=True)
 
-            with patch('hatch.cli_hatch.print'):
+            with patch('builtins.print'):
                 # Execute: Switch to command-based configuration
                 result = handle_mcp_configure(
                     host='gemini',
