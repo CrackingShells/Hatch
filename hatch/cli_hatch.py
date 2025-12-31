@@ -310,85 +310,21 @@ def handle_mcp_sync(
     auto_approve: bool = False,
     no_backup: bool = False,
 ) -> int:
-    """Handle 'hatch mcp sync' command."""
-    try:
-        # Parse target hosts
-        if not to_hosts:
-            print("Error: Must specify --to-host")
-            return 1
-
-        target_hosts = parse_host_list(to_hosts)
-
-        # Parse server filters
-        server_list = None
-        if servers:
-            server_list = [s.strip() for s in servers.split(",") if s.strip()]
-
-        if dry_run:
-            source_desc = (
-                f"environment '{from_env}'" if from_env else f"host '{from_host}'"
-            )
-            target_desc = f"hosts: {', '.join(target_hosts)}"
-            print(f"[DRY RUN] Would synchronize from {source_desc} to {target_desc}")
-
-            if server_list:
-                print(f"[DRY RUN] Server filter: {', '.join(server_list)}")
-            elif pattern:
-                print(f"[DRY RUN] Pattern filter: {pattern}")
-
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
-            return 0
-
-        # Confirm operation unless auto-approved
-        source_desc = f"environment '{from_env}'" if from_env else f"host '{from_host}'"
-        target_desc = f"{len(target_hosts)} host(s)"
-        if not request_confirmation(
-            f"Synchronize MCP configurations from {source_desc} to {target_desc}?",
-            auto_approve,
-        ):
-            print("Operation cancelled.")
-            return 0
-
-        # Perform synchronization
-        mcp_manager = MCPHostConfigurationManager()
-        result = mcp_manager.sync_configurations(
-            from_env=from_env,
-            from_host=from_host,
-            to_hosts=target_hosts,
-            servers=server_list,
-            pattern=pattern,
-            no_backup=no_backup,
-        )
-
-        if result.success:
-            print(f"[SUCCESS] Synchronization completed")
-            print(f"  Servers synced: {result.servers_synced}")
-            print(f"  Hosts updated: {result.hosts_updated}")
-
-            # Show detailed results
-            for res in result.results:
-                if res.success:
-                    backup_info = (
-                        f" (backup: {res.backup_path})" if res.backup_path else ""
-                    )
-                    print(f"  ✓ {res.hostname}{backup_info}")
-                else:
-                    print(f"  ✗ {res.hostname}: {res.error_message}")
-
-            return 0
-        else:
-            print(f"[ERROR] Synchronization failed")
-            for res in result.results:
-                if not res.success:
-                    print(f"  ✗ {res.hostname}: {res.error_message}")
-            return 1
-
-    except ValueError as e:
-        print(f"Error: {e}")
-        return 1
-    except Exception as e:
-        print(f"Error during synchronization: {e}")
-        return 1
+    """Handle 'hatch mcp sync' command.
+    
+    Backward compatibility wrapper - delegates to cli_mcp module.
+    """
+    from hatch.cli.cli_mcp import handle_mcp_sync as _handle_mcp_sync
+    return _handle_mcp_sync(
+        from_env=from_env,
+        from_host=from_host,
+        to_hosts=to_hosts,
+        servers=servers,
+        pattern=pattern,
+        dry_run=dry_run,
+        auto_approve=auto_approve,
+        no_backup=no_backup,
+    )
 
 
 def main():

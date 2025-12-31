@@ -1107,3 +1107,112 @@ def handle_mcp_remove_host(
     except Exception as e:
         print(f"Error removing host configuration: {e}")
         return EXIT_ERROR
+
+
+def handle_mcp_sync(
+    from_env: Optional[str] = None,
+    from_host: Optional[str] = None,
+    to_hosts: Optional[str] = None,
+    servers: Optional[str] = None,
+    pattern: Optional[str] = None,
+    dry_run: bool = False,
+    auto_approve: bool = False,
+    no_backup: bool = False,
+) -> int:
+    """Handle 'hatch mcp sync' command.
+    
+    Synchronizes MCP server configurations from a source to target hosts.
+    
+    Args:
+        from_env: Source environment name
+        from_host: Source host name
+        to_hosts: Comma-separated list of target hosts
+        servers: Comma-separated list of server names to sync
+        pattern: Pattern to filter servers
+        dry_run: If True, show what would be done without making changes
+        auto_approve: If True, skip confirmation prompt
+        no_backup: If True, skip creating backups
+    
+    Returns:
+        int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+    """
+    from hatch.cli.cli_utils import request_confirmation, parse_host_list
+    
+    try:
+        # Parse target hosts
+        if not to_hosts:
+            print("Error: Must specify --to-host")
+            return EXIT_ERROR
+
+        target_hosts = parse_host_list(to_hosts)
+
+        # Parse server filters
+        server_list = None
+        if servers:
+            server_list = [s.strip() for s in servers.split(",") if s.strip()]
+
+        if dry_run:
+            source_desc = (
+                f"environment '{from_env}'" if from_env else f"host '{from_host}'"
+            )
+            target_desc = f"hosts: {', '.join(target_hosts)}"
+            print(f"[DRY RUN] Would synchronize from {source_desc} to {target_desc}")
+
+            if server_list:
+                print(f"[DRY RUN] Server filter: {', '.join(server_list)}")
+            elif pattern:
+                print(f"[DRY RUN] Pattern filter: {pattern}")
+
+            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            return EXIT_SUCCESS
+
+        # Confirm operation unless auto-approved
+        source_desc = f"environment '{from_env}'" if from_env else f"host '{from_host}'"
+        target_desc = f"{len(target_hosts)} host(s)"
+        if not request_confirmation(
+            f"Synchronize MCP configurations from {source_desc} to {target_desc}?",
+            auto_approve,
+        ):
+            print("Operation cancelled.")
+            return EXIT_SUCCESS
+
+        # Perform synchronization
+        mcp_manager = MCPHostConfigurationManager()
+        result = mcp_manager.sync_configurations(
+            from_env=from_env,
+            from_host=from_host,
+            to_hosts=target_hosts,
+            servers=server_list,
+            pattern=pattern,
+            no_backup=no_backup,
+        )
+
+        if result.success:
+            print(f"[SUCCESS] Synchronization completed")
+            print(f"  Servers synced: {result.servers_synced}")
+            print(f"  Hosts updated: {result.hosts_updated}")
+
+            # Show detailed results
+            for res in result.results:
+                if res.success:
+                    backup_info = (
+                        f" (backup: {res.backup_path})" if res.backup_path else ""
+                    )
+                    print(f"  ✓ {res.hostname}{backup_info}")
+                else:
+                    print(f"  ✗ {res.hostname}: {res.error_message}")
+
+            return EXIT_SUCCESS
+        else:
+            print(f"[ERROR] Synchronization failed")
+            for res in result.results:
+                if not res.success:
+                    print(f"  ✗ {res.hostname}: {res.error_message}")
+            return EXIT_ERROR
+
+    except ValueError as e:
+        print(f"Error: {e}")
+        return EXIT_ERROR
+    except Exception as e:
+        print(f"Error during synchronization: {e}")
+        return EXIT_ERROR
