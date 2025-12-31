@@ -20,7 +20,8 @@ from hatch.mcp_host_config.host_management import MCPHostConfigurationManager, M
 from hatch.mcp_host_config.models import (
     EnvironmentData, MCPServerConfig, SyncResult, ConfigurationResult
 )
-from hatch.cli_hatch import handle_mcp_sync, parse_host_list, main
+from hatch.cli_hatch import handle_mcp_sync, main
+from hatch.cli.cli_utils import parse_host_list
 
 
 class TestMCPSyncConfigurations(unittest.TestCase):
@@ -261,7 +262,7 @@ class TestMCPSyncCommandHandler(unittest.TestCase):
     @integration_test(scope="component")
     def test_handle_sync_environment_to_host(self):
         """Test sync handler for environment-to-host operation."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_result = SyncResult(
                 success=True,
@@ -273,8 +274,8 @@ class TestMCPSyncCommandHandler(unittest.TestCase):
             mock_manager_class.return_value = mock_manager
 
             with patch('builtins.print') as mock_print:
-                with patch('hatch.cli_hatch.parse_host_list') as mock_parse:
-                    with patch('hatch.cli_hatch.request_confirmation', return_value=True) as mock_confirm:
+                with patch('hatch.cli.cli_utils.parse_host_list') as mock_parse:
+                    with patch('hatch.cli.cli_utils.request_confirmation', return_value=True) as mock_confirm:
                         from hatch.mcp_host_config.models import MCPHostType
                         mock_parse.return_value = [MCPHostType.CLAUDE_DESKTOP]
 
@@ -295,7 +296,7 @@ class TestMCPSyncCommandHandler(unittest.TestCase):
     def test_handle_sync_dry_run(self):
         """Test sync handler dry-run functionality."""
         with patch('builtins.print') as mock_print:
-            with patch('hatch.cli_hatch.parse_host_list') as mock_parse:
+            with patch('hatch.cli.cli_utils.parse_host_list') as mock_parse:
                 from hatch.mcp_host_config.models import MCPHostType
                 mock_parse.return_value = [MCPHostType.CLAUDE_DESKTOP]
 
