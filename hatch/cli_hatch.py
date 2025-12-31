@@ -43,84 +43,36 @@ from hatch.cli.cli_utils import (
     get_package_mcp_server_config,
 )
 
+# Import MCP handlers from cli_mcp (extracted in M1.3.1)
+from hatch.cli.cli_mcp import (
+    handle_mcp_discover_hosts as _handle_mcp_discover_hosts,
+    handle_mcp_discover_servers as _handle_mcp_discover_servers,
+)
+
 
 
 def handle_mcp_discover_hosts():
-    """Handle 'hatch mcp discover hosts' command."""
-    try:
-        # Import strategies to trigger registration
-        import hatch.mcp_host_config.strategies
-
-        available_hosts = MCPHostRegistry.detect_available_hosts()
-        print("Available MCP host platforms:")
-
-        for host_type in MCPHostType:
-            try:
-                strategy = MCPHostRegistry.get_strategy(host_type)
-                config_path = strategy.get_config_path()
-                is_available = host_type in available_hosts
-
-                status = "✓ Available" if is_available else "✗ Not detected"
-                print(f"  {host_type.value}: {status}")
-                if config_path:
-                    print(f"    Config path: {config_path}")
-            except Exception as e:
-                print(f"  {host_type.value}: Error - {e}")
-
-        return 0
-    except Exception as e:
-        print(f"Error discovering hosts: {e}")
-        return 1
+    """Handle 'hatch mcp discover hosts' command.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_discover_hosts.
+    This wrapper maintains backward compatibility during refactoring.
+    """
+    from argparse import Namespace
+    args = Namespace()
+    return _handle_mcp_discover_hosts(args)
 
 
 def handle_mcp_discover_servers(
     env_manager: HatchEnvironmentManager, env_name: Optional[str] = None
 ):
-    """Handle 'hatch mcp discover servers' command."""
-    try:
-        env_name = env_name or env_manager.get_current_environment()
-
-        if not env_manager.environment_exists(env_name):
-            print(f"Error: Environment '{env_name}' does not exist")
-            return 1
-
-        packages = env_manager.list_packages(env_name)
-        mcp_packages = []
-
-        for package in packages:
-            try:
-                # Check if package has MCP server entry point
-                server_config = get_package_mcp_server_config(
-                    env_manager, env_name, package["name"]
-                )
-                mcp_packages.append(
-                    {"package": package, "server_config": server_config}
-                )
-            except ValueError:
-                # Package doesn't have MCP server
-                continue
-
-        if not mcp_packages:
-            print(f"No MCP servers found in environment '{env_name}'")
-            return 0
-
-        print(f"MCP servers in environment '{env_name}':")
-        for item in mcp_packages:
-            package = item["package"]
-            server_config = item["server_config"]
-            print(f"  {server_config.name}:")
-            print(
-                f"    Package: {package['name']} v{package.get('version', 'unknown')}"
-            )
-            print(f"    Command: {server_config.command}")
-            print(f"    Args: {server_config.args}")
-            if server_config.env:
-                print(f"    Environment: {server_config.env}")
-
-        return 0
-    except Exception as e:
-        print(f"Error discovering servers: {e}")
-        return 1
+    """Handle 'hatch mcp discover servers' command.
+    
+    Delegates to hatch.cli.cli_mcp.handle_mcp_discover_servers.
+    This wrapper maintains backward compatibility during refactoring.
+    """
+    from argparse import Namespace
+    args = Namespace(env_manager=env_manager, env=env_name)
+    return _handle_mcp_discover_servers(args)
 
 
 def handle_mcp_list_hosts(
