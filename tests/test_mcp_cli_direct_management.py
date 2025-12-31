@@ -19,8 +19,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from hatch.cli_hatch import (
     main, handle_mcp_configure, handle_mcp_remove, handle_mcp_remove_server,
-    handle_mcp_remove_host, parse_env_vars, parse_header
+    handle_mcp_remove_host,
 )
+from hatch.cli.cli_utils import parse_env_vars, parse_header
 from hatch.mcp_host_config.models import MCPHostType, MCPServerConfig
 from wobble import regression_test, integration_test
 
@@ -166,12 +167,12 @@ class TestMCPConfigureCommand(unittest.TestCase):
             backup_path=Path('/test/backup.json')
         )
 
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager.configure_server.return_value = mock_result
             mock_manager_class.return_value = mock_manager
 
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('builtins.print') as mock_print:
                     result = handle_mcp_configure(
                         'claude-desktop', 'weather-server', 'python', ['weather.py'],
@@ -198,12 +199,12 @@ class TestMCPConfigureCommand(unittest.TestCase):
             error_message='Configuration validation failed'
         )
         
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager.configure_server.return_value = mock_result
             mock_manager_class.return_value = mock_manager
             
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('builtins.print') as mock_print:
                     result = handle_mcp_configure(
                         'claude-desktop', 'weather-server', 'python', ['weather.py'],
@@ -272,12 +273,12 @@ class TestMCPRemoveCommand(unittest.TestCase):
             backup_path=Path('/test/backup.json')
         )
         
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager.remove_server.return_value = mock_result
             mock_manager_class.return_value = mock_manager
             
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('builtins.print') as mock_print:
                     result = handle_mcp_remove('claude-desktop', 'old-server', auto_approve=True)
                     
@@ -300,12 +301,12 @@ class TestMCPRemoveCommand(unittest.TestCase):
             error_message='Server not found in configuration'
         )
         
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager.remove_server.return_value = mock_result
             mock_manager_class.return_value = mock_manager
             
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('builtins.print') as mock_print:
                     result = handle_mcp_remove('claude-desktop', 'old-server', auto_approve=True)
                     
@@ -337,7 +338,7 @@ class TestMCPRemoveServerCommand(unittest.TestCase):
     @integration_test(scope="component")
     def test_remove_server_multi_host(self):
         """Test remove server from multiple hosts."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager.remove_server.return_value = MagicMock(success=True, backup_path=None)
             mock_manager_class.return_value = mock_manager
@@ -401,7 +402,7 @@ class TestMCPRemoveHostCommand(unittest.TestCase):
     @integration_test(scope="component")
     def test_remove_host_successful(self):
         """Test successful host configuration removal."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_result = MagicMock()
             mock_result.success = True
