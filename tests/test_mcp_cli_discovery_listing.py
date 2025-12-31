@@ -12,6 +12,7 @@ and error handling scenarios.
 """
 
 import unittest
+from argparse import Namespace
 from unittest.mock import patch, MagicMock
 import sys
 from pathlib import Path
@@ -20,8 +21,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from hatch.cli_hatch import (
-    main, handle_mcp_discover_hosts, handle_mcp_discover_servers,
-    handle_mcp_list_hosts, handle_mcp_list_servers
+    main, handle_mcp_list_hosts, handle_mcp_list_servers
+)
+# Import discovery handlers from cli_mcp (M1.3.2 update)
+from hatch.cli.cli_mcp import (
+    handle_mcp_discover_hosts, handle_mcp_discover_servers
 )
 from hatch.mcp_host_config.models import MCPHostType, MCPServerConfig
 from hatch.environment_manager import HatchEnvironmentManager
@@ -91,7 +95,7 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
     def test_discover_hosts_backend_integration(self):
         """Test discover hosts integration with MCPHostRegistry."""
         with patch('hatch.mcp_host_config.strategies'):  # Import strategies
-            with patch('hatch.cli_hatch.MCPHostRegistry') as mock_registry:
+            with patch('hatch.cli.cli_mcp.MCPHostRegistry') as mock_registry:
                 mock_registry.detect_available_hosts.return_value = [
                     MCPHostType.CLAUDE_DESKTOP,
                     MCPHostType.CURSOR
@@ -103,7 +107,9 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
                 mock_registry.get_strategy.return_value = mock_strategy
                 
                 with patch('builtins.print') as mock_print:
-                    result = handle_mcp_discover_hosts()
+                    # Use Namespace pattern for handler call
+                    args = Namespace()
+                    result = handle_mcp_discover_hosts(args)
                     
                     self.assertEqual(result, 0)
                     mock_registry.detect_available_hosts.assert_called_once()
@@ -136,9 +142,11 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
             else:
                 raise ValueError(f"Package '{package_name}' has no MCP server")
         
-        with patch('hatch.cli_hatch.get_package_mcp_server_config', side_effect=mock_get_config):
+        with patch('hatch.cli.cli_mcp.get_package_mcp_server_config', side_effect=mock_get_config):
             with patch('builtins.print') as mock_print:
-                result = handle_mcp_discover_servers(self.mock_env_manager, "test-env")
+                # Use Namespace pattern for handler call
+                args = Namespace(env_manager=self.mock_env_manager, env="test-env")
+                result = handle_mcp_discover_servers(args)
                 
                 self.assertEqual(result, 0)
                 self.mock_env_manager.list_packages.assert_called_once_with("test-env")
@@ -163,9 +171,11 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
         def mock_get_config(env_manager, env_name, package_name):
             raise ValueError(f"Package '{package_name}' has no MCP server")
         
-        with patch('hatch.cli_hatch.get_package_mcp_server_config', side_effect=mock_get_config):
+        with patch('hatch.cli.cli_mcp.get_package_mcp_server_config', side_effect=mock_get_config):
             with patch('builtins.print') as mock_print:
-                result = handle_mcp_discover_servers(self.mock_env_manager, "test-env")
+                # Use Namespace pattern for handler call
+                args = Namespace(env_manager=self.mock_env_manager, env="test-env")
+                result = handle_mcp_discover_servers(args)
                 
                 self.assertEqual(result, 0)
                 
@@ -179,7 +189,9 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
         self.mock_env_manager.environment_exists.return_value = False
         
         with patch('builtins.print') as mock_print:
-            result = handle_mcp_discover_servers(self.mock_env_manager, "nonexistent-env")
+            # Use Namespace pattern for handler call
+            args = Namespace(env_manager=self.mock_env_manager, env="nonexistent-env")
+            result = handle_mcp_discover_servers(args)
             
             self.assertEqual(result, 1)
             
@@ -547,7 +559,7 @@ class TestMCPDiscoverHostsUnchanged(unittest.TestCase):
         """
         # Setup: Mock host strategies with available hosts
         with patch('hatch.mcp_host_config.strategies'):  # Import strategies
-            with patch('hatch.cli_hatch.MCPHostRegistry') as mock_registry:
+            with patch('hatch.cli.cli_mcp.MCPHostRegistry') as mock_registry:
                 mock_registry.detect_available_hosts.return_value = [
                     MCPHostType.CLAUDE_DESKTOP,
                     MCPHostType.CURSOR
@@ -559,8 +571,9 @@ class TestMCPDiscoverHostsUnchanged(unittest.TestCase):
                 mock_registry.get_strategy.return_value = mock_strategy
 
                 with patch('builtins.print') as mock_print:
-                    # Action: Call handle_mcp_discover_hosts
-                    result = handle_mcp_discover_hosts()
+                    # Action: Call handle_mcp_discover_hosts with Namespace
+                    args = Namespace()
+                    result = handle_mcp_discover_hosts(args)
 
                     # Assert: Host strategy detection called
                     mock_registry.detect_available_hosts.assert_called_once()
