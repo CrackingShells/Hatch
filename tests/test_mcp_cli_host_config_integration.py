@@ -28,8 +28,10 @@ except ImportError:
             return func
         return decorator
 
-from hatch.cli_hatch import (
-    handle_mcp_configure,
+# Import handle_mcp_configure from cli_hatch (backward compatibility wrapper)
+from hatch.cli_hatch import handle_mcp_configure
+# Import parse utilities from cli_utils (M1.3.8 update)
+from hatch.cli.cli_utils import (
     parse_env_vars,
     parse_header,
     parse_host_list,
@@ -58,74 +60,78 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
     @regression_test
     def test_configure_creates_omni_model_basic(self):
         """Test that configure command creates MCPServerConfigOmni from CLI arguments."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Call handle_mcp_configure with basic arguments
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['server.py'],
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
-                
-                # Verify the function executed without errors
-                self.assertEqual(result, 0)
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Call handle_mcp_configure with basic arguments
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['server.py'],
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+                    
+                    # Verify the function executed without errors
+                    self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_creates_omni_with_env_vars(self):
         """Test that environment variables are parsed correctly into Omni model."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Call with environment variables
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['server.py'],
-                    env=['API_KEY=secret', 'DEBUG=true'],
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
-                
-                # Verify the function executed without errors
-                self.assertEqual(result, 0)
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Call with environment variables
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['server.py'],
+                        env=['API_KEY=secret', 'DEBUG=true'],
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+                    
+                    # Verify the function executed without errors
+                    self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_creates_omni_with_headers(self):
         """Test that headers are parsed correctly into Omni model."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                result = handle_mcp_configure(
-                    host='gemini',  # Use gemini which supports remote servers
-                    server_name='test-server',
-                    command=None,
-                    args=None,
-                    env=None,
-                    url='https://api.example.com',
-                    header=['Authorization=Bearer token', 'Content-Type=application/json'],
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    result = handle_mcp_configure(
+                        host='gemini',  # Use gemini which supports remote servers
+                        server_name='test-server',
+                        command=None,
+                        args=None,
+                        env=None,
+                        url='https://api.example.com',
+                        header=['Authorization=Bearer token', 'Content-Type=application/json'],
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify the function executed without errors (bug fixed in Phase 4)
-                self.assertEqual(result, 0)
+                    # Verify the function executed without errors (bug fixed in Phase 4)
+                    self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_creates_omni_remote_server(self):
         """Test that remote server arguments create correct Omni model."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                result = handle_mcp_configure(
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    result = handle_mcp_configure(
                     host='gemini',  # Use gemini which supports remote servers
                     server_name='remote-server',
                     command=None,
@@ -144,46 +150,48 @@ class TestCLIArgumentParsingToOmniCreation(unittest.TestCase):
     @regression_test
     def test_configure_omni_with_all_universal_fields(self):
         """Test that all universal fields are supported in Omni creation."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Call with all universal fields
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='full-server',
-                    command='python',
-                    args=['server.py', '--port', '8080'],
-                    env=['API_KEY=secret', 'DEBUG=true', 'LOG_LEVEL=info'],
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
-                
-                # Verify the function executed without errors
-                self.assertEqual(result, 0)
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Call with all universal fields
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='full-server',
+                        command='python',
+                        args=['server.py', '--port', '8080'],
+                        env=['API_KEY=secret', 'DEBUG=true', 'LOG_LEVEL=info'],
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+                    
+                    # Verify the function executed without errors
+                    self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_omni_with_optional_fields_none(self):
         """Test that optional fields are handled correctly (None values)."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Call with only required fields
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='minimal-server',
-                    command='python',
-                    args=['server.py'],
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
-                
-                # Verify the function executed without errors
-                self.assertEqual(result, 0)
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Call with only required fields
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='minimal-server',
+                        command='python',
+                        args=['server.py'],
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+                    
+                    # Verify the function executed without errors
+                    self.assertEqual(result, 0)
 
 
 class TestModelIntegration(unittest.TestCase):
@@ -192,79 +200,82 @@ class TestModelIntegration(unittest.TestCase):
     @regression_test
     def test_configure_uses_host_model_registry(self):
         """Test that configure command uses HOST_MODEL_REGISTRY for host selection."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Test with Gemini host
-                result = handle_mcp_configure(
-                    host='gemini',
-                    server_name='test-server',
-                    command='python',
-                    args=['server.py'],
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
-                
-                # Verify the function executed without errors
-                self.assertEqual(result, 0)
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Test with Gemini host
+                    result = handle_mcp_configure(
+                        host='gemini',
+                        server_name='test-server',
+                        command='python',
+                        args=['server.py'],
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+                    
+                    # Verify the function executed without errors
+                    self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_calls_from_omni_conversion(self):
         """Test that from_omni() is called to convert Omni to host-specific model."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Call configure command
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['server.py'],
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
-                
-                # Verify the function executed without errors
-                self.assertEqual(result, 0)
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Call configure command
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['server.py'],
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
+                    
+                    # Verify the function executed without errors
+                    self.assertEqual(result, 0)
 
     @integration_test(scope="component")
     def test_configure_passes_host_specific_model_to_manager(self):
         """Test that host-specific model is passed to MCPHostConfigurationManager."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.configure_server.return_value = MagicMock(success=True, backup_path=None)
 
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
-                # Call configure command
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['server.py'],
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
+                with patch('builtins.print'):
+                    # Call configure command
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['server.py'],
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify configure_server was called
-                self.assertEqual(result, 0)
-                mock_manager.configure_server.assert_called_once()
+                    # Verify configure_server was called
+                    self.assertEqual(result, 0)
+                    mock_manager.configure_server.assert_called_once()
 
-                # Verify the server_config argument is a host-specific model instance
-                # (MCPServerConfigClaude for claude-desktop host)
-                call_args = mock_manager.configure_server.call_args
-                server_config = call_args.kwargs['server_config']
-                self.assertIsInstance(server_config, MCPServerConfigClaude)
+                    # Verify the server_config argument is a host-specific model instance
+                    # (MCPServerConfigClaude for claude-desktop host)
+                    call_args = mock_manager.configure_server.call_args
+                    server_config = call_args.kwargs['server_config']
+                    self.assertIsInstance(server_config, MCPServerConfigClaude)
 
 
 class TestReportingIntegration(unittest.TestCase):
@@ -273,27 +284,28 @@ class TestReportingIntegration(unittest.TestCase):
     @regression_test
     def test_configure_dry_run_displays_report_only(self):
         """Test that dry-run mode displays report without configuration."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            # Call with dry-run
-            result = handle_mcp_configure(
-                host='claude-desktop',
-                server_name='test-server',
-                command='python',
-                args=['server.py'],
-                env=None,
-                url=None,
-                header=None,
-                no_backup=True,
-                dry_run=True,
-                auto_approve=False
-            )
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('builtins.print'):
+                # Call with dry-run
+                result = handle_mcp_configure(
+                    host='claude-desktop',
+                    server_name='test-server',
+                    command='python',
+                    args=['server.py'],
+                    env=None,
+                    url=None,
+                    header=None,
+                    no_backup=True,
+                    dry_run=True,
+                    auto_approve=False
+                )
 
-            # Verify the function executed without errors
-            self.assertEqual(result, 0)
+                # Verify the function executed without errors
+                self.assertEqual(result, 0)
 
-            # Verify MCPHostConfigurationManager.create_server was NOT called (dry-run doesn't persist)
-            # Note: get_server_config is called to check if server exists, but create_server is not called
-            mock_manager.return_value.create_server.assert_not_called()
+                # Verify MCPHostConfigurationManager.create_server was NOT called (dry-run doesn't persist)
+                # Note: get_server_config is called to check if server exists, but create_server is not called
+                mock_manager.return_value.create_server.assert_not_called()
 
 
 class TestHostSpecificArguments(unittest.TestCase):
@@ -302,46 +314,48 @@ class TestHostSpecificArguments(unittest.TestCase):
     @regression_test
     def test_configure_accepts_all_universal_fields(self):
         """Test that all universal fields are accepted by CLI."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Call with all universal fields
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['server.py', '--port', '8080'],
-                    env=['API_KEY=secret', 'DEBUG=true'],
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Call with all universal fields
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['server.py', '--port', '8080'],
+                        env=['API_KEY=secret', 'DEBUG=true'],
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify success
-                self.assertEqual(result, 0)
+                    # Verify success
+                    self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_multiple_env_vars(self):
         """Test that multiple environment variables are handled correctly."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Call with multiple env vars
-                result = handle_mcp_configure(
-                    host='gemini',
-                    server_name='test-server',
-                    command='python',
-                    args=['server.py'],
-                    env=['VAR1=value1', 'VAR2=value2', 'VAR3=value3'],
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Call with multiple env vars
+                    result = handle_mcp_configure(
+                        host='gemini',
+                        server_name='test-server',
+                        command='python',
+                        args=['server.py'],
+                        env=['VAR1=value1', 'VAR2=value2', 'VAR3=value3'],
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify success
-                self.assertEqual(result, 0)
+                    # Verify success
+                    self.assertEqual(result, 0)
 
     @regression_test
     def test_configure_different_hosts(self):
@@ -350,23 +364,24 @@ class TestHostSpecificArguments(unittest.TestCase):
 
         for host in hosts_to_test:
             with self.subTest(host=host):
-                with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-                    with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                        result = handle_mcp_configure(
-                            host=host,
-                            server_name='test-server',
-                            command='python',
-                            args=['server.py'],
-                            env=None,
-                            url=None,
-                            header=None,
-                            no_backup=True,
-                            dry_run=False,
-                            auto_approve=False
-                        )
+                with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+                    with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                        with patch('builtins.print'):
+                            result = handle_mcp_configure(
+                                host=host,
+                                server_name='test-server',
+                                command='python',
+                                args=['server.py'],
+                                env=None,
+                                url=None,
+                                header=None,
+                                no_backup=True,
+                                dry_run=False,
+                                auto_approve=False
+                            )
 
-                        # Verify success for each host
-                        self.assertEqual(result, 0)
+                            # Verify success for each host
+                            self.assertEqual(result, 0)
 
 
 class TestErrorHandling(unittest.TestCase):
@@ -375,85 +390,89 @@ class TestErrorHandling(unittest.TestCase):
     @regression_test
     def test_configure_invalid_host_type_error(self):
         """Test that clear error is shown for invalid host type."""
-        # Call with invalid host
-        result = handle_mcp_configure(
-            host='invalid-host',
-            server_name='test-server',
-            command='python',
-            args=['server.py'],
-            env=None,
-            url=None,
-            header=None,
-            no_backup=True,
-            dry_run=False,
-            auto_approve=False
-        )
+        with patch('builtins.print'):
+            # Call with invalid host
+            result = handle_mcp_configure(
+                host='invalid-host',
+                server_name='test-server',
+                command='python',
+                args=['server.py'],
+                env=None,
+                url=None,
+                header=None,
+                no_backup=True,
+                dry_run=False,
+                auto_approve=False
+            )
 
-        # Verify error return code
-        self.assertEqual(result, 1)
+            # Verify error return code
+            self.assertEqual(result, 1)
 
     @regression_test
     def test_configure_invalid_field_value_error(self):
         """Test that clear error is shown for invalid field values."""
-        # Test with invalid URL format - this will be caught by Pydantic validation
-        # when creating MCPServerConfig
-        result = handle_mcp_configure(
-            host='claude-desktop',
-            server_name='test-server',
-            command=None,
-            args=None,  # Must be None for remote server
-            env=None,
-            url='not-a-url',  # Invalid URL format
-            header=None,
-            no_backup=True,
-            dry_run=False,
-            auto_approve=False
-        )
+        with patch('builtins.print'):
+            # Test with invalid URL format - this will be caught by Pydantic validation
+            # when creating MCPServerConfig
+            result = handle_mcp_configure(
+                host='claude-desktop',
+                server_name='test-server',
+                command=None,
+                args=None,  # Must be None for remote server
+                env=None,
+                url='not-a-url',  # Invalid URL format
+                header=None,
+                no_backup=True,
+                dry_run=False,
+                auto_approve=False
+            )
 
-        # Verify error return code (validation error caught in exception handler)
-        self.assertEqual(result, 1)
+            # Verify error return code (validation error caught in exception handler)
+            self.assertEqual(result, 1)
 
     @regression_test
     def test_configure_pydantic_validation_error_handling(self):
         """Test that Pydantic ValidationErrors are caught and handled."""
-        # Test with conflicting arguments (command with headers)
-        result = handle_mcp_configure(
-            host='claude-desktop',
-            server_name='test-server',
-            command='python',
-            args=['server.py'],
-            env=None,
-            url=None,
-            header=['Auth=token'],  # Headers not allowed with command
-            no_backup=True,
-            dry_run=False,
-            auto_approve=False
-        )
+        with patch('builtins.print'):
+            # Test with conflicting arguments (command with headers)
+            result = handle_mcp_configure(
+                host='claude-desktop',
+                server_name='test-server',
+                command='python',
+                args=['server.py'],
+                env=None,
+                url=None,
+                header=['Auth=token'],  # Headers not allowed with command
+                no_backup=True,
+                dry_run=False,
+                auto_approve=False
+            )
 
-        # Verify error return code (caught by validation in handle_mcp_configure)
-        self.assertEqual(result, 1)
+            # Verify error return code (caught by validation in handle_mcp_configure)
+            self.assertEqual(result, 1)
 
     @regression_test
     def test_configure_missing_command_url_error(self):
         """Test error handling when neither command nor URL provided."""
-        # This test verifies the argparse validation (required=True for mutually exclusive group)
-        # In actual CLI usage, argparse would catch this before handle_mcp_configure is called
-        # For unit testing, we test that the function handles None values appropriately
-        result = handle_mcp_configure(
-            host='claude-desktop',
-            server_name='test-server',
-            command=None,
-            args=None,
-            env=None,
-            url=None,
-            header=None,
-            no_backup=True,
-            dry_run=False,
-            auto_approve=False
-        )
+        with patch('builtins.print'):
+            # This test verifies the argparse validation (required=True for mutually exclusive group)
+            # In actual CLI usage, argparse would catch this before handle_mcp_configure is called
+            # For unit testing, we test that the function handles None values appropriately
+            result = handle_mcp_configure(
+                host='claude-desktop',
+                server_name='test-server',
+                command=None,
+                args=None,
+                env=None,
+                url=None,
+                header=None,
+                no_backup=True,
+                dry_run=False,
+                auto_approve=False
+            )
 
-        # Verify error return code (validation error)
-        self.assertEqual(result, 1)
+            # Verify error return code (validation error)
+            self.assertEqual(result, 1)
 
 
 class TestBackwardCompatibility(unittest.TestCase):
@@ -462,29 +481,30 @@ class TestBackwardCompatibility(unittest.TestCase):
     @regression_test
     def test_existing_configure_command_still_works(self):
         """Test that existing configure command usage still works."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager_class:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager_class:
             mock_manager = MagicMock()
             mock_manager_class.return_value = mock_manager
             mock_manager.configure_server.return_value = MagicMock(success=True, backup_path=None)
 
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
-                # Call with existing command pattern
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='my-server',
-                    command='python',
-                    args=['-m', 'my_package.server'],
-                    env=['API_KEY=secret'],
-                    url=None,
-                    header=None,
-                    no_backup=False,
-                    dry_run=False,
-                    auto_approve=False
-                )
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
+                with patch('builtins.print'):
+                    # Call with existing command pattern
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='my-server',
+                        command='python',
+                        args=['-m', 'my_package.server'],
+                        env=['API_KEY=secret'],
+                        url=None,
+                        header=None,
+                        no_backup=False,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify success
-                self.assertEqual(result, 0)
-                mock_manager.configure_server.assert_called_once()
+                    # Verify success
+                    self.assertEqual(result, 0)
+                    mock_manager.configure_server.assert_called_once()
 
 
 class TestParseUtilities(unittest.TestCase):
@@ -630,7 +650,7 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
     @regression_test
     def test_claude_desktop_rejects_url_configuration(self):
         """Test Claude Desktop rejects remote server (--url) configurations (Issue 2)."""
-        with patch('hatch.cli_hatch.print') as mock_print:
+        with patch('builtins.print') as mock_print:
             result = handle_mcp_configure(
                 host='claude-desktop',
                 server_name='remote-server',
@@ -655,7 +675,7 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
     @regression_test
     def test_claude_code_rejects_url_configuration(self):
         """Test Claude Code (same family) also rejects remote servers (Issue 2)."""
-        with patch('hatch.cli_hatch.print') as mock_print:
+        with patch('builtins.print') as mock_print:
             result = handle_mcp_configure(
                 host='claude-code',
                 server_name='remote-server',
@@ -680,97 +700,100 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
     @regression_test
     def test_args_quoted_string_splitting(self):
         """Test that quoted strings in --args are properly split (Issue 4)."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Simulate user providing: --args "-r --name aName"
-                # This arrives as a single string element in the args list
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['-r --name aName'],  # Single string with quoted content
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Simulate user providing: --args "-r --name aName"
+                    # This arrives as a single string element in the args list
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['-r --name aName'],  # Single string with quoted content
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify: Should succeed (return 0)
-                self.assertEqual(result, 0)
+                    # Verify: Should succeed (return 0)
+                    self.assertEqual(result, 0)
 
-                # Verify: MCPServerConfigOmni was created with split args
-                call_args = mock_manager.return_value.create_server.call_args
-                if call_args:
-                    omni_config = call_args[1]['omni']
-                    # Args should be split into 3 elements: ['-r', '--name', 'aName']
-                    self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
+                    # Verify: MCPServerConfigOmni was created with split args
+                    call_args = mock_manager.return_value.create_server.call_args
+                    if call_args:
+                        omni_config = call_args[1]['omni']
+                        # Args should be split into 3 elements: ['-r', '--name', 'aName']
+                        self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
 
     @regression_test
     def test_args_multiple_quoted_strings(self):
         """Test multiple quoted strings in --args are all split correctly (Issue 4)."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Simulate: --args "-r" "--name aName"
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['-r', '--name aName'],  # Two separate args
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Simulate: --args "-r" "--name aName"
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['-r', '--name aName'],  # Two separate args
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify: Should succeed
-                self.assertEqual(result, 0)
+                    # Verify: Should succeed
+                    self.assertEqual(result, 0)
 
-                # Verify: All args are properly split
-                call_args = mock_manager.return_value.create_server.call_args
-                if call_args:
-                    omni_config = call_args[1]['omni']
-                    # Should be split into: ['-r', '--name', 'aName']
-                    self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
+                    # Verify: All args are properly split
+                    call_args = mock_manager.return_value.create_server.call_args
+                    if call_args:
+                        omni_config = call_args[1]['omni']
+                        # Should be split into: ['-r', '--name', 'aName']
+                        self.assertEqual(omni_config.args, ['-r', '--name', 'aName'])
 
     @regression_test
     def test_args_empty_string_handling(self):
         """Test that empty strings in --args are filtered out (Issue 4)."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                # Simulate: --args "" "server.py"
-                result = handle_mcp_configure(
-                    host='claude-desktop',
-                    server_name='test-server',
-                    command='python',
-                    args=['', 'server.py'],  # Empty string should be filtered
-                    env=None,
-                    url=None,
-                    header=None,
-                    no_backup=True,
-                    dry_run=False,
-                    auto_approve=False
-                )
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print'):
+                    # Simulate: --args "" "server.py"
+                    result = handle_mcp_configure(
+                        host='claude-desktop',
+                        server_name='test-server',
+                        command='python',
+                        args=['', 'server.py'],  # Empty string should be filtered
+                        env=None,
+                        url=None,
+                        header=None,
+                        no_backup=True,
+                        dry_run=False,
+                        auto_approve=False
+                    )
 
-                # Verify: Should succeed
-                self.assertEqual(result, 0)
+                    # Verify: Should succeed
+                    self.assertEqual(result, 0)
 
-                # Verify: Empty strings are filtered out
-                call_args = mock_manager.return_value.create_server.call_args
-                if call_args:
-                    omni_config = call_args[1]['omni']
-                    # Should only contain 'server.py'
-                    self.assertEqual(omni_config.args, ['server.py'])
+                    # Verify: Empty strings are filtered out
+                    call_args = mock_manager.return_value.create_server.call_args
+                    if call_args:
+                        omni_config = call_args[1]['omni']
+                        # Should only contain 'server.py'
+                        self.assertEqual(omni_config.args, ['server.py'])
 
     @regression_test
     def test_args_invalid_quote_handling(self):
         """Test that invalid quotes in --args are handled gracefully (Issue 4)."""
-        with patch('hatch.cli_hatch.MCPHostConfigurationManager') as mock_manager:
-            with patch('hatch.cli_hatch.request_confirmation', return_value=False):
-                with patch('hatch.cli_hatch.print') as mock_print:
+        with patch('hatch.cli.cli_mcp.MCPHostConfigurationManager') as mock_manager:
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=False):
+                with patch('builtins.print') as mock_print:
                     # Simulate: --args 'unclosed "quote'
                     result = handle_mcp_configure(
                         host='claude-desktop',
