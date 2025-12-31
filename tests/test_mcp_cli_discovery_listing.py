@@ -20,12 +20,11 @@ from pathlib import Path
 # Add the parent directory to the path to import hatch modules
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from hatch.cli_hatch import (
-    main, handle_mcp_list_hosts, handle_mcp_list_servers
-)
+from hatch.cli_hatch import main
 # Import discovery handlers from cli_mcp (M1.3.2 update)
 from hatch.cli.cli_mcp import (
-    handle_mcp_discover_hosts, handle_mcp_discover_servers
+    handle_mcp_discover_hosts, handle_mcp_discover_servers,
+    handle_mcp_list_hosts, handle_mcp_list_servers
 )
 from hatch.mcp_host_config.models import MCPHostType, MCPServerConfig
 from hatch.environment_manager import HatchEnvironmentManager
@@ -259,7 +258,9 @@ class TestMCPListCommands(unittest.TestCase):
         }
 
         with patch('builtins.print') as mock_print:
-            result = handle_mcp_list_hosts(mock_env_manager, None, False)
+            # Use Namespace pattern for handler call
+            args = Namespace(env_manager=mock_env_manager, env=None, detailed=False)
+            result = handle_mcp_list_hosts(args)
 
             self.assertEqual(result, 0)
 
@@ -289,9 +290,11 @@ class TestMCPListCommands(unittest.TestCase):
                 env={}
             )
         
-        with patch('hatch.cli_hatch.get_package_mcp_server_config', side_effect=mock_get_config):
+        with patch('hatch.cli.cli_mcp.get_package_mcp_server_config', side_effect=mock_get_config):
             with patch('builtins.print') as mock_print:
-                result = handle_mcp_list_servers(self.mock_env_manager, "test-env")
+                # Use Namespace pattern for handler call
+                args = Namespace(env_manager=self.mock_env_manager, env="test-env")
+                result = handle_mcp_list_servers(args)
                 
                 self.assertEqual(result, 0)
                 
@@ -338,7 +341,8 @@ class TestMCPListHostsEnvironmentScoped(unittest.TestCase):
 
         with patch('builtins.print') as mock_print:
             # Action: Call handle_mcp_list_hosts with env_manager and env_name
-            result = handle_mcp_list_hosts(self.mock_env_manager, "test-env", False)
+            args = Namespace(env_manager=self.mock_env_manager, env="test-env", detailed=False)
+            result = handle_mcp_list_hosts(args)
 
             # Assert: Success exit code
             self.assertEqual(result, 0)
@@ -370,7 +374,8 @@ class TestMCPListHostsEnvironmentScoped(unittest.TestCase):
 
         with patch('builtins.print') as mock_print:
             # Action: Call handle_mcp_list_hosts
-            result = handle_mcp_list_hosts(self.mock_env_manager, "empty-env", False)
+            args = Namespace(env_manager=self.mock_env_manager, env="empty-env", detailed=False)
+            result = handle_mcp_list_hosts(args)
 
             # Assert: Success exit code
             self.assertEqual(result, 0)
@@ -394,7 +399,8 @@ class TestMCPListHostsEnvironmentScoped(unittest.TestCase):
 
         with patch('builtins.print') as mock_print:
             # Action: Call handle_mcp_list_hosts
-            result = handle_mcp_list_hosts(self.mock_env_manager, "legacy-env", False)
+            args = Namespace(env_manager=self.mock_env_manager, env="legacy-env", detailed=False)
+            result = handle_mcp_list_hosts(args)
 
             # Assert: Success exit code
             self.assertEqual(result, 0)
@@ -428,7 +434,8 @@ class TestMCPListHostsCLIIntegration(unittest.TestCase):
         """
         # Test case 1: hatch mcp list hosts --env project-alpha
         with patch('builtins.print'):
-            result = handle_mcp_list_hosts(self.mock_env_manager, "project-alpha", False)
+            args = Namespace(env_manager=self.mock_env_manager, env="project-alpha", detailed=False)
+            result = handle_mcp_list_hosts(args)
             self.assertEqual(result, 0)
             self.mock_env_manager.environment_exists.assert_called_with("project-alpha")
             self.mock_env_manager.get_environment_data.assert_called_with("project-alpha")
@@ -438,7 +445,8 @@ class TestMCPListHostsCLIIntegration(unittest.TestCase):
 
         # Test case 2: hatch mcp list hosts (uses current environment)
         with patch('builtins.print'):
-            result = handle_mcp_list_hosts(self.mock_env_manager, None, False)
+            args = Namespace(env_manager=self.mock_env_manager, env=None, detailed=False)
+            result = handle_mcp_list_hosts(args)
             self.assertEqual(result, 0)
             self.mock_env_manager.get_current_environment.assert_called_once()
             self.mock_env_manager.environment_exists.assert_called_with("current-env")
@@ -461,7 +469,8 @@ class TestMCPListHostsCLIIntegration(unittest.TestCase):
 
         with patch('builtins.print') as mock_print:
             # Test: hatch mcp list hosts --detailed
-            result = handle_mcp_list_hosts(self.mock_env_manager, "test-env", True)
+            args = Namespace(env_manager=self.mock_env_manager, env="test-env", detailed=True)
+            result = handle_mcp_list_hosts(args)
 
             # Assert: detailed=True passed to handler
             self.assertEqual(result, 0)
@@ -503,7 +512,8 @@ class TestMCPListHostsEnvironmentManagerIntegration(unittest.TestCase):
 
         with patch('builtins.print'):
             # Action: Call list hosts functionality
-            result = handle_mcp_list_hosts(self.mock_env_manager, None, False)
+            args = Namespace(env_manager=self.mock_env_manager, env=None, detailed=False)
+            result = handle_mcp_list_hosts(args)
 
             # Assert: Correct environment manager method calls
             self.mock_env_manager.get_current_environment.assert_called_once()
@@ -528,7 +538,8 @@ class TestMCPListHostsEnvironmentManagerIntegration(unittest.TestCase):
 
         with patch('builtins.print') as mock_print:
             # Action: Call list hosts with non-existent environment
-            result = handle_mcp_list_hosts(self.mock_env_manager, "non-existent", False)
+            args = Namespace(env_manager=self.mock_env_manager, env="non-existent", detailed=False)
+            result = handle_mcp_list_hosts(args)
 
             # Assert: Error message includes available environments
             print_calls = [call[0][0] for call in mock_print.call_args_list]
