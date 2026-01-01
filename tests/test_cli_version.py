@@ -64,8 +64,8 @@ class TestVersionCommand(unittest.TestCase):
         test_args = ['hatch', '--version']
         
         with patch('sys.argv', test_args):
-            # Patch at point of use in cli_hatch (imported from cli_utils)
-            with patch('hatch.cli_hatch.get_hatch_version', return_value='0.7.0-dev.3'):
+            # Patch at point of use in __main__ (imported from cli_utils)
+            with patch('hatch.cli.__main__.get_hatch_version', return_value='0.7.0-dev.3'):
                 with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
                     with self.assertRaises(SystemExit) as cm:
                         main()
@@ -100,7 +100,7 @@ class TestVersionCommand(unittest.TestCase):
         test_args = ['hatch', 'package', 'add', 'test-package', '-v', '1.0.0']
         
         with patch('sys.argv', test_args):
-            with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env:
+            with patch('hatch.environment_manager.HatchEnvironmentManager') as mock_env:
                 mock_env_instance = MagicMock()
                 mock_env.return_value = mock_env_instance
                 mock_env_instance.add_package_to_environment.return_value = True

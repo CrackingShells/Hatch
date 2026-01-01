@@ -2,6 +2,8 @@
 Kiro MCP CLI Integration Tests
 
 Tests for CLI argument parsing and integration with Kiro-specific arguments.
+
+Updated for M1.8: Uses Namespace-based handler calls via create_mcp_configure_args.
 """
 
 import unittest
@@ -9,7 +11,8 @@ from unittest.mock import patch, MagicMock
 
 from wobble.decorators import regression_test
 
-from hatch.cli_hatch import handle_mcp_configure
+from hatch.cli.cli_mcp import handle_mcp_configure
+from tests.cli_test_utils import create_mcp_configure_args
 
 
 class TestKiroCLIIntegration(unittest.TestCase):
@@ -27,23 +30,21 @@ class TestKiroCLIIntegration(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
         
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='kiro',
             server_name='test-server',
-            command='auggie',
+            server_command='auggie',
             args=['--mcp'],
-            disabled=True,  # Kiro-specific argument
-            auto_approve=True
+            disabled=True,
+            auto_approve=True,
         )
         
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify configure_server was called with Kiro model
         mock_manager.configure_server.assert_called_once()
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
-        
-        # Verify Kiro-specific field was set
         self.assertTrue(server_config.disabled)
     
     @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
@@ -57,18 +58,18 @@ class TestKiroCLIIntegration(unittest.TestCase):
         mock_result.success = True
         mock_manager.configure_server.return_value = mock_result
         
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='kiro',
             server_name='test-server',
-            command='auggie',
-            args=['--mcp'],  # Required parameter
+            server_command='auggie',
+            args=['--mcp'],
             auto_approve_tools=['codebase-retrieval', 'fetch'],
-            auto_approve=True
+            auto_approve=True,
         )
         
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify autoApprove field was set correctly
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertEqual(len(server_config.autoApprove), 2)
@@ -85,18 +86,18 @@ class TestKiroCLIIntegration(unittest.TestCase):
         mock_result.success = True
         mock_manager.configure_server.return_value = mock_result
         
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='kiro',
             server_name='test-server',
-            command='python',
-            args=['server.py'],  # Required parameter
+            server_command='python',
+            args=['server.py'],
             disable_tools=['dangerous-tool', 'risky-tool'],
-            auto_approve=True
+            auto_approve=True,
         )
         
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify disabledTools field was set correctly
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertEqual(len(server_config.disabledTools), 2)
@@ -113,20 +114,20 @@ class TestKiroCLIIntegration(unittest.TestCase):
         mock_result.success = True
         mock_manager.configure_server.return_value = mock_result
         
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='kiro',
             server_name='comprehensive-server',
-            command='auggie',
+            server_command='auggie',
             args=['--mcp', '-m', 'default'],
             disabled=False,
             auto_approve_tools=['codebase-retrieval'],
             disable_tools=['dangerous-tool'],
-            auto_approve=True
+            auto_approve=True,
         )
         
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify all Kiro fields were set correctly
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         

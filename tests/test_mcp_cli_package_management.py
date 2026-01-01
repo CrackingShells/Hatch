@@ -170,14 +170,14 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
             mock_parse.return_value = mock_args
 
             # Mock environment manager to avoid actual operations
-            with patch("hatch.cli_hatch.HatchEnvironmentManager") as mock_env_manager:
+            with patch("hatch.environment_manager.HatchEnvironmentManager") as mock_env_manager:
                 mock_env_manager.return_value.add_package_to_environment.return_value = True
                 mock_env_manager.return_value.get_current_environment.return_value = (
                     "default"
                 )
 
                 # Mock MCP manager
-                with patch("hatch.cli_hatch.MCPHostConfigurationManager"):
+                with patch("hatch.mcp_host_config.MCPHostConfigurationManager"):
                     with patch("builtins.print") as mock_print:
                         result = main()
 
@@ -209,9 +209,9 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
             mock_args.no_backup = False
             mock_parse.return_value = mock_args
 
-            # Mock the get_package_mcp_server_config function (now in cli_utils, imported into cli_hatch)
+            # Mock the get_package_mcp_server_config function (called within cli_package.py)
             with patch(
-                "hatch.cli_hatch.get_package_mcp_server_config"
+                "hatch.cli.cli_package.get_package_mcp_server_config"
             ) as mock_get_config:
                 mock_server_config = MagicMock()
                 mock_server_config.name = "test-package"
@@ -220,12 +220,12 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
 
                 # Mock environment manager
                 with patch(
-                    "hatch.cli_hatch.HatchEnvironmentManager"
+                    "hatch.environment_manager.HatchEnvironmentManager"
                 ) as mock_env_manager:
                     mock_env_manager.return_value.get_current_environment.return_value = "default"
 
                     # Mock MCP manager
-                    with patch("hatch.cli_hatch.MCPHostConfigurationManager"):
+                    with patch("hatch.mcp_host_config.MCPHostConfigurationManager"):
                         with patch("builtins.print") as mock_print:
                             result = main()
 
@@ -259,7 +259,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
 
             # Mock the get_package_mcp_server_config function to raise ValueError
             with patch(
-                "hatch.cli_hatch.get_package_mcp_server_config"
+                "hatch.cli.cli_package.get_package_mcp_server_config"
             ) as mock_get_config:
                 mock_get_config.side_effect = ValueError(
                     "Package 'nonexistent-package' not found in environment 'default'"
@@ -267,7 +267,7 @@ class TestMCPCLIPackageManagement(unittest.TestCase):
 
                 # Mock environment manager
                 with patch(
-                    "hatch.cli_hatch.HatchEnvironmentManager"
+                    "hatch.environment_manager.HatchEnvironmentManager"
                 ) as mock_env_manager:
                     mock_env_manager.return_value.get_current_environment.return_value = "default"
 

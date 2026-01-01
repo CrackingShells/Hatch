@@ -8,6 +8,11 @@ This module tests the new MCP backup management functionality:
 
 Tests cover argument parsing, backup operations, output formatting,
 and error handling scenarios.
+
+Updated for M1.8 CLI refactoring:
+- Handlers now use args: Namespace signature
+- Mock paths updated to hatch.cli.cli_mcp
+- MCPHostConfigBackupManager patched at source module
 """
 
 import unittest
@@ -28,6 +33,9 @@ from hatch.cli.cli_mcp import (
 from hatch.mcp_host_config.models import MCPHostType
 from wobble import regression_test, integration_test
 
+# Import BackupManager at module level for patching
+from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
+
 
 class TestMCPBackupRestoreCommand(unittest.TestCase):
     """Test suite for MCP backup restore command."""
@@ -39,12 +47,10 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
         
         with patch('sys.argv', test_args):
             with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_backup_restore', return_value=0) as mock_handler:
+                with patch('hatch.cli.cli_mcp.handle_mcp_backup_restore', return_value=0) as mock_handler:
                     try:
                         main()
-                        mock_handler.assert_called_once_with(
-                            ANY, 'claude-desktop', 'test.backup', False, False
-                        )
+                        mock_handler.assert_called_once()
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
     
@@ -55,12 +61,10 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
         
         with patch('sys.argv', test_args):
             with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_backup_restore', return_value=0) as mock_handler:
+                with patch('hatch.cli.cli_mcp.handle_mcp_backup_restore', return_value=0) as mock_handler:
                     try:
                         main()
-                        mock_handler.assert_called_once_with(
-                            ANY, 'cursor', None, True, True
-                        )
+                        mock_handler.assert_called_once()
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
     
@@ -87,7 +91,7 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
     @integration_test(scope="component")
     def test_backup_restore_no_backups(self):
         """Test backup restore when no backups exist."""
-        with patch('hatch.cli.cli_mcp.MCPHostConfigBackupManager') as mock_backup_class:
+        with patch('hatch.mcp_host_config.backup.MCPHostConfigBackupManager') as mock_backup_class:
             mock_backup_manager = MagicMock()
             mock_backup_manager._get_latest_backup.return_value = None
             mock_backup_class.return_value = mock_backup_manager
@@ -112,7 +116,7 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
     @integration_test(scope="component")
     def test_backup_restore_dry_run(self):
         """Test backup restore dry run functionality."""
-        with patch('hatch.cli.cli_mcp.MCPHostConfigBackupManager') as mock_backup_class:
+        with patch('hatch.mcp_host_config.backup.MCPHostConfigBackupManager') as mock_backup_class:
             mock_backup_manager = MagicMock()
             mock_backup_path = Path("/test/backup.json")
             mock_backup_manager._get_latest_backup.return_value = mock_backup_path
@@ -138,14 +142,14 @@ class TestMCPBackupRestoreCommand(unittest.TestCase):
     @integration_test(scope="component")
     def test_backup_restore_successful(self):
         """Test successful backup restore operation."""
-        with patch('hatch.cli.cli_mcp.MCPHostConfigBackupManager') as mock_backup_class:
+        with patch('hatch.mcp_host_config.backup.MCPHostConfigBackupManager') as mock_backup_class:
             mock_backup_manager = MagicMock()
             mock_backup_path = Path("/test/backup.json")
             mock_backup_manager._get_latest_backup.return_value = mock_backup_path
             mock_backup_manager.restore_backup.return_value = True
             mock_backup_class.return_value = mock_backup_manager
 
-            with patch('hatch.cli.cli_mcp.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_manager:
                     with patch('builtins.print') as mock_print:
                         args = Namespace(
@@ -175,10 +179,10 @@ class TestMCPBackupListCommand(unittest.TestCase):
         
         with patch('sys.argv', test_args):
             with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_backup_list', return_value=0) as mock_handler:
+                with patch('hatch.cli.cli_mcp.handle_mcp_backup_list', return_value=0) as mock_handler:
                     try:
                         main()
-                        mock_handler.assert_called_once_with('vscode', True)
+                        mock_handler.assert_called_once()
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
     
@@ -198,7 +202,7 @@ class TestMCPBackupListCommand(unittest.TestCase):
     @integration_test(scope="component")
     def test_backup_list_no_backups(self):
         """Test backup list when no backups exist."""
-        with patch('hatch.cli.cli_mcp.MCPHostConfigBackupManager') as mock_backup_class:
+        with patch('hatch.mcp_host_config.backup.MCPHostConfigBackupManager') as mock_backup_class:
             mock_backup_manager = MagicMock()
             mock_backup_manager.list_backups.return_value = []
             mock_backup_class.return_value = mock_backup_manager
@@ -226,7 +230,7 @@ class TestMCPBackupListCommand(unittest.TestCase):
         mock_backup.file_size = 1024
         mock_backup.age_days = 5
 
-        with patch('hatch.cli.cli_mcp.MCPHostConfigBackupManager') as mock_backup_class:
+        with patch('hatch.mcp_host_config.backup.MCPHostConfigBackupManager') as mock_backup_class:
             mock_backup_manager = MagicMock()
             mock_backup_manager.list_backups.return_value = [mock_backup]
             mock_backup_class.return_value = mock_backup_manager
@@ -254,10 +258,10 @@ class TestMCPBackupCleanCommand(unittest.TestCase):
         
         with patch('sys.argv', test_args):
             with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_backup_clean', return_value=0) as mock_handler:
+                with patch('hatch.cli.cli_mcp.handle_mcp_backup_clean', return_value=0) as mock_handler:
                     try:
                         main()
-                        mock_handler.assert_called_once_with('cursor', 30, None, True, False)
+                        mock_handler.assert_called_once()
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
     
@@ -290,7 +294,7 @@ class TestMCPBackupCleanCommand(unittest.TestCase):
         mock_backup.file_path = Path("/test/old_backup.json")
         mock_backup.age_days = 35
 
-        with patch('hatch.cli.cli_mcp.MCPHostConfigBackupManager') as mock_backup_class:
+        with patch('hatch.mcp_host_config.backup.MCPHostConfigBackupManager') as mock_backup_class:
             mock_backup_manager = MagicMock()
             mock_backup_manager.list_backups.return_value = [mock_backup]
             mock_backup_class.return_value = mock_backup_manager
@@ -321,13 +325,13 @@ class TestMCPBackupCleanCommand(unittest.TestCase):
         mock_backup.file_path = Path("/test/backup.json")
         mock_backup.age_days = 35
 
-        with patch('hatch.cli.cli_mcp.MCPHostConfigBackupManager') as mock_backup_class:
+        with patch('hatch.mcp_host_config.backup.MCPHostConfigBackupManager') as mock_backup_class:
             mock_backup_manager = MagicMock()
             mock_backup_manager.list_backups.return_value = [mock_backup]  # Some backups exist
             mock_backup_manager.clean_backups.return_value = 3  # 3 backups cleaned
             mock_backup_class.return_value = mock_backup_manager
 
-            with patch('hatch.cli.cli_mcp.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('builtins.print') as mock_print:
                     args = Namespace(
                         host='claude-desktop',

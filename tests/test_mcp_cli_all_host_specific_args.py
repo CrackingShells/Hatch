@@ -5,19 +5,22 @@ This module tests that:
 1. All host-specific arguments are accepted for all hosts
 2. Unsupported fields are reported as "UNSUPPORTED" in conversion reports
 3. All new arguments (httpUrl, includeTools, excludeTools, inputs) work correctly
+
+Updated for M1.8: Uses Namespace-based handler calls via create_mcp_configure_args.
 """
 
 import unittest
 from unittest.mock import patch, MagicMock
 from io import StringIO
 
-from hatch.cli_hatch import handle_mcp_configure
+from hatch.cli.cli_mcp import handle_mcp_configure
 from hatch.cli.cli_utils import parse_input
 from hatch.mcp_host_config import MCPHostType
 from hatch.mcp_host_config.models import (
     MCPServerConfigGemini, MCPServerConfigCursor, MCPServerConfigVSCode,
     MCPServerConfigClaude, MCPServerConfigCodex
 )
+from tests.cli_test_utils import create_mcp_configure_args
 
 
 class TestAllGeminiArguments(unittest.TestCase):
@@ -35,30 +38,29 @@ class TestAllGeminiArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        # Test local server with Gemini-specific fields (no http_url with command)
+        args = create_mcp_configure_args(
             host='gemini',
             server_name='test-server',
-            command='python',
+            server_command='python',
             args=['server.py'],
             timeout=30000,
             trust=True,
             cwd='/workspace',
-            http_url='https://api.example.com/mcp',
             include_tools=['tool1', 'tool2'],
             exclude_tools=['dangerous_tool'],
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify all fields were passed to Gemini model
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigGemini)
         self.assertEqual(server_config.timeout, 30000)
         self.assertEqual(server_config.trust, True)
         self.assertEqual(server_config.cwd, '/workspace')
-        self.assertEqual(server_config.httpUrl, 'https://api.example.com/mcp')
         self.assertEqual(server_config.includeTools, ['tool1', 'tool2'])
         self.assertEqual(server_config.excludeTools, ['dangerous_tool'])
 
@@ -78,20 +80,19 @@ class TestUnsupportedFieldReporting(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='vscode',
             server_name='test-server',
-            command='python',
+            server_command='python',
             args=['server.py'],
-            timeout=30000,  # Gemini-only field
-            trust=True,     # Gemini-only field
-            auto_approve=True
+            timeout=30000,
+            trust=True,
+            auto_approve=True,
         )
 
-        # Should succeed (not return error code 1)
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Check that print was called with "UNSUPPORTED" for Gemini fields
         print_calls = [str(call) for call in mock_print.call_args_list]
         output = ' '.join(print_calls)
         self.assertIn('UNSUPPORTED', output)
@@ -110,19 +111,18 @@ class TestUnsupportedFieldReporting(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='gemini',
             server_name='test-server',
-            command='python',
+            server_command='python',
             args=['server.py'],
-            input=['promptString,api-key,API Key,password=true'],  # VS Code-only field
-            auto_approve=True
+            input=['promptString,api-key,API Key,password=true'],
+            auto_approve=True,
         )
 
-        # Should succeed (not return error code 1)
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Check that print was called with "UNSUPPORTED" for inputs field
         print_calls = [str(call) for call in mock_print.call_args_list]
         output = ' '.join(print_calls)
         self.assertIn('UNSUPPORTED', output)
@@ -190,18 +190,18 @@ class TestVSCodeInputsIntegration(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='vscode',
             server_name='test-server',
-            command='python',
+            server_command='python',
             args=['server.py'],
             input=['promptString,api-key,API Key,password=true'],
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify inputs were passed to VS Code model
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigVSCode)
@@ -225,18 +225,19 @@ class TestHttpUrlArgument(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        # http_url is for remote servers, so no command/args
+        args = create_mcp_configure_args(
             host='gemini',
             server_name='test-server',
-            command='python',
-            args=['server.py'],
+            server_command=None,
+            args=None,
             http_url='https://api.example.com/mcp',
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify httpUrl was passed to Gemini model
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigGemini)
@@ -258,18 +259,18 @@ class TestToolFilteringArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='gemini',
             server_name='test-server',
-            command='python',
+            server_command='python',
             args=['server.py'],
             include_tools=['tool1', 'tool2', 'tool3'],
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify includeTools was passed to Gemini model
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigGemini)
@@ -287,18 +288,18 @@ class TestToolFilteringArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='gemini',
             server_name='test-server',
-            command='python',
+            server_command='python',
             args=['server.py'],
             exclude_tools=['dangerous_tool'],
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
         
-        # Verify excludeTools was passed to Gemini model
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigGemini)
@@ -320,11 +321,10 @@ class TestAllCodexArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        # Test STDIO server with Codex-specific STDIO fields
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='codex',
             server_name='test-server',
-            command='npx',
+            server_command='npx',
             args=['-y', '@upstash/context7-mcp'],
             env_vars=['PATH', 'HOME'],
             cwd='/workspace',
@@ -333,21 +333,16 @@ class TestAllCodexArguments(unittest.TestCase):
             enabled=True,
             include_tools=['read', 'write'],
             exclude_tools=['delete'],
-            auto_approve=True
+            auto_approve=True,
         )
 
-        # Verify success
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
 
-        # Verify configure_server was called
         mock_manager.configure_server.assert_called_once()
-
-        # Verify server_config is MCPServerConfigCodex
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertIsInstance(server_config, MCPServerConfigCodex)
-
-        # Verify Codex-specific STDIO fields
         self.assertEqual(server_config.env_vars, ['PATH', 'HOME'])
         self.assertEqual(server_config.cwd, '/workspace')
         self.assertEqual(server_config.startup_timeout_sec, 15)
@@ -368,16 +363,18 @@ class TestAllCodexArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='codex',
             server_name='test-server',
-            command='npx',
+            server_command='npx',
             args=['-y', 'package'],
             env_vars=['PATH', 'HOME', 'USER'],
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
+        
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertEqual(server_config.env_vars, ['PATH', 'HOME', 'USER'])
@@ -394,16 +391,18 @@ class TestAllCodexArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='codex',
             server_name='test-server',
-            command='npx',
+            server_command='npx',
             args=['-y', 'package'],
             env_header=['X-API-Key=API_KEY', 'Authorization=AUTH_TOKEN'],
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
+        
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertEqual(server_config.env_http_headers, {
@@ -423,17 +422,19 @@ class TestAllCodexArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='codex',
             server_name='test-server',
-            command='npx',
+            server_command='npx',
             args=['-y', 'package'],
             startup_timeout=30,
             tool_timeout=180,
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
+        
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertEqual(server_config.startup_timeout_sec, 30)
@@ -451,16 +452,18 @@ class TestAllCodexArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='codex',
             server_name='test-server',
-            command='npx',
+            server_command='npx',
             args=['-y', 'package'],
             enabled=True,
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
+        
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
         self.assertTrue(server_config.enabled)
@@ -477,22 +480,22 @@ class TestAllCodexArguments(unittest.TestCase):
         mock_result.backup_path = None
         mock_manager.configure_server.return_value = mock_result
 
-        result = handle_mcp_configure(
+        args = create_mcp_configure_args(
             host='codex',
             server_name='test-server',
-            command='npx',
+            server_command='npx',
             args=['-y', 'package'],
             cwd='/workspace',
             include_tools=['tool1', 'tool2'],
             exclude_tools=['tool3'],
-            auto_approve=True
+            auto_approve=True,
         )
 
+        result = handle_mcp_configure(args)
         self.assertEqual(result, 0)
+        
         call_args = mock_manager.configure_server.call_args
         server_config = call_args.kwargs['server_config']
-
-        # Verify shared arguments work for Codex STDIO servers
         self.assertEqual(server_config.cwd, '/workspace')
         self.assertEqual(server_config.enabled_tools, ['tool1', 'tool2'])
         self.assertEqual(server_config.disabled_tools, ['tool3'])
@@ -500,4 +503,3 @@ class TestAllCodexArguments(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -5,6 +5,9 @@ particularly for creating Namespace objects and mock managers.
 
 These utilities reduce boilerplate in test files and ensure consistent
 test patterns across the CLI test suite.
+
+IMPORTANT: The attribute names in create_mcp_configure_args MUST match
+the exact names expected by handle_mcp_configure in hatch/cli/cli_mcp.py.
 """
 
 import sys
@@ -20,31 +23,32 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 def create_mcp_configure_args(
     host: str = "claude-desktop",
     server_name: str = "test-server",
-    command: Optional[str] = "python",
+    server_command: Optional[str] = "python",
     args: Optional[List[str]] = None,
-    env: Optional[List[str]] = None,
+    env_var: Optional[List[str]] = None,
     url: Optional[str] = None,
     header: Optional[List[str]] = None,
-    http_url: Optional[str] = None,
-    disabled: bool = False,
     timeout: Optional[int] = None,
+    trust: bool = False,
+    cwd: Optional[str] = None,
+    env_file: Optional[str] = None,
+    http_url: Optional[str] = None,
     include_tools: Optional[List[str]] = None,
     exclude_tools: Optional[List[str]] = None,
-    inputs: Optional[List[str]] = None,
+    input: Optional[List[str]] = None,
+    disabled: Optional[bool] = None,
     auto_approve_tools: Optional[List[str]] = None,
     disable_tools: Optional[List[str]] = None,
+    env_vars: Optional[List[str]] = None,
+    startup_timeout: Optional[int] = None,
+    tool_timeout: Optional[int] = None,
     enabled: Optional[bool] = None,
-    roots: Optional[List[str]] = None,
-    transport: Optional[str] = None,
-    transport_options: Optional[List[str]] = None,
-    env_file: Optional[str] = None,
-    working_dir: Optional[str] = None,
-    shell: Optional[bool] = None,
-    type_field: Optional[str] = None,
-    scope: Optional[str] = None,
+    bearer_token_env_var: Optional[str] = None,
+    env_header: Optional[List[str]] = None,
     no_backup: bool = False,
     dry_run: bool = False,
     auto_approve: bool = False,
+    _use_default_args: bool = True,
 ) -> Namespace:
     """Create a Namespace object for handle_mcp_configure testing.
 
@@ -52,31 +56,91 @@ def create_mcp_configure_args(
     the expected arguments for handle_mcp_configure, making tests more
     readable and maintainable.
 
+    IMPORTANT: Attribute names MUST match those in handle_mcp_configure:
+    - server_command (not command)
+    - env_var (not env)
+    - input (not inputs)
+
     Args:
         host: Target MCP host (e.g., 'claude-desktop', 'cursor', 'vscode')
         server_name: Name of the MCP server to configure
-        command: Command to run for local servers
-        args: Arguments for the command
-        env: Environment variables in KEY=VALUE format
+        server_command: Command to run for local servers
+        args: Arguments for the command (defaults to ['server.py'] for local servers)
+        env_var: Environment variables in KEY=VALUE format
         url: URL for SSE remote servers
         header: HTTP headers in KEY=VALUE format
-        http_url: URL for HTTP remote servers (Gemini only)
-        disabled: Whether the server should be disabled
         timeout: Server timeout in seconds
+        trust: Trust the server (Cursor)
+        cwd: Working directory
+        env_file: Environment file path
+        http_url: URL for HTTP remote servers (Gemini only)
         include_tools: Tools to include (Gemini)
         exclude_tools: Tools to exclude (Gemini)
-        inputs: VSCode input configurations
+        input: VSCode input configurations
+        disabled: Whether the server should be disabled
         auto_approve_tools: Tools to auto-approve (Kiro)
         disable_tools: Tools to disable (Kiro)
-        enabled: Whether server is enabled (Codex)
-        roots: Root directories (Codex)
-        transport: Transport type (Codex)
-        transport_options: Transport options (Codex)
-        env_file: Environment file path (Codex)
-        working_dir: Working directory (Codex)
-        shell: Use shell execution (Codex)
-        type_field: Server type field
-        scope: Configuration scope
+        env_vars: Additional environment variables
+        startup_timeout: Startup timeout
+        tool_timeout: Tool execution timeout
+        enabled: Whether server is enabled
+        bearer_token_env_var: Bearer token environment variable
+        env_header: Environment headers
+        no_backup: Disable backup creation
+        dry_run: Preview changes without applying
+        auto_approve: Skip confirmation prompts
+        _use_default_args: If True and args is None and server_command is set, use default args
+
+    Returns:
+        Namespace object with all arguments set
+    """
+    # Only use default args for local servers (when command is set)
+    if args is None and server_command is not None and _use_default_args:
+        args = ["server.py"]
+
+    return Namespace(
+        host=host,
+        server_name=server_name,
+        server_command=server_command,
+        args=args,
+        env_var=env_var,
+        url=url,
+        header=header,
+        timeout=timeout,
+        trust=trust,
+        cwd=cwd,
+        env_file=env_file,
+        http_url=http_url,
+        include_tools=include_tools,
+        exclude_tools=exclude_tools,
+        input=input,
+        disabled=disabled,
+        auto_approve_tools=auto_approve_tools,
+        disable_tools=disable_tools,
+        env_vars=env_vars,
+        startup_timeout=startup_timeout,
+        tool_timeout=tool_timeout,
+        enabled=enabled,
+        bearer_token_env_var=bearer_token_env_var,
+        env_header=env_header,
+        no_backup=no_backup,
+        dry_run=dry_run,
+        auto_approve=auto_approve,
+    )
+
+
+def create_mcp_remove_args(
+    host: str = "claude-desktop",
+    server_name: str = "test-server",
+    no_backup: bool = False,
+    dry_run: bool = False,
+    auto_approve: bool = False,
+) -> Namespace:
+    """Create a Namespace object for handle_mcp_remove testing.
+
+    Args:
+        host: Target MCP host
+        server_name: Name of the MCP server to remove
         no_backup: Disable backup creation
         dry_run: Preview changes without applying
         auto_approve: Skip confirmation prompts
@@ -84,34 +148,71 @@ def create_mcp_configure_args(
     Returns:
         Namespace object with all arguments set
     """
-    if args is None:
-        args = ["server.py"]
-
     return Namespace(
         host=host,
         server_name=server_name,
-        command=command,
-        args=args,
+        no_backup=no_backup,
+        dry_run=dry_run,
+        auto_approve=auto_approve,
+    )
+
+
+def create_mcp_remove_server_args(
+    env_manager: Any = None,
+    server_name: str = "test-server",
+    host: Optional[str] = None,
+    env: Optional[str] = None,
+    no_backup: bool = False,
+    dry_run: bool = False,
+    auto_approve: bool = False,
+) -> Namespace:
+    """Create a Namespace object for handle_mcp_remove_server testing.
+
+    Args:
+        env_manager: Environment manager instance
+        server_name: Name of the MCP server to remove
+        host: Comma-separated list of target hosts
+        env: Environment name
+        no_backup: Disable backup creation
+        dry_run: Preview changes without applying
+        auto_approve: Skip confirmation prompts
+
+    Returns:
+        Namespace object with all arguments set
+    """
+    return Namespace(
+        env_manager=env_manager,
+        server_name=server_name,
+        host=host,
         env=env,
-        url=url,
-        header=header,
-        http_url=http_url,
-        disabled=disabled,
-        timeout=timeout,
-        include_tools=include_tools,
-        exclude_tools=exclude_tools,
-        inputs=inputs,
-        auto_approve_tools=auto_approve_tools,
-        disable_tools=disable_tools,
-        enabled=enabled,
-        roots=roots,
-        transport=transport,
-        transport_options=transport_options,
-        env_file=env_file,
-        working_dir=working_dir,
-        shell=shell,
-        type_field=type_field,
-        scope=scope,
+        no_backup=no_backup,
+        dry_run=dry_run,
+        auto_approve=auto_approve,
+    )
+
+
+def create_mcp_remove_host_args(
+    env_manager: Any = None,
+    host_name: str = "claude-desktop",
+    no_backup: bool = False,
+    dry_run: bool = False,
+    auto_approve: bool = False,
+) -> Namespace:
+    """Create a Namespace object for handle_mcp_remove_host testing.
+
+    Args:
+        env_manager: Environment manager instance
+        host_name: Name of the host to remove configuration from
+        no_backup: Disable backup creation
+        dry_run: Preview changes without applying
+        auto_approve: Skip confirmation prompts
+
+    Returns:
+        Namespace object with all arguments set
+    """
+    return Namespace(
+        env_manager=env_manager,
+        host_name=host_name,
         no_backup=no_backup,
         dry_run=dry_run,
         auto_approve=auto_approve,

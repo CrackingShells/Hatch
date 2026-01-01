@@ -47,8 +47,8 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
         test_args = ['hatch', 'mcp', 'discover', 'hosts']
         
         with patch('sys.argv', test_args):
-            with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_discover_hosts', return_value=0) as mock_handler:
+            with patch('hatch.environment_manager.HatchEnvironmentManager'):
+                with patch('hatch.cli.cli_mcp.handle_mcp_discover_hosts', return_value=0) as mock_handler:
                     try:
                         main()
                         mock_handler.assert_called_once()
@@ -61,8 +61,8 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
         test_args = ['hatch', 'mcp', 'discover', 'servers', '--env', 'test-env']
         
         with patch('sys.argv', test_args):
-            with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_discover_servers', return_value=0) as mock_handler:
+            with patch('hatch.environment_manager.HatchEnvironmentManager'):
+                with patch('hatch.cli.cli_mcp.handle_mcp_discover_servers', return_value=0) as mock_handler:
                     try:
                         main()
                         mock_handler.assert_called_once()
@@ -75,18 +75,21 @@ class TestMCPDiscoveryCommands(unittest.TestCase):
         test_args = ['hatch', 'mcp', 'discover', 'servers']
         
         with patch('sys.argv', test_args):
-            with patch('hatch.cli_hatch.HatchEnvironmentManager') as mock_env_class:
+            with patch('hatch.environment_manager.HatchEnvironmentManager') as mock_env_class:
                 mock_env_manager = MagicMock()
                 mock_env_class.return_value = mock_env_manager
                 
-                with patch('hatch.cli_hatch.handle_mcp_discover_servers', return_value=0) as mock_handler:
+                with patch('hatch.cli.cli_mcp.handle_mcp_discover_servers', return_value=0) as mock_handler:
                     try:
                         main()
-                        # Should be called with env_manager and None (default env)
+                        # Should be called with args namespace
                         mock_handler.assert_called_once()
                         args = mock_handler.call_args[0]
-                        self.assertEqual(len(args), 2)  # env_manager, env_name
-                        self.assertIsNone(args[1])  # env_name should be None
+                        self.assertEqual(len(args), 1)  # args: Namespace
+                        # Check that the namespace has the expected attributes
+                        namespace = args[0]
+                        self.assertTrue(hasattr(namespace, 'env_manager'))
+                        self.assertTrue(hasattr(namespace, 'env'))
                     except SystemExit as e:
                         self.assertEqual(e.code, 0)
     
@@ -214,8 +217,8 @@ class TestMCPListCommands(unittest.TestCase):
         test_args = ['hatch', 'mcp', 'list', 'hosts']
         
         with patch('sys.argv', test_args):
-            with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_list_hosts', return_value=0) as mock_handler:
+            with patch('hatch.environment_manager.HatchEnvironmentManager'):
+                with patch('hatch.cli.cli_mcp.handle_mcp_list_hosts', return_value=0) as mock_handler:
                     try:
                         main()
                         mock_handler.assert_called_once()
@@ -228,8 +231,8 @@ class TestMCPListCommands(unittest.TestCase):
         test_args = ['hatch', 'mcp', 'list', 'servers', '--env', 'production']
         
         with patch('sys.argv', test_args):
-            with patch('hatch.cli_hatch.HatchEnvironmentManager'):
-                with patch('hatch.cli_hatch.handle_mcp_list_servers', return_value=0) as mock_handler:
+            with patch('hatch.environment_manager.HatchEnvironmentManager'):
+                with patch('hatch.cli.cli_mcp.handle_mcp_list_servers', return_value=0) as mock_handler:
                     try:
                         main()
                         mock_handler.assert_called_once()
