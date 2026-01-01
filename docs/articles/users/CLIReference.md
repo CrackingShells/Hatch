@@ -1,6 +1,6 @@
 # CLI Reference
 
-This document is a compact reference of all Hatch CLI commands and options implemented in `hatch/cli_hatch.py` presented as tables for quick lookup.
+This document is a compact reference of all Hatch CLI commands and options implemented in the `hatch/cli/` package, presented as tables for quick lookup.
 
 ## Table of Contents
 

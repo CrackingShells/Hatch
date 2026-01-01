@@ -602,7 +602,7 @@ HOST_MODEL_REGISTRY = {
 
 3. **Extend `MCPServerConfigOmni`** with your fields (for CLI integration)
 
-4. **Add CLI arguments** in `cli_hatch.py` (see next section)
+4. **Add CLI arguments** in `hatch/cli/__main__.py` (see next section)
 
 For most cases, the generic `MCPServerConfig` works fine - only add a host-specific model if truly needed.
 
@@ -610,15 +610,7 @@ For most cases, the generic `MCPServerConfig` works fine - only add a host-speci
 
 If your host has unique configuration fields, extend the CLI to support them:
 
-1. **Update function signature** in `handle_mcp_configure()`:
-```python
-def handle_mcp_configure(
-    # ... existing params ...
-    your_field: Optional[str] = None,  # Add your field
-):
-```
-
-2. **Add argument parser entry**:
+1. **Add argument parser entry** in `hatch/cli/__main__.py` (in `_setup_mcp_commands()`):
 ```python
 configure_parser.add_argument(
     '--your-field',
@@ -626,8 +618,12 @@ configure_parser.add_argument(
 )
 ```
 
-3. **Update omni model population**:
+2. **Update handler** in `hatch/cli/cli_mcp.py` (`handle_mcp_configure()`):
 ```python
+# Extract from args namespace
+your_field = getattr(args, 'your_field', None)
+
+# Include in omni model population
 omni_config_data = {
     # ... existing fields ...
     'your_field': your_field,

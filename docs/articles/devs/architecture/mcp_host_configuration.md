@@ -155,8 +155,8 @@ If your host has unique configuration fields (like Kiro's `disabled`, `autoAppro
 
 If your host has unique CLI arguments:
 
-1. Extend `handle_mcp_configure()` function signature in `cli_hatch.py`
-2. Add argument parser entries for new flags
+1. Add argument parser entries in `hatch/cli/__main__.py` (in `_setup_mcp_commands()`)
+2. Update handler in `hatch/cli/cli_mcp.py` to extract and use the new arguments
 3. Update omni model population logic
 
 ### Environment Manager Integration

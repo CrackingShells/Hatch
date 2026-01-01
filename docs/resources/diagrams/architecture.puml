@@ -6,7 +6,9 @@ LAYOUT_WITH_LEGEND()
 title Hatch Architecture Overview
 
 Container_Boundary(cli, "CLI Layer") {
-    Component(cli_hatch, "CLI Interface", "Python", "Command-line interface\nArgument parsing and validation")
+    Component(cli_main, "CLI Entry Point", "Python", "Argument parsing\nCommand routing")
+    Component(cli_handlers, "CLI Handlers", "Python", "Domain-specific handlers\n(mcp, env, package, system)")
+    Component(cli_utils, "CLI Utilities", "Python", "Shared utilities\nExit codes, parsing helpers")
 }
 
 Container_Boundary(core, "Core Management") {
@@ -48,9 +50,11 @@ Container_Boundary(external, "External Systems") {
 }
 
 ' CLI relationships
-Rel(cli_hatch, env_manager, "Manages environments")
-Rel(cli_hatch, package_loader, "Loads and validates packages")
-Rel(cli_hatch, template_generator, "Creates package templates")
+Rel(cli_main, cli_handlers, "Routes to")
+Rel(cli_handlers, cli_utils, "Uses")
+Rel(cli_handlers, env_manager, "Manages environments")
+Rel(cli_handlers, package_loader, "Loads and validates packages")
+Rel(cli_handlers, template_generator, "Creates package templates")
 
 ' Core management relationships
 Rel(env_manager, python_env_manager, "Delegates Python operations")
