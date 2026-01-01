@@ -28,10 +28,10 @@ dependencies = [
 
   [project.optional-dependencies]
   docs = [ "mkdocs>=1.4.0", "mkdocstrings[python]>=0.20.0" ]
-  dev = [ "wobble>=0.2.0" ]
+  dev = [ "cs-wobble>=0.2.0" ]
 
   [project.scripts]
-  hatch = "hatch.cli_hatch:main"
+  hatch = "hatch.cli:main"
 
   [project.urls]
   Homepage = "https://github.com/CrackingShells/Hatch"
