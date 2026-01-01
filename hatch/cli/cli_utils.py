@@ -1,14 +1,32 @@
 """Shared utilities for Hatch CLI.
 
-This module provides common utilities used across CLI handlers:
-- Exit code constants for consistent return values
-- Version retrieval from package metadata
-- User interaction helpers (confirmation prompts)
-- Parsing utilities for CLI arguments
-- Package MCP configuration helpers
+This module provides common utilities used across CLI handlers, extracted
+from the monolithic cli_hatch.py to enable cleaner handler-based architecture
+and easier testing.
 
-These utilities are extracted from cli_hatch.py to enable cleaner
-handler-based architecture and easier testing.
+Constants:
+    EXIT_SUCCESS (int): Exit code for successful operations (0)
+    EXIT_ERROR (int): Exit code for failed operations (1)
+
+Functions:
+    get_hatch_version(): Retrieve version from package metadata
+    request_confirmation(): Interactive user confirmation with auto-approve support
+    parse_env_vars(): Parse KEY=VALUE environment variable arguments
+    parse_header(): Parse KEY=VALUE HTTP header arguments
+    parse_input(): Parse VSCode input configurations
+    parse_host_list(): Parse comma-separated host list or 'all'
+    get_package_mcp_server_config(): Extract MCP server config from package metadata
+
+Example:
+    >>> from hatch.cli.cli_utils import EXIT_SUCCESS, EXIT_ERROR, request_confirmation
+    >>> if request_confirmation("Proceed?", auto_approve=False):
+    ...     return EXIT_SUCCESS
+    ... else:
+    ...     return EXIT_ERROR
+
+    >>> from hatch.cli.cli_utils import parse_env_vars
+    >>> env_dict = parse_env_vars(["API_KEY=secret", "DEBUG=true"])
+    >>> # Returns: {"API_KEY": "secret", "DEBUG": "true"}
 """
 
 from importlib.metadata import PackageNotFoundError, version

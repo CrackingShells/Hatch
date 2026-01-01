@@ -1,12 +1,32 @@
 """Package CLI handlers for Hatch.
 
-This module contains handlers for package management commands:
-- package add: Add a package to an environment
-- package remove: Remove a package from an environment
-- package list: List packages in an environment
-- package sync: Synchronize package MCP servers to hosts
+This module contains handlers for package management commands. Packages are
+MCP server implementations that can be installed into environments and
+configured on MCP host platforms.
 
-All handlers follow the signature: (args: Namespace) -> int
+Commands:
+    - hatch package add <name>: Add a package to an environment
+    - hatch package remove <name>: Remove a package from an environment
+    - hatch package list: List packages in an environment
+    - hatch package sync <name>: Synchronize package MCP servers to hosts
+
+Package Workflow:
+    1. Add package to environment: hatch package add my-mcp-server
+    2. Configure on hosts: hatch mcp configure claude-desktop my-mcp-server ...
+    3. Or sync automatically: hatch package sync my-mcp-server --host all
+
+Handler Signature:
+    All handlers follow: (args: Namespace) -> int
+    - args.env_manager: HatchEnvironmentManager instance
+    - Returns: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+
+Internal Helpers:
+    _configure_packages_on_hosts(): Shared logic for configuring packages on hosts
+
+Example:
+    $ hatch package add mcp-server-fetch
+    $ hatch package list
+    $ hatch package sync mcp-server-fetch --host claude-desktop,cursor
 """
 
 import json

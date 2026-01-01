@@ -1,16 +1,50 @@
 """MCP host configuration handlers for Hatch CLI.
 
 This module provides handlers for MCP (Model Context Protocol) host configuration
-commands including:
-- Discovery: detect available hosts and servers
-- Listing: show configured hosts and servers
-- Backup: manage configuration backups
-- Configuration: add/update/remove MCP servers
-- Synchronization: sync configurations across hosts
+commands. MCP enables AI assistants to interact with external tools and services
+through a standardized protocol.
 
-All handlers follow the standardized signature: (args: Namespace) -> int
-where args contains the parsed command-line arguments and the return value
-is the exit code (0 for success, non-zero for errors).
+Supported Hosts:
+    - claude-desktop: Claude Desktop application
+    - claude-code: Claude Code extension
+    - cursor: Cursor IDE
+    - vscode: Visual Studio Code with Copilot
+    - kiro: Kiro IDE
+    - codex: OpenAI Codex
+    - lm-studio: LM Studio
+    - gemini: Google Gemini
+
+Command Groups:
+    Discovery:
+        - hatch mcp discover hosts: Detect available MCP host platforms
+        - hatch mcp discover servers: Find MCP servers in packages
+
+    Listing:
+        - hatch mcp list hosts: Show configured hosts in environment
+        - hatch mcp list servers: Show configured servers
+
+    Backup:
+        - hatch mcp backup restore: Restore configuration from backup
+        - hatch mcp backup list: List available backups
+        - hatch mcp backup clean: Clean old backups
+
+    Configuration:
+        - hatch mcp configure: Add or update MCP server configuration
+        - hatch mcp remove: Remove server from specific host
+        - hatch mcp remove-server: Remove server from multiple hosts
+        - hatch mcp remove-host: Remove all servers from a host
+
+    Synchronization:
+        - hatch mcp sync: Sync package servers to hosts
+
+Handler Signature:
+    All handlers follow: (args: Namespace) -> int
+    Returns EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure.
+
+Example:
+    $ hatch mcp discover hosts
+    $ hatch mcp configure claude-desktop my-server --command python --args server.py
+    $ hatch mcp backup list claude-desktop --detailed
 """
 
 from argparse import Namespace

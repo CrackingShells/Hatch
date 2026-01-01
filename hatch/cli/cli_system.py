@@ -1,10 +1,32 @@
 """System CLI handlers for Hatch.
 
-This module contains handlers for system-level commands:
-- create: Create a new package template
-- validate: Validate a package
+This module contains handlers for system-level commands that operate on
+packages as a whole rather than within environments.
 
-All handlers follow the signature: (args: Namespace) -> int
+Commands:
+    - hatch create <name>: Create a new package template from scratch
+    - hatch validate <path>: Validate a package against the Hatch schema
+
+Package Creation:
+    The create command generates a complete package template with:
+    - pyproject.toml with Hatch metadata
+    - Source directory structure
+    - README and LICENSE files
+    - Basic MCP server implementation
+
+Package Validation:
+    The validate command checks:
+    - pyproject.toml structure and required fields
+    - Hatch-specific metadata (mcp_server entry points)
+    - Package dependencies and version constraints
+
+Handler Signature:
+    All handlers follow: (args: Namespace) -> int
+    Returns: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+
+Example:
+    $ hatch create my-mcp-server --description "My custom MCP server"
+    $ hatch validate ./my-mcp-server
 """
 
 from argparse import Namespace

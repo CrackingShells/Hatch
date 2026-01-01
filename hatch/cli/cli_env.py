@@ -1,18 +1,33 @@
 """Environment CLI handlers for Hatch.
 
-This module contains handlers for environment management commands:
-- env create: Create a new environment
-- env remove: Remove an environment
-- env list: List all environments
-- env use: Set current environment
-- env current: Show current environment
-- env python init: Initialize Python environment
-- env python info: Show Python environment info
-- env python remove: Remove Python environment
-- env python shell: Launch Python shell
-- env python add-hatch-mcp: Add hatch_mcp_server wrapper
+This module contains handlers for environment management commands. Environments
+provide isolated contexts for managing packages and their MCP server configurations.
 
-All handlers follow the signature: (args: Namespace) -> int
+Commands:
+    Basic Environment Management:
+        - hatch env create <name>: Create a new environment
+        - hatch env remove <name>: Remove an environment
+        - hatch env list: List all environments
+        - hatch env use <name>: Set current environment
+        - hatch env current: Show current environment
+
+    Python Environment Management:
+        - hatch env python init: Initialize Python virtual environment
+        - hatch env python info: Show Python environment info
+        - hatch env python remove: Remove Python virtual environment
+        - hatch env python shell: Launch interactive Python shell
+        - hatch env python add-hatch-mcp: Add hatch_mcp_server wrapper script
+
+Handler Signature:
+    All handlers follow: (args: Namespace) -> int
+    - args.env_manager: HatchEnvironmentManager instance
+    - Returns: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+
+Example:
+    $ hatch env create my-project
+    $ hatch env use my-project
+    $ hatch env python init
+    $ hatch env python shell
 """
 
 from argparse import Namespace

@@ -3,9 +3,34 @@
 This module provides the main entry point for the Hatch package manager CLI.
 It handles argument parsing and routes commands to appropriate handler modules.
 
-Can be run via:
-- python -m hatch.cli
-- hatch (when installed via pip)
+Architecture:
+    This module implements the routing layer of the CLI architecture:
+    1. Parses command-line arguments using argparse
+    2. Initializes shared managers (HatchEnvironmentManager, MCPHostConfigurationManager)
+    3. Attaches managers to the args namespace for handler access
+    4. Routes commands to appropriate handler modules
+
+Command Structure:
+    hatch create <name>           - Create package template (cli_system)
+    hatch validate <path>         - Validate package (cli_system)
+    hatch env <subcommand>        - Environment management (cli_env)
+    hatch package <subcommand>    - Package management (cli_package)
+    hatch mcp <subcommand>        - MCP host configuration (cli_mcp)
+
+Entry Points:
+    - python -m hatch.cli: Module execution via __main__.py
+    - hatch: Console script defined in pyproject.toml
+
+Handler Signature:
+    All handlers follow: (args: Namespace) -> int
+    - args.env_manager: HatchEnvironmentManager instance
+    - args.mcp_manager: MCPHostConfigurationManager instance
+    - Returns: Exit code (0 for success, non-zero for errors)
+
+Example:
+    $ hatch --version
+    $ hatch env list
+    $ hatch mcp configure claude-desktop my-server --command python
 """
 
 import argparse

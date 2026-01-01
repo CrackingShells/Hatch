@@ -1,15 +1,33 @@
 """Backward compatibility shim for Hatch CLI.
 
 This module re-exports all public symbols from the new hatch.cli package
-to maintain backward compatibility for external consumers.
+to maintain backward compatibility for external consumers who import from
+hatch.cli_hatch directly.
 
-The actual implementation has been moved to:
-- hatch.cli.__main__: Entry point and argument parsing
-- hatch.cli.cli_utils: Shared utilities
-- hatch.cli.cli_mcp: MCP handlers
-- hatch.cli.cli_env: Environment handlers
-- hatch.cli.cli_package: Package handlers
-- hatch.cli.cli_system: System handlers (create, validate)
+Migration Note:
+    New code should import from hatch.cli instead:
+    
+    # Old (still works):
+    from hatch.cli_hatch import main, handle_mcp_configure
+    
+    # New (preferred):
+    from hatch.cli import main
+    from hatch.cli.cli_mcp import handle_mcp_configure
+
+Implementation Modules:
+    - hatch.cli.__main__: Entry point and argument parsing
+    - hatch.cli.cli_utils: Shared utilities and constants
+    - hatch.cli.cli_mcp: MCP host configuration handlers
+    - hatch.cli.cli_env: Environment management handlers
+    - hatch.cli.cli_package: Package management handlers
+    - hatch.cli.cli_system: System commands (create, validate)
+
+Exported Symbols:
+    - main: CLI entry point
+    - All MCP handlers (handle_mcp_*)
+    - All utility functions (parse_*, request_confirmation, etc.)
+    - Exit code constants (EXIT_SUCCESS, EXIT_ERROR)
+    - HatchEnvironmentManager (re-exported for convenience)
 """
 
 # Re-export main entry point
