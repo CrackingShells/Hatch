@@ -6,16 +6,17 @@ Welcome to the Hatch API Reference documentation. This section provides detailed
 
 Hatch is a comprehensive package manager for the Cracking Shells ecosystem. The API is organized into several key modules:
 
-- **Core Modules**: Main functionality for CLI, environment management, package loading, etc.
+- **CLI Package**: Command-line interface with handler-based architecture
+- **Core Modules**: Environment management, package loading, and registry operations
 - **Installers**: Various installation backends and orchestration components
 
 ## Getting Started
 
-To use Hatch programmatically, you can import the main modules:
+To use Hatch programmatically, import from the appropriate modules:
 
 ```python
-from hatch import cli_hatch
-from hatch.environment_manager import EnvironmentManager
+from hatch.cli import main, EXIT_SUCCESS, EXIT_ERROR
+from hatch.environment_manager import HatchEnvironmentManager
 from hatch.package_loader import PackageLoader
 ```
 

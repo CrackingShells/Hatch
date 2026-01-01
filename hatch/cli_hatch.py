@@ -1,5 +1,9 @@
 """Backward compatibility shim for Hatch CLI.
 
+.. deprecated:: 0.7.2
+    This module is deprecated. Import from ``hatch.cli`` instead.
+    This shim will be removed in version 0.9.0.
+
 This module re-exports all public symbols from the new hatch.cli package
 to maintain backward compatibility for external consumers who import from
 hatch.cli_hatch directly.
@@ -7,7 +11,7 @@ hatch.cli_hatch directly.
 Migration Note:
     New code should import from hatch.cli instead:
     
-    # Old (still works):
+    # Old (deprecated):
     from hatch.cli_hatch import main, handle_mcp_configure
     
     # New (preferred):
@@ -29,6 +33,16 @@ Exported Symbols:
     - Exit code constants (EXIT_SUCCESS, EXIT_ERROR)
     - HatchEnvironmentManager (re-exported for convenience)
 """
+
+import warnings
+
+warnings.warn(
+    "hatch.cli_hatch is deprecated since version 0.7.2. "
+    "Import from hatch.cli instead. "
+    "This module will be removed in version 0.9.0.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 # Re-export main entry point
 from hatch.cli import main
