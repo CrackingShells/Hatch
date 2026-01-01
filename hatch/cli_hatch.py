@@ -974,45 +974,13 @@ def main():
 
     # Execute commands
     if args.command == "create":
-        target_dir = Path(args.dir).resolve()
-        package_dir = create_package_template(
-            target_dir=target_dir, package_name=args.name, description=args.description
-        )
-        print(f"Package template created at: {package_dir}")
+        from hatch.cli.cli_system import handle_create
+        return handle_create(args)
 
     elif args.command == "validate":
-        package_path = Path(args.package_dir).resolve()
-
-        # Create validator with registry data from environment manager
-        validator = HatchPackageValidator(
-            version="latest",
-            allow_local_dependencies=True,
-            registry_data=env_manager.registry_data,
-        )
-
-        # Validate the package
-        is_valid, validation_results = validator.validate_package(package_path)
-
-        if is_valid:
-            print(f"Package validation SUCCESSFUL: {package_path}")
-            return 0
-        else:
-            print(f"Package validation FAILED: {package_path}")
-
-            # Print detailed validation results if available
-            if validation_results and isinstance(validation_results, dict):
-                for category, result in validation_results.items():
-                    if (
-                        category != "valid"
-                        and category != "metadata"
-                        and isinstance(result, dict)
-                    ):
-                        if not result.get("valid", True) and result.get("errors"):
-                            print(f"\n{category.replace('_', ' ').title()} errors:")
-                            for error in result["errors"]:
-                                print(f"  - {error}")
-
-            return 1
+        from hatch.cli.cli_system import handle_validate
+        args.env_manager = env_manager
+        return handle_validate(args)
 
     elif args.command == "env":
         # Import environment handlers
