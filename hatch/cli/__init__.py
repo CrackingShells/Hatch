@@ -28,13 +28,11 @@ from hatch.cli.cli_utils import (
 
 
 def main():
-    """Main entry point - delegates to cli_hatch.main() for now.
+    """Main entry point - delegates to __main__.main().
     
-    This indirection avoids circular imports while maintaining the
-    hatch.cli.main() interface. Will be replaced with direct implementation
-    in Task M1.7.
+    This provides the hatch.cli.main() interface.
     """
-    from hatch.cli_hatch import main as _main
+    from hatch.cli.__main__ import main as _main
     return _main()
 
 

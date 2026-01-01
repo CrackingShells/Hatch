@@ -859,28 +859,29 @@ def handle_mcp_configure(args: Namespace) -> int:
         return EXIT_ERROR
 
 
-def handle_mcp_remove(
-    host: str,
-    server_name: str,
-    no_backup: bool = False,
-    dry_run: bool = False,
-    auto_approve: bool = False,
-) -> int:
+def handle_mcp_remove(args: Namespace) -> int:
     """Handle 'hatch mcp remove' command.
     
     Removes an MCP server configuration from a specific host.
     
     Args:
-        host: Target host identifier (e.g., 'claude-desktop', 'vscode')
-        server_name: Name of the server to remove
-        no_backup: If True, skip creating backup before removal
-        dry_run: If True, show what would be done without making changes
-        auto_approve: If True, skip confirmation prompt
+        args: Namespace with:
+            - host: Target host identifier (e.g., 'claude-desktop', 'vscode')
+            - server_name: Name of the server to remove
+            - no_backup: If True, skip creating backup before removal
+            - dry_run: If True, show what would be done without making changes
+            - auto_approve: If True, skip confirmation prompt
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     from hatch.cli.cli_utils import request_confirmation
+    
+    host = args.host
+    server_name = args.server_name
+    no_backup = getattr(args, "no_backup", False)
+    dry_run = getattr(args, "dry_run", False)
+    auto_approve = getattr(args, "auto_approve", False)
     
     try:
         # Validate host type
@@ -930,32 +931,33 @@ def handle_mcp_remove(
         return EXIT_ERROR
 
 
-def handle_mcp_remove_server(
-    env_manager: HatchEnvironmentManager,
-    server_name: str,
-    hosts: Optional[str] = None,
-    env: Optional[str] = None,
-    no_backup: bool = False,
-    dry_run: bool = False,
-    auto_approve: bool = False,
-) -> int:
+def handle_mcp_remove_server(args: Namespace) -> int:
     """Handle 'hatch mcp remove server' command.
     
     Removes an MCP server from multiple hosts.
     
     Args:
-        env_manager: Environment manager instance for tracking
-        server_name: Name of the server to remove
-        hosts: Comma-separated list of target hosts
-        env: Environment name (for environment-based removal)
-        no_backup: If True, skip creating backups
-        dry_run: If True, show what would be done without making changes
-        auto_approve: If True, skip confirmation prompt
+        args: Namespace with:
+            - env_manager: Environment manager instance for tracking
+            - server_name: Name of the server to remove
+            - host: Comma-separated list of target hosts
+            - env: Environment name (for environment-based removal)
+            - no_backup: If True, skip creating backups
+            - dry_run: If True, show what would be done without making changes
+            - auto_approve: If True, skip confirmation prompt
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     from hatch.cli.cli_utils import request_confirmation, parse_host_list
+    
+    env_manager = args.env_manager
+    server_name = args.server_name
+    hosts = getattr(args, "host", None)
+    env = getattr(args, "env", None)
+    no_backup = getattr(args, "no_backup", False)
+    dry_run = getattr(args, "dry_run", False)
+    auto_approve = getattr(args, "auto_approve", False)
     
     try:
         # Determine target hosts
@@ -1033,28 +1035,29 @@ def handle_mcp_remove_server(
         return EXIT_ERROR
 
 
-def handle_mcp_remove_host(
-    env_manager: HatchEnvironmentManager,
-    host_name: str,
-    no_backup: bool = False,
-    dry_run: bool = False,
-    auto_approve: bool = False,
-) -> int:
+def handle_mcp_remove_host(args: Namespace) -> int:
     """Handle 'hatch mcp remove host' command.
     
     Removes entire host configuration (all MCP servers from a host).
     
     Args:
-        env_manager: Environment manager instance for tracking
-        host_name: Name of the host to remove configuration from
-        no_backup: If True, skip creating backup
-        dry_run: If True, show what would be done without making changes
-        auto_approve: If True, skip confirmation prompt
+        args: Namespace with:
+            - env_manager: Environment manager instance for tracking
+            - host_name: Name of the host to remove configuration from
+            - no_backup: If True, skip creating backup
+            - dry_run: If True, show what would be done without making changes
+            - auto_approve: If True, skip confirmation prompt
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     from hatch.cli.cli_utils import request_confirmation
+    
+    env_manager = args.env_manager
+    host_name = args.host_name
+    no_backup = getattr(args, "no_backup", False)
+    dry_run = getattr(args, "dry_run", False)
+    auto_approve = getattr(args, "auto_approve", False)
     
     try:
         # Validate host type
@@ -1109,34 +1112,35 @@ def handle_mcp_remove_host(
         return EXIT_ERROR
 
 
-def handle_mcp_sync(
-    from_env: Optional[str] = None,
-    from_host: Optional[str] = None,
-    to_hosts: Optional[str] = None,
-    servers: Optional[str] = None,
-    pattern: Optional[str] = None,
-    dry_run: bool = False,
-    auto_approve: bool = False,
-    no_backup: bool = False,
-) -> int:
+def handle_mcp_sync(args: Namespace) -> int:
     """Handle 'hatch mcp sync' command.
     
     Synchronizes MCP server configurations from a source to target hosts.
     
     Args:
-        from_env: Source environment name
-        from_host: Source host name
-        to_hosts: Comma-separated list of target hosts
-        servers: Comma-separated list of server names to sync
-        pattern: Pattern to filter servers
-        dry_run: If True, show what would be done without making changes
-        auto_approve: If True, skip confirmation prompt
-        no_backup: If True, skip creating backups
+        args: Namespace with:
+            - from_env: Source environment name
+            - from_host: Source host name
+            - to_host: Comma-separated list of target hosts
+            - servers: Comma-separated list of server names to sync
+            - pattern: Pattern to filter servers
+            - dry_run: If True, show what would be done without making changes
+            - auto_approve: If True, skip confirmation prompt
+            - no_backup: If True, skip creating backups
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     from hatch.cli.cli_utils import request_confirmation, parse_host_list
+    
+    from_env = getattr(args, "from_env", None)
+    from_host = getattr(args, "from_host", None)
+    to_hosts = getattr(args, "to_host", None)
+    servers = getattr(args, "servers", None)
+    pattern = getattr(args, "pattern", None)
+    dry_run = getattr(args, "dry_run", False)
+    auto_approve = getattr(args, "auto_approve", False)
+    no_backup = getattr(args, "no_backup", False)
     
     try:
         # Parse target hosts
