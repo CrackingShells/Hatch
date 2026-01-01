@@ -458,7 +458,7 @@ class TestCLIHostMutationSync(unittest.TestCase):
             mock_result.backup_path = None
             mock_remove.return_value = mock_result
 
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('builtins.print'):
                     # Action: hatch mcp remove server <server> --host <host>
                     result = handle_mcp_remove_server(
@@ -497,7 +497,7 @@ class TestCLIHostMutationSync(unittest.TestCase):
 
             self.mock_env_manager.clear_host_from_all_packages_all_envs.return_value = 3
 
-            with patch('hatch.cli_hatch.request_confirmation', return_value=True):
+            with patch('hatch.cli.cli_utils.request_confirmation', return_value=True):
                 with patch('builtins.print') as mock_print:
                     # Action: hatch mcp remove host <host>
                     result = handle_mcp_remove_host(

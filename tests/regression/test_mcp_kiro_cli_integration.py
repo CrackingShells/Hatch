@@ -15,7 +15,7 @@ from hatch.cli_hatch import handle_mcp_configure
 class TestKiroCLIIntegration(unittest.TestCase):
     """Test suite for Kiro CLI argument integration."""
     
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
     @regression_test
     def test_kiro_cli_with_disabled_flag(self, mock_manager_class):
         """Test CLI with --disabled flag for Kiro."""
@@ -46,7 +46,7 @@ class TestKiroCLIIntegration(unittest.TestCase):
         # Verify Kiro-specific field was set
         self.assertTrue(server_config.disabled)
     
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
     @regression_test
     def test_kiro_cli_with_auto_approve_tools(self, mock_manager_class):
         """Test CLI with --auto-approve-tools for Kiro."""
@@ -74,7 +74,7 @@ class TestKiroCLIIntegration(unittest.TestCase):
         self.assertEqual(len(server_config.autoApprove), 2)
         self.assertIn('codebase-retrieval', server_config.autoApprove)
     
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
     @regression_test
     def test_kiro_cli_with_disable_tools(self, mock_manager_class):
         """Test CLI with --disable-tools for Kiro."""
@@ -102,7 +102,7 @@ class TestKiroCLIIntegration(unittest.TestCase):
         self.assertEqual(len(server_config.disabledTools), 2)
         self.assertIn('dangerous-tool', server_config.disabledTools)
     
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
     @regression_test
     def test_kiro_cli_combined_arguments(self, mock_manager_class):
         """Test CLI with multiple Kiro-specific arguments combined."""

@@ -21,7 +21,7 @@ class TestKiroIntegration(unittest.TestCase):
     """Test suite for end-to-end Kiro integration."""
     
     @integration_test(scope="component")
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
     def test_kiro_end_to_end_configuration(self, mock_manager_class):
         """Test complete Kiro configuration workflow."""
         # Setup mocks
@@ -107,7 +107,7 @@ class TestKiroIntegration(unittest.TestCase):
         self.assertIn("codebase-retrieval", kiro_model.autoApprove)
     
     @integration_test(scope="end_to_end")
-    @patch('hatch.cli_hatch.MCPHostConfigurationManager')
+    @patch('hatch.cli.cli_mcp.MCPHostConfigurationManager')
     def test_kiro_complete_lifecycle(self, mock_manager_class):
         """Test complete Kiro server lifecycle: create, configure, validate."""
         # Setup mocks
