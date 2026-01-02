@@ -630,10 +630,13 @@ def handle_mcp_configure(args: Namespace) -> int:
     Host-specific arguments are accepted for all hosts. The reporting system will
     show unsupported fields as "UNSUPPORTED" in the conversion report rather than
     rejecting them upfront.
-    
+
+    The CLI creates a unified MCPServerConfig directly. Adapters handle host-specific
+    validation and serialization when writing to host configuration files.
+
     Args:
         args: Parsed command-line arguments containing all configuration options
-    
+
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
@@ -644,7 +647,6 @@ def handle_mcp_configure(args: Namespace) -> int:
         parse_header,
         parse_input,
     )
-    from hatch.mcp_host_config.models import HOST_MODEL_REGISTRY, MCPServerConfigOmni
     from hatch.mcp_host_config.reporting import display_report, generate_conversion_report
     
     try:
@@ -725,11 +727,11 @@ def handle_mcp_configure(args: Namespace) -> int:
         headers_dict = parse_header(header)
         inputs_list = parse_input(input_vars)
 
-        # Create Omni configuration (universal model)
-        omni_config_data = {"name": server_name}
+        # Build unified configuration data
+        config_data = {"name": server_name}
 
         if command is not None:
-            omni_config_data["command"] = command
+            config_data["command"] = command
         if cmd_args is not None:
             # Process args with shlex.split() to handle quoted strings
             processed_args = []
@@ -741,55 +743,55 @@ def handle_mcp_configure(args: Namespace) -> int:
                     except ValueError as e:
                         print(f"Warning: Invalid quote in argument '{arg}': {e}")
                         processed_args.append(arg)
-            omni_config_data["args"] = processed_args if processed_args else None
+            config_data["args"] = processed_args if processed_args else None
         if env_dict:
-            omni_config_data["env"] = env_dict
+            config_data["env"] = env_dict
         if url is not None:
-            omni_config_data["url"] = url
+            config_data["url"] = url
         if headers_dict:
-            omni_config_data["headers"] = headers_dict
+            config_data["headers"] = headers_dict
 
         # Host-specific fields (Gemini)
         if timeout is not None:
-            omni_config_data["timeout"] = timeout
+            config_data["timeout"] = timeout
         if trust:
-            omni_config_data["trust"] = trust
+            config_data["trust"] = trust
         if cwd is not None:
-            omni_config_data["cwd"] = cwd
+            config_data["cwd"] = cwd
         if http_url is not None:
-            omni_config_data["httpUrl"] = http_url
+            config_data["httpUrl"] = http_url
         if include_tools is not None:
-            omni_config_data["includeTools"] = include_tools
+            config_data["includeTools"] = include_tools
         if exclude_tools is not None:
-            omni_config_data["excludeTools"] = exclude_tools
+            config_data["excludeTools"] = exclude_tools
 
         # Host-specific fields (Cursor/VS Code/LM Studio)
         if env_file is not None:
-            omni_config_data["envFile"] = env_file
+            config_data["envFile"] = env_file
 
         # Host-specific fields (VS Code)
         if inputs_list is not None:
-            omni_config_data["inputs"] = inputs_list
+            config_data["inputs"] = inputs_list
 
         # Host-specific fields (Kiro)
         if disabled is not None:
-            omni_config_data["disabled"] = disabled
+            config_data["disabled"] = disabled
         if auto_approve_tools is not None:
-            omni_config_data["autoApprove"] = auto_approve_tools
+            config_data["autoApprove"] = auto_approve_tools
         if disable_tools is not None:
-            omni_config_data["disabledTools"] = disable_tools
+            config_data["disabledTools"] = disable_tools
 
         # Host-specific fields (Codex)
         if env_vars is not None:
-            omni_config_data["env_vars"] = env_vars
+            config_data["env_vars"] = env_vars
         if startup_timeout is not None:
-            omni_config_data["startup_timeout_sec"] = startup_timeout
+            config_data["startup_timeout_sec"] = startup_timeout
         if tool_timeout is not None:
-            omni_config_data["tool_timeout_sec"] = tool_timeout
+            config_data["tool_timeout_sec"] = tool_timeout
         if enabled is not None:
-            omni_config_data["enabled"] = enabled
+            config_data["enabled"] = enabled
         if bearer_token_env_var is not None:
-            omni_config_data["bearer_token_env_var"] = bearer_token_env_var
+            config_data["bearer_token_env_var"] = bearer_token_env_var
         if env_header is not None:
             env_http_headers = {}
             for header_spec in env_header:
@@ -797,7 +799,7 @@ def handle_mcp_configure(args: Namespace) -> int:
                     key, env_var_name = header_spec.split('=', 1)
                     env_http_headers[key] = env_var_name
             if env_http_headers:
-                omni_config_data["env_http_headers"] = env_http_headers
+                config_data["env_http_headers"] = env_http_headers
 
         # Partial update merge logic
         if is_update:
@@ -819,26 +821,19 @@ def handle_mcp_configure(args: Namespace) -> int:
                 existing_data.pop("headers", None)
                 existing_data.pop("type", None)
 
-            merged_data = {**existing_data, **omni_config_data}
-            omni_config_data = merged_data
+            merged_data = {**existing_data, **config_data}
+            config_data = merged_data
 
-        # Create Omni model
-        omni_config = MCPServerConfigOmni(**omni_config_data)
-
-        # Convert to host-specific model
-        host_model_class = HOST_MODEL_REGISTRY.get(host_type)
-        if not host_model_class:
-            print(f"Error: No model registered for host '{host}'")
-            return EXIT_ERROR
-
-        server_config = host_model_class.from_omni(omni_config)
+        # Create unified MCPServerConfig directly
+        # Adapters handle host-specific validation and serialization
+        server_config = MCPServerConfig(**config_data)
 
         # Generate conversion report
         report = generate_conversion_report(
             operation="update" if is_update else "create",
             server_name=server_name,
             target_host=host_type,
-            omni=omni_config,
+            config=server_config,
             old_config=existing_config if is_update else None,
             dry_run=dry_run,
         )

@@ -48,7 +48,6 @@ from hatch.mcp_host_config import (
     MCPHostType,
     MCPServerConfig,
 )
-from hatch.mcp_host_config.models import HOST_MODEL_REGISTRY, MCPServerConfigOmni
 from hatch.mcp_host_config.reporting import display_report, generate_conversion_report
 
 if TYPE_CHECKING:
@@ -232,38 +231,16 @@ def _configure_packages_on_hosts(
         try:
             # Convert string to MCPHostType enum
             host_type = MCPHostType(host)
-            host_model_class = HOST_MODEL_REGISTRY.get(host_type)
-            if not host_model_class:
-                print(f"✗ Error: No model registered for host '{host}'")
-                continue
 
             for pkg_name, server_config in server_configs:
                 try:
-                    # Convert MCPServerConfig to Omni model
-                    omni_config_data = {"name": server_config.name}
-                    if server_config.command is not None:
-                        omni_config_data["command"] = server_config.command
-                    if server_config.args is not None:
-                        omni_config_data["args"] = server_config.args
-                    if server_config.env:
-                        omni_config_data["env"] = server_config.env
-                    if server_config.url is not None:
-                        omni_config_data["url"] = server_config.url
-                    headers = getattr(server_config, "headers", None)
-                    if headers is not None:
-                        omni_config_data["headers"] = headers
-
-                    omni_config = MCPServerConfigOmni(**omni_config_data)
-
-                    # Convert to host-specific model
-                    host_config = host_model_class.from_omni(omni_config)
-
                     # Generate and display conversion report
+                    # Adapters handle host-specific validation and serialization
                     report = generate_conversion_report(
                         operation="create",
                         server_name=server_config.name,
                         target_host=host_type,
-                        omni=omni_config,
+                        config=server_config,
                         dry_run=dry_run,
                     )
                     display_report(report)
@@ -273,9 +250,10 @@ def _configure_packages_on_hosts(
                         success_count += 1
                         continue
 
+                    # Pass MCPServerConfig directly - adapters handle serialization
                     result = mcp_manager.configure_server(
                         hostname=host,
-                        server_config=host_config,
+                        server_config=server_config,
                         no_backup=no_backup,
                     )
 
@@ -487,33 +465,14 @@ def handle_package_sync(args: Namespace) -> int:
                 for host in hosts:
                     try:
                         host_type = MCPHostType(host)
-                        host_model_class = HOST_MODEL_REGISTRY.get(host_type)
-                        if not host_model_class:
-                            print(f"[DRY RUN] ✗ Error: No model registered for host '{host}'")
-                            continue
 
-                        # Convert to Omni model
-                        omni_config_data = {"name": config.name}
-                        if config.command is not None:
-                            omni_config_data["command"] = config.command
-                        if config.args is not None:
-                            omni_config_data["args"] = config.args
-                        if config.env:
-                            omni_config_data["env"] = config.env
-                        if config.url is not None:
-                            omni_config_data["url"] = config.url
-                        headers = getattr(config, "headers", None)
-                        if headers is not None:
-                            omni_config_data["headers"] = headers
-
-                        omni_config = MCPServerConfigOmni(**omni_config_data)
-
-                        # Generate report
+                        # Generate report using MCPServerConfig directly
+                        # Adapters handle host-specific validation and serialization
                         report = generate_conversion_report(
                             operation="create",
                             server_name=config.name,
                             target_host=host_type,
-                            omni=omni_config,
+                            config=config,
                             dry_run=True,
                         )
                         print(f"[DRY RUN] Preview for {pkg_name} on {host}:")
