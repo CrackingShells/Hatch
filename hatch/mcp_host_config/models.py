@@ -29,42 +29,102 @@ class MCPHostType(str, Enum):
 
 
 class MCPServerConfig(BaseModel):
-    """Consolidated MCP server configuration supporting local and remote servers."""
+    """Unified MCP server configuration containing ALL possible fields.
+
+    This is the single source of truth for MCP server configuration. It contains
+    fields for ALL hosts. Adapters handle validation and serialization based on
+    each host's supported field set.
+
+    Design Notes:
+        - extra="allow" for forward compatibility with unknown host fields
+        - Minimal validation (adapters do host-specific validation)
+        - 'name' field is Hatch metadata, never serialized to host configs
+    """
 
     model_config = ConfigDict(extra="allow")
 
-    # Server identification
+    # ========================================================================
+    # Hatch Metadata (never serialized to host config files)
+    # ========================================================================
     name: Optional[str] = Field(None, description="Server name for identification")
 
-    # Transport type (PRIMARY DISCRIMINATOR)
+    # ========================================================================
+    # Transport Fields (mutually exclusive at validation, but all present)
+    # ========================================================================
+
+    # Transport type discriminator (Claude/VSCode/Cursor only, NOT Gemini/Kiro/Codex)
     type: Optional[Literal["stdio", "sse", "http"]] = Field(
         None,
         description="Transport type (stdio for local, sse/http for remote)"
     )
 
-    # Local server configuration (Pattern A: Command-Based / stdio transport)
+    # stdio transport (local server)
     command: Optional[str] = Field(None, description="Executable path/name for local servers")
     args: Optional[List[str]] = Field(None, description="Command arguments for local servers")
-    env: Optional[Dict[str, str]] = Field(None, description="Environment variables for all transports")
 
-    # Remote server configuration (Pattern B: URL-Based / sse/http transports)
-    url: Optional[str] = Field(None, description="Server endpoint URL for remote servers")
+    # sse transport (remote server)
+    url: Optional[str] = Field(None, description="Server endpoint URL (SSE transport)")
+
+    # http transport (Gemini-specific remote server)
+    httpUrl: Optional[str] = Field(None, description="HTTP streaming endpoint URL (Gemini)")
+
+    # ========================================================================
+    # Universal Fields (all hosts)
+    # ========================================================================
+    env: Optional[Dict[str, str]] = Field(None, description="Environment variables")
     headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers for remote servers")
-    
-    @model_validator(mode='after')
-    def validate_server_type(self):
-        """Validate that either local or remote configuration is provided, not both."""
-        command = self.command
-        url = self.url
 
-        if not command and not url:
-            raise ValueError("Either 'command' (local server) or 'url' (remote server) must be provided")
+    # ========================================================================
+    # Gemini-Specific Fields
+    # ========================================================================
+    cwd: Optional[str] = Field(None, description="Working directory (Gemini/Codex)")
+    timeout: Optional[int] = Field(None, description="Request timeout in milliseconds")
+    trust: Optional[bool] = Field(None, description="Bypass tool call confirmations")
+    includeTools: Optional[List[str]] = Field(None, description="Tools to include (allowlist)")
+    excludeTools: Optional[List[str]] = Field(None, description="Tools to exclude (blocklist)")
 
-        if command and url:
-            raise ValueError("Cannot specify both 'command' and 'url' - choose local or remote server")
+    # OAuth configuration (Gemini)
+    oauth_enabled: Optional[bool] = Field(None, description="Enable OAuth for this server")
+    oauth_clientId: Optional[str] = Field(None, description="OAuth client identifier")
+    oauth_clientSecret: Optional[str] = Field(None, description="OAuth client secret")
+    oauth_authorizationUrl: Optional[str] = Field(None, description="OAuth authorization endpoint")
+    oauth_tokenUrl: Optional[str] = Field(None, description="OAuth token endpoint")
+    oauth_scopes: Optional[List[str]] = Field(None, description="Required OAuth scopes")
+    oauth_redirectUri: Optional[str] = Field(None, description="Custom redirect URI")
+    oauth_tokenParamName: Optional[str] = Field(None, description="Query parameter name for tokens")
+    oauth_audiences: Optional[List[str]] = Field(None, description="OAuth audiences")
+    authProviderType: Optional[str] = Field(None, description="Authentication provider type")
 
-        return self
-    
+    # ========================================================================
+    # VSCode/Cursor-Specific Fields
+    # ========================================================================
+    envFile: Optional[str] = Field(None, description="Path to environment file")
+    inputs: Optional[List[Dict]] = Field(None, description="Input variable definitions (VSCode only)")
+
+    # ========================================================================
+    # Kiro-Specific Fields
+    # ========================================================================
+    disabled: Optional[bool] = Field(None, description="Whether server is disabled")
+    autoApprove: Optional[List[str]] = Field(None, description="Auto-approved tool names")
+    disabledTools: Optional[List[str]] = Field(None, description="Disabled tool names")
+
+    # ========================================================================
+    # Codex-Specific Fields
+    # ========================================================================
+    env_vars: Optional[List[str]] = Field(None, description="Environment variables to whitelist/forward")
+    startup_timeout_sec: Optional[int] = Field(None, description="Server startup timeout in seconds")
+    tool_timeout_sec: Optional[int] = Field(None, description="Tool execution timeout in seconds")
+    enabled: Optional[bool] = Field(None, description="Enable/disable server without deleting config")
+    enabled_tools: Optional[List[str]] = Field(None, description="Allow-list of tools to expose")
+    disabled_tools: Optional[List[str]] = Field(None, description="Deny-list of tools to hide")
+    bearer_token_env_var: Optional[str] = Field(None, description="Env var containing bearer token")
+    http_headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers (Codex naming)")
+    env_http_headers: Optional[Dict[str, str]] = Field(None, description="Header names to env var names")
+
+    # ========================================================================
+    # Minimal Validators (host-specific validation is in adapters)
+    # ========================================================================
+
     @field_validator('command')
     @classmethod
     def validate_command_not_empty(cls, v):
@@ -73,7 +133,7 @@ class MCPServerConfig(BaseModel):
             raise ValueError("Command cannot be empty")
         return v.strip() if v else v
 
-    @field_validator('url')
+    @field_validator('url', 'httpUrl')
     @classmethod
     def validate_url_format(cls, v):
         """Validate URL format when provided."""
@@ -83,53 +143,37 @@ class MCPServerConfig(BaseModel):
         return v
 
     @model_validator(mode='after')
-    def validate_field_combinations(self):
-        """Validate field combinations for local vs remote servers."""
-        # Validate args are only provided with command
-        if self.args is not None and self.command is None:
-            raise ValueError("'args' can only be specified with 'command' for local servers")
+    def validate_has_transport(self):
+        """Validate that at least one transport is configured.
 
-        # Validate headers are only provided with URL
-        if self.headers is not None and self.url is None:
-            raise ValueError("'headers' can only be specified with 'url' for remote servers")
-
+        Note: Mutual exclusion validation is done by adapters, not here.
+        This allows the unified model to be flexible while adapters enforce
+        host-specific rules.
+        """
+        if self.command is None and self.url is None and self.httpUrl is None:
+            raise ValueError(
+                "At least one transport must be specified: "
+                "'command' (stdio), 'url' (sse), or 'httpUrl' (http)"
+            )
         return self
 
-    @model_validator(mode='after')
-    def validate_type_field(self):
-        """Validate type field consistency with command/url fields."""
-        # Only validate if type field is explicitly set
-        if self.type is not None:
-            if self.type == "stdio":
-                if not self.command:
-                    raise ValueError("'type=stdio' requires 'command' field")
-                if self.url:
-                    raise ValueError("'type=stdio' cannot be used with 'url' field")
-            elif self.type in ("sse", "http"):
-                if not self.url:
-                    raise ValueError(f"'type={self.type}' requires 'url' field")
-                if self.command:
-                    raise ValueError(f"'type={self.type}' cannot be used with 'command' field")
-
-        return self
+    # ========================================================================
+    # Transport Detection Properties
+    # ========================================================================
 
     @property
     def is_local_server(self) -> bool:
-        """Check if this is a local server configuration."""
-        # Prioritize type field if present
+        """Check if this is a local server configuration (stdio transport)."""
         if self.type is not None:
             return self.type == "stdio"
-        # Fall back to command detection for backward compatibility
         return self.command is not None
 
     @property
     def is_remote_server(self) -> bool:
-        """Check if this is a remote server configuration."""
-        # Prioritize type field if present
+        """Check if this is a remote server configuration (sse/http transport)."""
         if self.type is not None:
             return self.type in ("sse", "http")
-        # Fall back to url detection for backward compatibility
-        return self.url is not None
+        return self.url is not None or self.httpUrl is not None
     
 
 

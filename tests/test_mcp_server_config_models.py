@@ -60,58 +60,74 @@ class TestMCPServerConfigModels(unittest.TestCase):
         self.assertTrue(config.is_remote_server)
     
     @regression_test
-    def test_mcp_server_config_validation_fails_both_command_and_url(self):
-        """Test validation fails when both command and URL are provided."""
+    def test_mcp_server_config_allows_both_command_and_url(self):
+        """Test unified model allows both command and URL (adapter validates).
+
+        Note: With the Unified Adapter Architecture, the model accepts all field
+        combinations. Host-specific validation is done by adapters, not the model.
+        """
         config_data = {
             "command": "python",
             "args": ["server.py"],
-            "url": "https://example.com/mcp"  # Invalid: both command and URL
+            "url": "https://example.com/mcp"
         }
-        
-        with self.assertRaises(ValidationError) as context:
-            MCPServerConfig(**config_data)
-        
-        self.assertIn("Cannot specify both 'command' and 'url'", str(context.exception))
+
+        # Should NOT raise - unified model is permissive
+        config = MCPServerConfig(**config_data)
+        self.assertEqual(config.command, "python")
+        self.assertEqual(config.url, "https://example.com/mcp")
     
     @regression_test
-    def test_mcp_server_config_validation_fails_neither_command_nor_url(self):
-        """Test validation fails when neither command nor URL are provided."""
+    def test_mcp_server_config_validation_fails_no_transport(self):
+        """Test validation fails when no transport is provided.
+
+        Note: With the Unified Adapter Architecture, at least one transport
+        (command, url, or httpUrl) must be specified. The error message now
+        includes all three transport options.
+        """
         config_data = {
             "env": {"TEST": "value"}
-            # Missing both command and url
+            # Missing command, url, and httpUrl
         }
-        
+
         with self.assertRaises(ValidationError) as context:
             MCPServerConfig(**config_data)
-        
-        self.assertIn("Either 'command' (local server) or 'url' (remote server) must be provided", 
-                     str(context.exception))
+
+        self.assertIn("At least one transport must be specified", str(context.exception))
     
     @regression_test
-    def test_mcp_server_config_validation_args_without_command_fails(self):
-        """Test validation fails when args provided without command."""
+    def test_mcp_server_config_allows_args_without_command(self):
+        """Test unified model allows args without command (adapter validates).
+
+        Note: With the Unified Adapter Architecture, the model accepts all field
+        combinations. Host-specific validation is done by adapters, not the model.
+        """
         config_data = {
             "url": "https://example.com/mcp",
-            "args": ["--flag"]  # Invalid: args without command
+            "args": ["--flag"]  # Unified model allows this
         }
-        
-        with self.assertRaises(ValidationError) as context:
-            MCPServerConfig(**config_data)
-        
-        self.assertIn("'args' can only be specified with 'command'", str(context.exception))
+
+        # Should NOT raise - unified model is permissive
+        config = MCPServerConfig(**config_data)
+        self.assertEqual(config.url, "https://example.com/mcp")
+        self.assertEqual(config.args, ["--flag"])
     
     @regression_test
-    def test_mcp_server_config_validation_headers_without_url_fails(self):
-        """Test validation fails when headers provided without URL."""
+    def test_mcp_server_config_allows_headers_without_url(self):
+        """Test unified model allows headers without URL (adapter validates).
+
+        Note: With the Unified Adapter Architecture, the model accepts all field
+        combinations. Host-specific validation is done by adapters, not the model.
+        """
         config_data = {
             "command": "python",
-            "headers": {"Authorization": "Bearer token"}  # Invalid: headers without URL
+            "headers": {"Authorization": "Bearer token"}  # Unified model allows this
         }
-        
-        with self.assertRaises(ValidationError) as context:
-            MCPServerConfig(**config_data)
-        
-        self.assertIn("'headers' can only be specified with 'url'", str(context.exception))
+
+        # Should NOT raise - unified model is permissive
+        config = MCPServerConfig(**config_data)
+        self.assertEqual(config.command, "python")
+        self.assertEqual(config.headers, {"Authorization": "Bearer token"})
     
     @regression_test
     def test_mcp_server_config_url_format_validation(self):
