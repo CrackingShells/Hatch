@@ -164,16 +164,77 @@ class MCPServerConfig(BaseModel):
     @property
     def is_local_server(self) -> bool:
         """Check if this is a local server configuration (stdio transport)."""
-        if self.type is not None:
-            return self.type == "stdio"
-        return self.command is not None
+        return self.is_stdio()
 
     @property
     def is_remote_server(self) -> bool:
         """Check if this is a remote server configuration (sse/http transport)."""
+        return self.is_sse() or self.is_http()
+
+    def is_stdio(self) -> bool:
+        """Check if this server uses stdio transport (command-based local server).
+
+        Returns:
+            True if the server is configured for stdio transport.
+
+        Priority:
+            1. Explicit type="stdio" field takes precedence
+            2. Otherwise, presence of 'command' field indicates stdio
+        """
         if self.type is not None:
-            return self.type in ("sse", "http")
-        return self.url is not None or self.httpUrl is not None
+            return self.type == "stdio"
+        return self.command is not None
+
+    def is_sse(self) -> bool:
+        """Check if this server uses SSE transport (URL-based remote server).
+
+        Returns:
+            True if the server is configured for SSE transport.
+
+        Priority:
+            1. Explicit type="sse" field takes precedence
+            2. Otherwise, presence of 'url' field indicates SSE
+        """
+        if self.type is not None:
+            return self.type == "sse"
+        return self.url is not None
+
+    def is_http(self) -> bool:
+        """Check if this server uses HTTP streaming transport (Gemini-specific).
+
+        Returns:
+            True if the server is configured for HTTP streaming transport.
+
+        Priority:
+            1. Explicit type="http" field takes precedence
+            2. Otherwise, presence of 'httpUrl' field indicates HTTP streaming
+        """
+        if self.type is not None:
+            return self.type == "http"
+        return self.httpUrl is not None
+
+    def get_transport_type(self) -> Optional[str]:
+        """Get the transport type for this server configuration.
+
+        Returns:
+            "stdio" for command-based local servers
+            "sse" for URL-based remote servers (SSE transport)
+            "http" for httpUrl-based remote servers (Gemini HTTP streaming)
+            None if transport cannot be determined
+        """
+        # Explicit type takes precedence
+        if self.type is not None:
+            return self.type
+
+        # Infer from fields
+        if self.command is not None:
+            return "stdio"
+        if self.url is not None:
+            return "sse"
+        if self.httpUrl is not None:
+            return "http"
+
+        return None
     
 
 
