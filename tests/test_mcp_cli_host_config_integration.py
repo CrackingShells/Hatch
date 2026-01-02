@@ -229,10 +229,11 @@ class TestModelIntegration(unittest.TestCase):
                     self.assertEqual(result, 0)
                     mock_manager.configure_server.assert_called_once()
 
-                    # Verify the server_config argument is a host-specific model instance
+                    # Verify the server_config argument is a MCPServerConfig instance
+                    # (adapters handle host-specific serialization)
                     call_args = mock_manager.configure_server.call_args
                     server_config = call_args.kwargs['server_config']
-                    self.assertIsInstance(server_config, MCPServerConfigClaude)
+                    self.assertIsInstance(server_config, MCPServerConfig)
 
 
 class TestReportingIntegration(unittest.TestCase):
@@ -497,7 +498,8 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
     @regression_test
     def test_reporting_functions_available(self):
         """Test that reporting functions are available for CLI integration."""
-        omni = MCPServerConfigOmni(
+        # Use unified MCPServerConfig directly (adapters handle host-specific logic)
+        config = MCPServerConfig(
             name='test-server',
             command='python',
             args=['server.py'],
@@ -506,7 +508,7 @@ class TestCLIIntegrationReadiness(unittest.TestCase):
             operation='create',
             server_name='test-server',
             target_host=MCPHostType.CLAUDE_DESKTOP,
-            omni=omni,
+            config=config,
             dry_run=True
         )
         self.assertIsNotNone(report)
