@@ -12,42 +12,44 @@ from hatch.mcp_host_config.adapters.codex import CodexAdapter
 from hatch.mcp_host_config.adapters.cursor import CursorAdapter
 from hatch.mcp_host_config.adapters.gemini import GeminiAdapter
 from hatch.mcp_host_config.adapters.kiro import KiroAdapter
+from hatch.mcp_host_config.adapters.lmstudio import LMStudioAdapter
 from hatch.mcp_host_config.adapters.vscode import VSCodeAdapter
 
 
 class AdapterRegistry:
     """Registry for MCP host configuration adapters.
-    
+
     The registry provides:
     - Host name to adapter mapping
     - Factory method to get adapters by host name
     - Registration of custom adapters
     - List of all supported hosts
-    
+
     Example:
         >>> registry = AdapterRegistry()
         >>> adapter = registry.get_adapter("claude-desktop")
         >>> adapter.host_name
         'claude-desktop'
-        
+
         >>> registry.get_supported_hosts()
-        ['claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'vscode']
+        ['claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'lmstudio', 'vscode']
     """
-    
+
     def __init__(self):
         """Initialize the registry with default adapters."""
         self._adapters: Dict[str, BaseAdapter] = {}
         self._register_defaults()
-    
+
     def _register_defaults(self) -> None:
         """Register all built-in adapters."""
         # Claude variants
         self.register(ClaudeAdapter(variant="desktop"))
         self.register(ClaudeAdapter(variant="code"))
-        
+
         # Other hosts
         self.register(VSCodeAdapter())
         self.register(CursorAdapter())
+        self.register(LMStudioAdapter())
         self.register(GeminiAdapter())
         self.register(KiroAdapter())
         self.register(CodexAdapter())

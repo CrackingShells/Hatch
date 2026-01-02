@@ -10,6 +10,7 @@ from hatch.mcp_host_config.adapters.codex import CodexAdapter
 from hatch.mcp_host_config.adapters.cursor import CursorAdapter
 from hatch.mcp_host_config.adapters.gemini import GeminiAdapter
 from hatch.mcp_host_config.adapters.kiro import KiroAdapter
+from hatch.mcp_host_config.adapters.lmstudio import LMStudioAdapter
 from hatch.mcp_host_config.adapters.registry import AdapterRegistry, get_adapter, get_default_registry
 from hatch.mcp_host_config.adapters.vscode import VSCodeAdapter
 
@@ -27,6 +28,7 @@ __all__ = [
     "CursorAdapter",
     "GeminiAdapter",
     "KiroAdapter",
+    "LMStudioAdapter",
     "VSCodeAdapter",
 ]
 
