@@ -84,7 +84,10 @@ class MCPServerConfig(BaseModel):
 
 - `extra="allow"` for forward compatibility with unknown fields
 - Adapters handle validation (not the model)
-- `name` field is Hatch metadata, never serialized to host configs
+- `name` field is Hatch metadata (defined in `EXCLUDED_ALWAYS`):
+  - Never serialized to host configuration files
+  - Never reported in CLI field operations
+  - Available as payload context within the unified model
 
 ## Key Components
 
@@ -151,7 +154,41 @@ CLAUDE_FIELDS = UNIVERSAL_FIELDS | frozenset({"type"})
 VSCODE_FIELDS = CLAUDE_FIELDS | frozenset({"envFile", "inputs"})
 GEMINI_FIELDS = UNIVERSAL_FIELDS | frozenset({"httpUrl", "timeout", "trust", ...})
 KIRO_FIELDS = UNIVERSAL_FIELDS | frozenset({"disabled", "autoApprove", ...})
+
+# Metadata fields (never serialized or reported)
+EXCLUDED_ALWAYS = frozenset({"name"})
 ```
+
+### Reporting System
+
+The reporting system (`reporting.py`) provides user-friendly feedback for MCP configuration operations. It respects adapter exclusion semantics to ensure consistency between what's reported and what's actually written to host configuration files.
+
+**Key components:**
+
+- `FieldOperation`: Represents a single field-level change (UPDATED, UNCHANGED, or UNSUPPORTED)
+- `ConversionReport`: Complete report for a configuration operation
+- `generate_conversion_report()`: Analyzes configuration against target host's adapter
+- `display_report()`: Displays formatted report to console
+
+**Metadata field handling:**
+
+Fields in `EXCLUDED_ALWAYS` (like `name`) are completely omitted from field operation reports:
+
+```python
+# Get excluded fields from adapter
+excluded_fields = adapter.get_excluded_fields()
+
+for field_name, new_value in set_fields.items():
+    # Skip metadata fields - they should never appear in reports
+    if field_name in excluded_fields:
+        continue
+    # ... process other fields
+```
+
+This ensures that:
+- Internal metadata fields never appear as UPDATED, UNCHANGED, or UNSUPPORTED
+- Server name still appears in the report header for context
+- Reporting behavior matches serialization behavior (both use `get_excluded_fields()`)
 
 ## Field Support Matrix
 
@@ -300,7 +337,8 @@ All configuration changes use atomic operations:
 hatch/mcp_host_config/
 ├── __init__.py          # Public API exports
 ├── models.py            # MCPServerConfig, MCPHostType, HostConfiguration
-├── fields.py            # Field constants (UNIVERSAL_FIELDS, etc.)
+├── fields.py            # Field constants (UNIVERSAL_FIELDS, EXCLUDED_ALWAYS, etc.)
+├── reporting.py         # User feedback reporting system
 ├── host_management.py   # Registry and configuration manager
 ├── strategies.py        # Host strategy implementations (I/O)
 ├── backup.py            # Backup manager and atomic operations

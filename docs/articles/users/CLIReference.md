@@ -434,17 +434,17 @@ The conversion report shows:
 - **UNSUPPORTED** fields: Fields not supported by the target host (automatically filtered out)
 - **UNCHANGED** fields: Fields that already have the specified value (update operations only)
 
+Note: Internal metadata fields (like `name`) are not shown in the field operations list, as they are used for internal bookkeeping and are not written to host configuration files. The server name is displayed in the report header for context.
+
 **Example - Local Server Configuration**:
 
 ```bash
 $ hatch mcp configure my-server --host claude-desktop --command python --args server.py --env API_KEY=secret
 
 Server 'my-server' created for host 'claude-desktop':
-  name: UPDATED None --> 'my-server'
   command: UPDATED None --> 'python'
   args: UPDATED None --> ['server.py']
   env: UPDATED None --> {'API_KEY': 'secret'}
-  url: UPDATED None --> None
 
 Configure MCP server 'my-server' on host 'claude-desktop'? [y/N]: y
 [SUCCESS] Successfully configured MCP server 'my-server' on host 'claude-desktop'
@@ -575,11 +575,8 @@ $ hatch mcp configure my-server --host gemini --command python --args server.py 
 [DRY RUN] Args: ['server.py']
 [DRY RUN] Backup: Enabled
 [DRY RUN] Preview of changes for server 'my-server':
-  name: UPDATED None --> 'my-server'
   command: UPDATED None --> 'python'
   args: UPDATED None --> ['server.py']
-  env: UPDATED None --> {}
-  url: UPDATED None --> None
 
 No changes were made.
 ```
