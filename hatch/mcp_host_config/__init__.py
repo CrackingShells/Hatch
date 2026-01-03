@@ -21,7 +21,7 @@ from .host_management import (
 from .reporting import (
     FieldOperation, ConversionReport, generate_conversion_report, display_report
 )
-from .adapters import HostAdapterRegistry
+from .adapters import AdapterRegistry, get_adapter, get_default_registry
 
 # Import strategies to trigger decorator registration
 from . import strategies
@@ -32,7 +32,7 @@ __all__ = [
     'MCPHostType', 'MCPServerConfig', 'HostConfiguration', 'EnvironmentData',
     'PackageHostConfiguration', 'EnvironmentPackageEntry', 'ConfigurationResult', 'SyncResult',
     # Adapter architecture
-    'HostAdapterRegistry',
+    'AdapterRegistry', 'get_adapter', 'get_default_registry',
     # User feedback reporting
     'FieldOperation', 'ConversionReport', 'generate_conversion_report', 'display_report',
     # Host management
