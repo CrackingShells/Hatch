@@ -92,6 +92,10 @@ def generate_conversion_report(
     identifying which fields were updated, which are unsupported, and which
     remained unchanged.
 
+    Fields in the adapter's excluded set (e.g., 'name' from EXCLUDED_ALWAYS)
+    are internal metadata and are completely omitted from field operations.
+    They will not appear as UPDATED, UNCHANGED, or UNSUPPORTED.
+
     Args:
         operation: Type of operation being performed
         server_name: Name of the server being configured
@@ -104,15 +108,20 @@ def generate_conversion_report(
     Returns:
         ConversionReport with field-level operations
     """
-    # Get supported fields from adapter
+    # Get supported and excluded fields from adapter
     adapter_host_name = _get_adapter_host_name(target_host)
     adapter = get_adapter(adapter_host_name)
     supported_fields = adapter.get_supported_fields()
+    excluded_fields = adapter.get_excluded_fields()
 
     field_operations = []
     set_fields = config.model_dump(exclude_unset=True)
 
     for field_name, new_value in set_fields.items():
+        # Skip metadata fields (e.g., 'name') - they should never appear in reports
+        if field_name in excluded_fields:
+            continue
+
         if field_name in supported_fields:
             # Field is supported by target host
             if old_config:
