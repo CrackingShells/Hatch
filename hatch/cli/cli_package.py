@@ -71,12 +71,21 @@ def handle_package_remove(args: Namespace) -> int:
     env_manager: "HatchEnvironmentManager" = args.env_manager
     package_name = args.package_name
     env = getattr(args, "env", None)
+    dry_run = getattr(args, "dry_run", False)
+
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch package remove", dry_run=dry_run)
+    reporter.add(ConsequenceType.REMOVE, f"Package '{package_name}'")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
 
     if env_manager.remove_package(package_name, env):
-        print(f"Successfully removed package: {package_name}")
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"Failed to remove package: {package_name}")
+        print(f"[ERROR] Failed to remove package: {package_name}")
         return EXIT_ERROR
 
 
