@@ -42,13 +42,15 @@ from hatch.cli.cli_utils import (
     request_confirmation,
     parse_host_list,
     get_package_mcp_server_config,
+    ResultReporter,
+    ConsequenceType,
 )
 from hatch.mcp_host_config import (
     MCPHostConfigurationManager,
     MCPHostType,
     MCPServerConfig,
 )
-from hatch.mcp_host_config.reporting import display_report, generate_conversion_report
+from hatch.mcp_host_config.reporting import generate_conversion_report
 
 if TYPE_CHECKING:
     from hatch.environment_manager import HatchEnvironmentManager
@@ -195,6 +197,7 @@ def _configure_packages_on_hosts(
     hosts: List[str],
     no_backup: bool = False,
     dry_run: bool = False,
+    reporter: Optional[ResultReporter] = None,
 ) -> Tuple[int, int]:
     """Configure MCP servers for packages on specified hosts.
     
@@ -208,6 +211,7 @@ def _configure_packages_on_hosts(
         hosts: List of host names to configure on
         no_backup: Skip backup creation
         dry_run: Preview only, don't execute
+        reporter: Optional ResultReporter for unified output
     
     Returns:
         Tuple of (success_count, total_operations)
@@ -234,8 +238,7 @@ def _configure_packages_on_hosts(
 
             for pkg_name, server_config in server_configs:
                 try:
-                    # Generate and display conversion report
-                    # Adapters handle host-specific validation and serialization
+                    # Generate conversion report for field-level details
                     report = generate_conversion_report(
                         operation="create",
                         server_name=server_config.name,
@@ -243,10 +246,12 @@ def _configure_packages_on_hosts(
                         config=server_config,
                         dry_run=dry_run,
                     )
-                    display_report(report)
+                    
+                    # Add to reporter if provided
+                    if reporter:
+                        reporter.add_from_conversion_report(report)
 
                     if dry_run:
-                        print(f"[DRY RUN] Would configure {server_config.name} ({pkg_name}) on {host}")
                         success_count += 1
                         continue
 
@@ -258,7 +263,6 @@ def _configure_packages_on_hosts(
                     )
 
                     if result.success:
-                        print(f"✓ Configured {server_config.name} ({pkg_name}) on {host}")
                         success_count += 1
 
                         # Update package metadata with host configuration tracking
@@ -319,8 +323,14 @@ def handle_package_add(args: Namespace) -> int:
     refresh_registry = getattr(args, "refresh_registry", False)
     auto_approve = getattr(args, "auto_approve", False)
     host_arg = getattr(args, "host", None)
+    dry_run = getattr(args, "dry_run", False)
 
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch package add", dry_run=dry_run)
+    
     # Add package to environment
+    reporter.add(ConsequenceType.ADD, f"Package '{package_path_or_name}'")
+    
     if not env_manager.add_package_to_environment(
         package_path_or_name,
         env,
@@ -329,10 +339,8 @@ def handle_package_add(args: Namespace) -> int:
         refresh_registry,
         auto_approve,
     ):
-        print(f"Failed to add package: {package_path_or_name}")
+        print(f"[ERROR] Failed to add package: {package_path_or_name}")
         return EXIT_ERROR
-
-    print(f"Successfully added package: {package_path_or_name}")
 
     # Handle MCP host configuration if requested
     if host_arg:
@@ -344,8 +352,6 @@ def handle_package_add(args: Namespace) -> int:
                 env_manager, package_path_or_name, env_name
             )
 
-            print(f"Configuring MCP server for package '{package_name}' on {len(hosts)} host(s)...")
-
             success_count, total = _configure_packages_on_hosts(
                 env_manager=env_manager,
                 mcp_manager=mcp_manager,
@@ -353,18 +359,16 @@ def handle_package_add(args: Namespace) -> int:
                 package_names=package_names,
                 hosts=hosts,
                 no_backup=False,  # Always backup when adding packages
-                dry_run=False,
+                dry_run=dry_run,
+                reporter=reporter,
             )
-
-            if success_count > 0:
-                print(f"MCP configuration completed: {success_count // len(package_names)}/{len(hosts)} hosts configured")
-            else:
-                print("Warning: MCP configuration failed on all hosts")
 
         except ValueError as e:
             print(f"Warning: MCP host configuration failed: {e}")
             # Don't fail the entire operation for MCP configuration issues
 
+    # Report results
+    reporter.report_result()
     return EXIT_SUCCESS
 
 
