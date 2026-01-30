@@ -965,3 +965,260 @@ class TestMCPListHostsHostCentric:
                 # claude-desktop should appear before cursor (alphabetically)
                 assert claude_pos < cursor_pos, \
                     "Hosts should be sorted alphabetically (claude-desktop before cursor)"
+
+
+class TestEnvListHostsCommand:
+    """Integration tests for env list hosts command.
+    
+    Reference: R10 §3.3 (10-namespace_consistency_specification_v2.md)
+    
+    These tests verify that handle_env_list_hosts:
+    1. Reads from environment data (Hatch-managed packages only)
+    2. Shows environment/host/server deployments with columns: Environment → Host → Server → Version
+    3. Supports --env and --server filters (regex patterns)
+    4. First column (Environment) sorted alphabetically
+    """
+
+    def test_env_list_hosts_uniform_output(self):
+        """Command should produce uniform table output with Environment → Host → Server → Version columns.
+        
+        Reference: R10 §3.3 - Column order matches command structure
+        """
+        from hatch.cli.cli_env import handle_env_list_hosts
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [
+            {"name": "default", "is_current": True},
+            {"name": "dev", "is_current": False},
+        ]
+        mock_env_manager.get_environment_data.side_effect = lambda env_name: {
+            "default": {
+                "packages": [
+                    {
+                        "name": "weather-server",
+                        "version": "1.0.0",
+                        "configured_hosts": {
+                            "claude-desktop": {"configured_at": "2026-01-30"},
+                            "cursor": {"configured_at": "2026-01-30"},
+                        }
+                    }
+                ]
+            },
+            "dev": {
+                "packages": [
+                    {
+                        "name": "test-server",
+                        "version": "0.1.0",
+                        "configured_hosts": {
+                            "claude-desktop": {"configured_at": "2026-01-30"},
+                        }
+                    }
+                ]
+            },
+        }.get(env_name, {"packages": []})
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            env=None,
+            server=None,
+            json=False,
+        )
+        
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = handle_env_list_hosts(args)
+        
+        output = captured_output.getvalue()
+        
+        # Verify column headers present
+        assert "Environment" in output, "Environment column should be present"
+        assert "Host" in output, "Host column should be present"
+        assert "Server" in output, "Server column should be present"
+        assert "Version" in output, "Version column should be present"
+        
+        # Verify data appears
+        assert "default" in output, "default environment should appear"
+        assert "dev" in output, "dev environment should appear"
+        assert "weather-server" in output, "weather-server should appear"
+        assert "test-server" in output, "test-server should appear"
+
+    def test_env_list_hosts_env_filter_exact(self):
+        """--env flag with exact name should filter to matching environment only.
+        
+        Reference: R10 §3.3 - --env <pattern> filter
+        """
+        from hatch.cli.cli_env import handle_env_list_hosts
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [
+            {"name": "default"},
+            {"name": "dev"},
+        ]
+        mock_env_manager.get_environment_data.side_effect = lambda env_name: {
+            "default": {
+                "packages": [
+                    {"name": "server-a", "version": "1.0.0", "configured_hosts": {"claude-desktop": {}}}
+                ]
+            },
+            "dev": {
+                "packages": [
+                    {"name": "server-b", "version": "0.1.0", "configured_hosts": {"claude-desktop": {}}}
+                ]
+            },
+        }.get(env_name, {"packages": []})
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            env="default",  # Exact match filter
+            server=None,
+            json=False,
+        )
+        
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = handle_env_list_hosts(args)
+        
+        output = captured_output.getvalue()
+        
+        # Matching environment should appear
+        assert "server-a" in output, "server-a from default should appear"
+        
+        # Non-matching environment should NOT appear
+        assert "server-b" not in output, "server-b from dev should NOT appear"
+
+    def test_env_list_hosts_env_filter_pattern(self):
+        """--env flag with regex pattern should filter matching environments.
+        
+        Reference: R10 §3.3 - --env accepts regex patterns
+        """
+        from hatch.cli.cli_env import handle_env_list_hosts
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [
+            {"name": "default"},
+            {"name": "dev"},
+            {"name": "dev-staging"},
+        ]
+        mock_env_manager.get_environment_data.side_effect = lambda env_name: {
+            "default": {
+                "packages": [
+                    {"name": "server-a", "version": "1.0.0", "configured_hosts": {"claude-desktop": {}}}
+                ]
+            },
+            "dev": {
+                "packages": [
+                    {"name": "server-b", "version": "0.1.0", "configured_hosts": {"claude-desktop": {}}}
+                ]
+            },
+            "dev-staging": {
+                "packages": [
+                    {"name": "server-c", "version": "0.2.0", "configured_hosts": {"claude-desktop": {}}}
+                ]
+            },
+        }.get(env_name, {"packages": []})
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            env="dev.*",  # Regex pattern
+            server=None,
+            json=False,
+        )
+        
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = handle_env_list_hosts(args)
+        
+        output = captured_output.getvalue()
+        
+        # Matching environments should appear
+        assert "server-b" in output, "server-b from dev should appear"
+        assert "server-c" in output, "server-c from dev-staging should appear"
+        
+        # Non-matching environment should NOT appear
+        assert "server-a" not in output, "server-a from default should NOT appear"
+
+    def test_env_list_hosts_server_filter(self):
+        """--server flag should filter by server name regex.
+        
+        Reference: R10 §3.3 - --server <pattern> filter
+        """
+        from hatch.cli.cli_env import handle_env_list_hosts
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [{"name": "default"}]
+        mock_env_manager.get_environment_data.return_value = {
+            "packages": [
+                {"name": "weather-server", "version": "1.0.0", "configured_hosts": {"claude-desktop": {}}},
+                {"name": "fetch-server", "version": "2.0.0", "configured_hosts": {"claude-desktop": {}}},
+                {"name": "custom-tool", "version": "0.5.0", "configured_hosts": {"claude-desktop": {}}},
+            ]
+        }
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            env=None,
+            server=".*-server",  # Regex pattern
+            json=False,
+        )
+        
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = handle_env_list_hosts(args)
+        
+        output = captured_output.getvalue()
+        
+        # Matching servers should appear
+        assert "weather-server" in output, "weather-server should match pattern"
+        assert "fetch-server" in output, "fetch-server should match pattern"
+        
+        # Non-matching server should NOT appear
+        assert "custom-tool" not in output, "custom-tool should NOT match pattern"
+
+    def test_env_list_hosts_combined_filters(self):
+        """Combined --env and --server filters should work with AND logic.
+        
+        Reference: R10 §1.5 - Combined filters
+        """
+        from hatch.cli.cli_env import handle_env_list_hosts
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [
+            {"name": "default"},
+            {"name": "dev"},
+        ]
+        mock_env_manager.get_environment_data.side_effect = lambda env_name: {
+            "default": {
+                "packages": [
+                    {"name": "weather-server", "version": "1.0.0", "configured_hosts": {"claude-desktop": {}}},
+                    {"name": "fetch-server", "version": "2.0.0", "configured_hosts": {"claude-desktop": {}}},
+                ]
+            },
+            "dev": {
+                "packages": [
+                    {"name": "weather-server", "version": "0.9.0", "configured_hosts": {"claude-desktop": {}}},
+                ]
+            },
+        }.get(env_name, {"packages": []})
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            env="default",
+            server="weather.*",
+            json=False,
+        )
+        
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = handle_env_list_hosts(args)
+        
+        output = captured_output.getvalue()
+        
+        # Only weather-server from default should appear
+        assert "weather-server" in output, "weather-server from default should appear"
+        assert "1.0.0" in output, "Version 1.0.0 should appear"
+        
+        # fetch-server should NOT appear (doesn't match server filter)
+        assert "fetch-server" not in output, "fetch-server should NOT appear"
+        
+        # dev environment should NOT appear (doesn't match env filter)
+        assert "0.9.0" not in output, "Version 0.9.0 from dev should NOT appear"
