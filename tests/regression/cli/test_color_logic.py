@@ -88,6 +88,57 @@ class TestColorEnum(unittest.TestCase):
         self.assertEqual(Color.RESET.value, '\033[0m')
 
 
+class TestTrueColorDetection(unittest.TestCase):
+    """Tests for true color (24-bit) terminal detection.
+    
+    Reference: R12 §7.2 (12-enhancing_colors_v0.md) - True color detection tests
+    """
+
+    def test_truecolor_detection_colorterm_truecolor(self):
+        """True color should be detected when COLORTERM=truecolor."""
+        from hatch.cli.cli_utils import _supports_truecolor
+        
+        with patch.dict(os.environ, {'COLORTERM': 'truecolor'}, clear=True):
+            self.assertTrue(_supports_truecolor())
+
+    def test_truecolor_detection_colorterm_24bit(self):
+        """True color should be detected when COLORTERM=24bit."""
+        from hatch.cli.cli_utils import _supports_truecolor
+        
+        with patch.dict(os.environ, {'COLORTERM': '24bit'}, clear=True):
+            self.assertTrue(_supports_truecolor())
+
+    def test_truecolor_detection_term_program_iterm(self):
+        """True color should be detected for iTerm.app."""
+        from hatch.cli.cli_utils import _supports_truecolor
+        
+        with patch.dict(os.environ, {'TERM_PROGRAM': 'iTerm.app'}, clear=True):
+            self.assertTrue(_supports_truecolor())
+
+    def test_truecolor_detection_term_program_vscode(self):
+        """True color should be detected for VS Code terminal."""
+        from hatch.cli.cli_utils import _supports_truecolor
+        
+        with patch.dict(os.environ, {'TERM_PROGRAM': 'vscode'}, clear=True):
+            self.assertTrue(_supports_truecolor())
+
+    def test_truecolor_detection_windows_terminal(self):
+        """True color should be detected for Windows Terminal (WT_SESSION)."""
+        from hatch.cli.cli_utils import _supports_truecolor
+        
+        with patch.dict(os.environ, {'WT_SESSION': 'some-session-id'}, clear=True):
+            self.assertTrue(_supports_truecolor())
+
+    def test_truecolor_detection_fallback_false(self):
+        """True color should return False when no indicators present."""
+        from hatch.cli.cli_utils import _supports_truecolor
+        
+        # Clear all true color indicators
+        clean_env = {}
+        with patch.dict(os.environ, clean_env, clear=True):
+            self.assertFalse(_supports_truecolor())
+
+
 class TestColorsEnabled(unittest.TestCase):
     """Tests for color enable/disable decision logic.
     
