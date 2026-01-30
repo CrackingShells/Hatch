@@ -28,7 +28,7 @@ dependencies = [
 
   [project.optional-dependencies]
   docs = [ "mkdocs>=1.4.0", "mkdocstrings[python]>=0.20.0" ]
-  dev = [ "cs-wobble>=0.2.0" ]
+  dev = [ "cs-wobble>=0.2.0", "pytest>=8.0.0" ]
 
   [project.scripts]
   hatch = "hatch.cli:main"
