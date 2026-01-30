@@ -726,3 +726,229 @@ class TestMCPListServersHostCentric:
                         assert server["hatch_managed"] == True
                     elif server["name"] == "unmanaged-server":
                         assert server["hatch_managed"] == False
+
+
+class TestMCPListHostsHostCentric:
+    """Integration tests for host-centric mcp list hosts command.
+    
+    Reference: R10 §3.1 (10-namespace_consistency_specification_v2.md)
+    
+    These tests verify that handle_mcp_list_hosts:
+    1. Reads from actual host config files (not environment data)
+    2. Shows host/server pairs with columns: Host → Server → Hatch → Environment
+    3. Supports --server flag to filter by server name regex
+    4. First column (Host) sorted alphabetically
+    """
+
+    def test_mcp_list_hosts_uniform_output(self):
+        """Command should produce uniform table output with Host → Server → Hatch → Environment columns.
+        
+        Reference: R10 §3.1 - Column order matches command structure
+        """
+        from hatch.cli.cli_mcp import handle_mcp_list_hosts
+        from hatch.mcp_host_config import MCPHostType, MCPServerConfig
+        from hatch.mcp_host_config.models import HostConfiguration
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [{"name": "default"}]
+        mock_env_manager.get_environment_data.return_value = {
+            "packages": [
+                {
+                    "name": "weather-server",
+                    "version": "1.0.0",
+                    "configured_hosts": {"claude-desktop": {"configured_at": "2026-01-30"}}
+                }
+            ]
+        }
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            server=None,  # No filter
+            json=False,
+        )
+        
+        # Host config has both Hatch-managed and 3rd party servers
+        mock_host_config = HostConfiguration(servers={
+            "weather-server": MCPServerConfig(name="weather-server", command="python", args=["weather.py"]),
+            "custom-tool": MCPServerConfig(name="custom-tool", command="node", args=["custom.js"]),
+        })
+        
+        with patch('hatch.cli.cli_mcp.MCPHostRegistry') as mock_registry:
+            mock_strategy = MagicMock()
+            mock_strategy.read_configuration.return_value = mock_host_config
+            mock_strategy.get_config_path.return_value = MagicMock(exists=lambda: True)
+            mock_registry.get_strategy.return_value = mock_strategy
+            mock_registry.detect_available_hosts.return_value = [MCPHostType.CLAUDE_DESKTOP]
+            
+            with patch('hatch.mcp_host_config.strategies'):
+                captured_output = io.StringIO()
+                with patch('sys.stdout', captured_output):
+                    result = handle_mcp_list_hosts(args)
+                
+                output = captured_output.getvalue()
+                
+                # Verify column headers present
+                assert "Host" in output, "Host column should be present"
+                assert "Server" in output, "Server column should be present"
+                assert "Hatch" in output, "Hatch column should be present"
+                assert "Environment" in output, "Environment column should be present"
+                
+                # Verify both servers appear
+                assert "weather-server" in output, "Hatch-managed server should appear"
+                assert "custom-tool" in output, "3rd party server should appear"
+                
+                # Verify Hatch status indicators
+                assert "✅" in output, "Hatch-managed server should show ✅"
+                assert "❌" in output, "3rd party server should show ❌"
+
+    def test_mcp_list_hosts_server_filter_exact(self):
+        """--server flag with exact name should filter to matching servers only.
+        
+        Reference: R10 §3.1 - --server <pattern> filter
+        """
+        from hatch.cli.cli_mcp import handle_mcp_list_hosts
+        from hatch.mcp_host_config import MCPHostType, MCPServerConfig
+        from hatch.mcp_host_config.models import HostConfiguration
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [{"name": "default"}]
+        mock_env_manager.get_environment_data.return_value = {"packages": []}
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            server="weather-server",  # Exact match filter
+            json=False,
+        )
+        
+        mock_host_config = HostConfiguration(servers={
+            "weather-server": MCPServerConfig(name="weather-server", command="python", args=[]),
+            "fetch-server": MCPServerConfig(name="fetch-server", command="node", args=[]),
+        })
+        
+        with patch('hatch.cli.cli_mcp.MCPHostRegistry') as mock_registry:
+            mock_strategy = MagicMock()
+            mock_strategy.read_configuration.return_value = mock_host_config
+            mock_strategy.get_config_path.return_value = MagicMock(exists=lambda: True)
+            mock_registry.get_strategy.return_value = mock_strategy
+            mock_registry.detect_available_hosts.return_value = [MCPHostType.CLAUDE_DESKTOP]
+            
+            with patch('hatch.mcp_host_config.strategies'):
+                captured_output = io.StringIO()
+                with patch('sys.stdout', captured_output):
+                    result = handle_mcp_list_hosts(args)
+                
+                output = captured_output.getvalue()
+                
+                # Matching server should appear
+                assert "weather-server" in output, "weather-server should match filter"
+                
+                # Non-matching server should NOT appear
+                assert "fetch-server" not in output, "fetch-server should NOT appear"
+
+    def test_mcp_list_hosts_server_filter_pattern(self):
+        """--server flag with regex pattern should filter matching servers.
+        
+        Reference: R10 §3.1 - --server accepts regex patterns
+        """
+        from hatch.cli.cli_mcp import handle_mcp_list_hosts
+        from hatch.mcp_host_config import MCPHostType, MCPServerConfig
+        from hatch.mcp_host_config.models import HostConfiguration
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [{"name": "default"}]
+        mock_env_manager.get_environment_data.return_value = {"packages": []}
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            server=".*-server",  # Regex pattern
+            json=False,
+        )
+        
+        mock_host_config = HostConfiguration(servers={
+            "weather-server": MCPServerConfig(name="weather-server", command="python", args=[]),
+            "fetch-server": MCPServerConfig(name="fetch-server", command="node", args=[]),
+            "custom-tool": MCPServerConfig(name="custom-tool", command="node", args=[]),  # Should NOT match
+        })
+        
+        with patch('hatch.cli.cli_mcp.MCPHostRegistry') as mock_registry:
+            mock_strategy = MagicMock()
+            mock_strategy.read_configuration.return_value = mock_host_config
+            mock_strategy.get_config_path.return_value = MagicMock(exists=lambda: True)
+            mock_registry.get_strategy.return_value = mock_strategy
+            mock_registry.detect_available_hosts.return_value = [MCPHostType.CLAUDE_DESKTOP]
+            
+            with patch('hatch.mcp_host_config.strategies'):
+                captured_output = io.StringIO()
+                with patch('sys.stdout', captured_output):
+                    result = handle_mcp_list_hosts(args)
+                
+                output = captured_output.getvalue()
+                
+                # Matching servers should appear
+                assert "weather-server" in output, "weather-server should match pattern"
+                assert "fetch-server" in output, "fetch-server should match pattern"
+                
+                # Non-matching server should NOT appear
+                assert "custom-tool" not in output, "custom-tool should NOT match pattern"
+
+    def test_mcp_list_hosts_alphabetical_ordering(self):
+        """First column (Host) should be sorted alphabetically.
+        
+        Reference: R10 §1.3 - Alphabetical ordering
+        """
+        from hatch.cli.cli_mcp import handle_mcp_list_hosts
+        from hatch.mcp_host_config import MCPHostType, MCPServerConfig
+        from hatch.mcp_host_config.models import HostConfiguration
+        
+        mock_env_manager = MagicMock()
+        mock_env_manager.list_environments.return_value = [{"name": "default"}]
+        mock_env_manager.get_environment_data.return_value = {"packages": []}
+        
+        args = Namespace(
+            env_manager=mock_env_manager,
+            server=None,
+            json=False,
+        )
+        
+        # Create configs for multiple hosts
+        claude_config = HostConfiguration(servers={
+            "server-a": MCPServerConfig(name="server-a", command="python", args=[]),
+        })
+        cursor_config = HostConfiguration(servers={
+            "server-b": MCPServerConfig(name="server-b", command="node", args=[]),
+        })
+        
+        with patch('hatch.cli.cli_mcp.MCPHostRegistry') as mock_registry:
+            # Return hosts in non-alphabetical order to test sorting
+            mock_registry.detect_available_hosts.return_value = [
+                MCPHostType.CURSOR,  # Should come second alphabetically
+                MCPHostType.CLAUDE_DESKTOP,  # Should come first alphabetically
+            ]
+            
+            def get_strategy_side_effect(host_type):
+                mock_strategy = MagicMock()
+                mock_strategy.get_config_path.return_value = MagicMock(exists=lambda: True)
+                if host_type == MCPHostType.CLAUDE_DESKTOP:
+                    mock_strategy.read_configuration.return_value = claude_config
+                elif host_type == MCPHostType.CURSOR:
+                    mock_strategy.read_configuration.return_value = cursor_config
+                else:
+                    mock_strategy.read_configuration.return_value = HostConfiguration(servers={})
+                return mock_strategy
+            
+            mock_registry.get_strategy.side_effect = get_strategy_side_effect
+            
+            with patch('hatch.mcp_host_config.strategies'):
+                captured_output = io.StringIO()
+                with patch('sys.stdout', captured_output):
+                    result = handle_mcp_list_hosts(args)
+                
+                output = captured_output.getvalue()
+                
+                # Find positions of hosts in output
+                claude_pos = output.find("claude-desktop")
+                cursor_pos = output.find("cursor")
+                
+                # claude-desktop should appear before cursor (alphabetically)
+                assert claude_pos < cursor_pos, \
+                    "Hosts should be sorted alphabetically (claude-desktop before cursor)"
