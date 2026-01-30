@@ -92,12 +92,18 @@ def _setup_env_commands(subparsers):
         "--hatch_mcp_server_tag",
         help="Git tag/branch reference for hatch_mcp_server wrapper installation (e.g., 'dev', 'v0.1.0')",
     )
+    env_create_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
+    )
 
     # Remove environment command
     env_remove_parser = env_subparsers.add_parser(
         "remove", help="Remove an environment"
     )
     env_remove_parser.add_argument("name", help="Environment name")
+    env_remove_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
+    )
 
     # List environments command
     env_list_parser = env_subparsers.add_parser("list", help="List all available environments")
@@ -151,6 +157,9 @@ def _setup_env_commands(subparsers):
         "--hatch_mcp_server_tag",
         help="Git tag/branch reference for hatch_mcp_server wrapper installation (e.g., 'dev', 'v0.1.0')",
     )
+    python_init_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
+    )
 
     # Show Python environment info
     python_info_parser = env_python_subparsers.add_parser(
@@ -191,6 +200,9 @@ def _setup_env_commands(subparsers):
     )
     python_remove_parser.add_argument(
         "--force", action="store_true", help="Force removal without confirmation"
+    )
+    python_remove_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
     )
 
     # Launch Python shell
@@ -261,6 +273,9 @@ def _setup_package_commands(subparsers):
         "-e",
         default=None,
         help="Environment name (default: current environment)",
+    )
+    pkg_remove_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
     )
 
     # List packages command
