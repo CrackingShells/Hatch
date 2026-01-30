@@ -68,7 +68,7 @@ class TestColorEnum(unittest.TestCase):
         self.assertEqual(len(Color), 14, f"Expected 14 colors, got {len(Color)}")
 
     def test_color_values_are_ansi_codes(self):
-        """Color values should be ANSI escape sequences."""
+        """Color values should be ANSI escape sequences (16-color or true color)."""
         from hatch.cli.cli_utils import Color
         
         for color in Color:
@@ -80,6 +80,27 @@ class TestColorEnum(unittest.TestCase):
                 color.value.endswith('m'),
                 f"{color.name} value should end with 'm': {repr(color.value)}"
             )
+            # Verify it's either 16-color or true color format
+            is_16_color = color.value.startswith('\033[') and not color.value.startswith('\033[38;2;')
+            is_true_color = color.value.startswith('\033[38;2;')
+            self.assertTrue(
+                is_16_color or is_true_color or color.name == 'RESET',
+                f"{color.name} should be 16-color or true color format: {repr(color.value)}"
+            )
+
+    def test_amber_color_exists(self):
+        """Color.AMBER should exist for entity highlighting."""
+        from hatch.cli.cli_utils import Color
+        
+        self.assertTrue(
+            hasattr(Color, 'AMBER'),
+            "Color enum missing AMBER for entity highlighting"
+        )
+        # AMBER should have a valid ANSI value
+        self.assertTrue(
+            Color.AMBER.value.startswith('\033['),
+            f"AMBER value should be ANSI escape: {repr(Color.AMBER.value)}"
+        )
 
     def test_reset_clears_formatting(self):
         """RESET should be the standard ANSI reset code."""
@@ -137,6 +158,54 @@ class TestTrueColorDetection(unittest.TestCase):
         clean_env = {}
         with patch.dict(os.environ, clean_env, clear=True):
             self.assertFalse(_supports_truecolor())
+
+
+class TestHighlightFunction(unittest.TestCase):
+    """Tests for highlight() utility function.
+    
+    Reference: R12 §3.3 (12-enhancing_colors_v0.md) - Bold modifier
+    """
+
+    def test_highlight_with_colors_enabled(self):
+        """highlight() should apply bold + amber when colors enabled."""
+        from hatch.cli.cli_utils import highlight, Color
+        
+        env_without_no_color = {k: v for k, v in os.environ.items() if k != 'NO_COLOR'}
+        with patch.dict(os.environ, env_without_no_color, clear=True):
+            with patch.object(sys.stdout, 'isatty', return_value=True):
+                result = highlight('test-entity')
+                
+                # Should contain bold escape
+                self.assertIn('\033[1m', result)
+                # Should contain amber color
+                self.assertIn(Color.AMBER.value, result)
+                # Should contain reset
+                self.assertIn(Color.RESET.value, result)
+                # Should contain the text
+                self.assertIn('test-entity', result)
+
+    def test_highlight_with_colors_disabled(self):
+        """highlight() should return plain text when colors disabled."""
+        from hatch.cli.cli_utils import highlight
+        
+        with patch.dict(os.environ, {'NO_COLOR': '1'}):
+            result = highlight('test-entity')
+            
+            # Should be plain text without ANSI codes
+            self.assertEqual(result, 'test-entity')
+            self.assertNotIn('\033[', result)
+
+    def test_highlight_non_tty(self):
+        """highlight() should return plain text in non-TTY mode."""
+        from hatch.cli.cli_utils import highlight
+        
+        env_without_no_color = {k: v for k, v in os.environ.items() if k != 'NO_COLOR'}
+        with patch.dict(os.environ, env_without_no_color, clear=True):
+            with patch.object(sys.stdout, 'isatty', return_value=False):
+                result = highlight('test-entity')
+                
+                # Should be plain text
+                self.assertEqual(result, 'test-entity')
 
 
 class TestColorsEnabled(unittest.TestCase):
