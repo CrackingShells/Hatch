@@ -368,7 +368,11 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
-    from hatch.cli.cli_utils import request_confirmation
+    from hatch.cli.cli_utils import (
+        request_confirmation,
+        ResultReporter,
+        ConsequenceType,
+    )
     
     try:
         from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
@@ -403,17 +407,21 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
                 return EXIT_ERROR
             backup_file = backup_path.name
 
+        # Create ResultReporter for unified output
+        reporter = ResultReporter("hatch mcp backup restore", dry_run=dry_run)
+        reporter.add(ConsequenceType.RESTORE, f"Backup '{backup_file}' to host '{host}'")
+
         if dry_run:
-            print(f"[DRY RUN] Would restore backup for host '{host}':")
-            print(f"[DRY RUN] Backup file: {backup_file}")
-            print(f"[DRY RUN] Backup path: {backup_path}")
+            reporter.report_result()
             return EXIT_SUCCESS
 
+        # Show prompt for confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+
         # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Restore backup '{backup_file}' for host '{host}'? This will overwrite current configuration.",
-            auto_approve,
-        ):
+        if not request_confirmation("Proceed?", auto_approve):
             print("Operation cancelled.")
             return EXIT_SUCCESS
 
@@ -421,9 +429,7 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
         success = backup_manager.restore_backup(host, backup_file)
 
         if success:
-            print(
-                f"[SUCCESS] Successfully restored backup '{backup_file}' for host '{host}'"
-            )
+            reporter.report_result()
 
             # Read restored configuration to get actual server list
             try:
@@ -442,11 +448,11 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
                 )
                 if updates_count > 0:
                     print(
-                        f"Synchronized {updates_count} package entries with restored configuration"
+                        f"  Synchronized {updates_count} package entries with restored configuration"
                     )
 
             except Exception as e:
-                print(f"Warning: Could not synchronize environment tracking: {e}")
+                print(f"  Warning: Could not synchronize environment tracking: {e}")
 
             return EXIT_SUCCESS
         else:
@@ -530,7 +536,11 @@ def handle_mcp_backup_clean(args: Namespace) -> int:
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
-    from hatch.cli.cli_utils import request_confirmation
+    from hatch.cli.cli_utils import (
+        request_confirmation,
+        ResultReporter,
+        ConsequenceType,
+    )
     
     try:
         from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
@@ -586,20 +596,22 @@ def handle_mcp_backup_clean(args: Namespace) -> int:
             print(f"No backups match cleanup criteria for host '{host}'")
             return EXIT_SUCCESS
 
+        # Create ResultReporter for unified output
+        reporter = ResultReporter("hatch mcp backup clean", dry_run=dry_run)
+        for backup in unique_to_clean:
+            reporter.add(ConsequenceType.CLEAN, f"{backup.file_path.name} (age: {backup.age_days} days)")
+
         if dry_run:
-            print(
-                f"[DRY RUN] Would clean {len(unique_to_clean)} backup(s) for host '{host}':"
-            )
-            for backup in unique_to_clean:
-                print(
-                    f"[DRY RUN]   {backup.file_path.name} (age: {backup.age_days} days)"
-                )
+            reporter.report_result()
             return EXIT_SUCCESS
 
+        # Show prompt for confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+
         # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Clean {len(unique_to_clean)} backup(s) for host '{host}'?", auto_approve
-        ):
+        if not request_confirmation("Proceed?", auto_approve):
             print("Operation cancelled.")
             return EXIT_SUCCESS
 
@@ -613,7 +625,7 @@ def handle_mcp_backup_clean(args: Namespace) -> int:
         cleaned_count = backup_manager.clean_backups(host, **filters)
 
         if cleaned_count > 0:
-            print(f"✓ Successfully cleaned {cleaned_count} backup(s) for host '{host}'")
+            reporter.report_result()
             return EXIT_SUCCESS
         else:
             print(f"No backups were cleaned for host '{host}'")
