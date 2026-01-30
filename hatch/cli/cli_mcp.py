@@ -646,8 +646,10 @@ def handle_mcp_configure(args: Namespace) -> int:
         parse_env_vars,
         parse_header,
         parse_input,
+        ResultReporter,
+        ConsequenceType,
     )
-    from hatch.mcp_host_config.reporting import display_report, generate_conversion_report
+    from hatch.mcp_host_config.reporting import generate_conversion_report
     
     try:
         # Extract arguments from Namespace
@@ -838,28 +840,22 @@ def handle_mcp_configure(args: Namespace) -> int:
             dry_run=dry_run,
         )
 
-        # Display conversion report
+        # Create ResultReporter for unified output
+        reporter = ResultReporter("hatch mcp configure", dry_run=dry_run)
+        reporter.add_from_conversion_report(report)
+
+        # Display prompt and handle dry-run
         if dry_run:
-            print(
-                f"[DRY RUN] Would configure MCP server '{server_name}' on host '{host}':"
-            )
-            print(f"[DRY RUN] Command: {command}")
-            if cmd_args:
-                print(f"[DRY RUN] Args: {cmd_args}")
-            if env_dict:
-                print(f"[DRY RUN] Environment: {env_dict}")
-            if url:
-                print(f"[DRY RUN] URL: {url}")
-            if headers_dict:
-                print(f"[DRY RUN] Headers: {headers_dict}")
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
-            display_report(report)
+            reporter.report_result()
             return EXIT_SUCCESS
 
-        display_report(report)
+        # Show prompt for confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
 
         if not request_confirmation(
-            f"Configure MCP server '{server_name}' on host '{host}'?", auto_approve
+            f"Proceed?", auto_approve
         ):
             print("Operation cancelled.")
             return EXIT_SUCCESS
@@ -871,11 +867,9 @@ def handle_mcp_configure(args: Namespace) -> int:
         )
 
         if result.success:
-            print(
-                f"[SUCCESS] Successfully configured MCP server '{server_name}' on host '{host}'"
-            )
+            reporter.report_result()
             if result.backup_path:
-                print(f"  Backup created: {result.backup_path}")
+                print(f"  Backup: {result.backup_path}")
             return EXIT_SUCCESS
         else:
             print(
