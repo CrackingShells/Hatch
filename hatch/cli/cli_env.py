@@ -210,11 +210,11 @@ def handle_env_list(args: Namespace) -> int:
     # Table output
     print("Environments:")
     
-    # Define table columns per R02 §2.1
+    # Define table columns per R10 §5.1 (simplified output - count only)
     columns = [
         ColumnDef(name="Name", width=15),
         ColumnDef(name="Python", width=10),
-        ColumnDef(name="Packages", width="auto"),
+        ColumnDef(name="Packages", width=10, align="right"),
     ]
     formatter = TableFormatter(columns)
     
@@ -230,20 +230,11 @@ def handle_env_list(args: Namespace) -> int:
             if python_info:
                 python_version = python_info.get("python_version", "Unknown")
         
-        # Packages - get list and format inline
+        # Packages - show count only per R10 §5.1
         packages_list = env_manager.list_packages(env.get("name"))
-        if packages_list:
-            pkg_names = [pkg["name"] for pkg in packages_list]
-            count = len(pkg_names)
-            if count <= 3:
-                packages_str = ", ".join(pkg_names) + f" ({count})"
-            else:
-                # Truncate to first 2 and show count
-                packages_str = ", ".join(pkg_names[:2]) + f", ... ({count} total)"
-        else:
-            packages_str = "(empty)"
+        packages_count = str(len(packages_list)) if packages_list else "0"
         
-        formatter.add_row([name, python_version, packages_str])
+        formatter.add_row([name, python_version, packages_count])
     
     print(formatter.render())
     return EXIT_SUCCESS
