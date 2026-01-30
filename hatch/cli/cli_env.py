@@ -581,3 +581,123 @@ def handle_env_show(args: Namespace) -> int:
         print("    (empty)")
 
     return EXIT_SUCCESS
+
+
+def handle_env_list_hosts(args: Namespace) -> int:
+    """Handle 'hatch env list hosts' command.
+    
+    Lists environment/host/server deployments from environment data.
+    Shows only Hatch-managed packages and their host deployments.
+    
+    Args:
+        args: Namespace with:
+            - env_manager: HatchEnvironmentManager instance
+            - env: Optional regex pattern to filter by environment name
+            - server: Optional regex pattern to filter by server name
+            - json: Optional flag for JSON output
+    
+    Returns:
+        Exit code (0 for success, 1 for error)
+    
+    Reference: R10 §3.3 (10-namespace_consistency_specification_v2.md)
+    """
+    import json as json_module
+    import re
+    
+    env_manager: "HatchEnvironmentManager" = args.env_manager
+    env_pattern: str = getattr(args, 'env', None)
+    server_pattern: str = getattr(args, 'server', None)
+    json_output: bool = getattr(args, 'json', False)
+    
+    # Compile regex patterns if provided
+    env_re = None
+    if env_pattern:
+        try:
+            env_re = re.compile(env_pattern)
+        except re.error as e:
+            print(f"[ERROR] Invalid env regex pattern: {e}")
+            return EXIT_ERROR
+    
+    server_re = None
+    if server_pattern:
+        try:
+            server_re = re.compile(server_pattern)
+        except re.error as e:
+            print(f"[ERROR] Invalid server regex pattern: {e}")
+            return EXIT_ERROR
+    
+    # Get all environments
+    environments = env_manager.list_environments()
+    
+    # Collect rows: (environment, host, server, version)
+    rows = []
+    
+    for env_info in environments:
+        env_name = env_info.get("name", env_info) if isinstance(env_info, dict) else env_info
+        
+        # Apply environment filter
+        if env_re and not env_re.search(env_name):
+            continue
+        
+        try:
+            env_data = env_manager.get_environment_data(env_name)
+            packages = env_data.get("packages", []) if isinstance(env_data, dict) else []
+            
+            for pkg in packages:
+                pkg_name = pkg.get("name") if isinstance(pkg, dict) else None
+                pkg_version = pkg.get("version", "-") if isinstance(pkg, dict) else "-"
+                configured_hosts = pkg.get("configured_hosts", {}) if isinstance(pkg, dict) else {}
+                
+                if not pkg_name or not configured_hosts:
+                    continue
+                
+                # Apply server filter
+                if server_re and not server_re.search(pkg_name):
+                    continue
+                
+                # Add a row for each host deployment
+                for host_name in configured_hosts.keys():
+                    rows.append((env_name, host_name, pkg_name, pkg_version))
+        except Exception:
+            continue
+    
+    # Sort rows by environment (alphabetically), then host, then server
+    rows.sort(key=lambda x: (x[0], x[1], x[2]))
+    
+    # JSON output per R10 §8
+    if json_output:
+        rows_data = []
+        for env, host, server, version in rows:
+            rows_data.append({
+                "environment": env,
+                "host": host,
+                "server": server,
+                "version": version
+            })
+        print(json_module.dumps({"rows": rows_data}, indent=2))
+        return EXIT_SUCCESS
+    
+    # Display results
+    if not rows:
+        if env_pattern or server_pattern:
+            print("No matching environment host deployments found")
+        else:
+            print("No environment host deployments found")
+        return EXIT_SUCCESS
+    
+    print("Environment Host Deployments:")
+    
+    # Define table columns per R10 §3.3: Environment → Host → Server → Version
+    columns = [
+        ColumnDef(name="Environment", width=15),
+        ColumnDef(name="Host", width=18),
+        ColumnDef(name="Server", width=18),
+        ColumnDef(name="Version", width=10),
+    ]
+    formatter = TableFormatter(columns)
+    
+    for env, host, server, version in rows:
+        formatter.add_row([env, host, server, version])
+    
+    print(formatter.render())
+    return EXIT_SUCCESS
