@@ -111,13 +111,48 @@ def _setup_env_commands(subparsers):
         "--auto-approve", action="store_true", help="Skip confirmation prompt"
     )
 
-    # List environments command
-    env_list_parser = env_subparsers.add_parser("list", help="List all available environments")
+    # List environments command - now with subcommands per R10
+    env_list_parser = env_subparsers.add_parser("list", help="List environments, hosts, or servers")
+    env_list_subparsers = env_list_parser.add_subparsers(dest="list_command", help="List command to execute")
+    
+    # Default list behavior (no subcommand) - handled by checking list_command is None
     env_list_parser.add_argument(
         "--pattern",
         help="Filter environments by name using regex pattern",
     )
     env_list_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
+    )
+    
+    # env list hosts subcommand per R10 §3.3
+    env_list_hosts_parser = env_list_subparsers.add_parser(
+        "hosts", help="List environment/host/server deployments"
+    )
+    env_list_hosts_parser.add_argument(
+        "--env", "-e",
+        help="Filter by environment name using regex pattern",
+    )
+    env_list_hosts_parser.add_argument(
+        "--server",
+        help="Filter by server name using regex pattern",
+    )
+    env_list_hosts_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
+    )
+    
+    # env list servers subcommand per R10 §3.4
+    env_list_servers_parser = env_list_subparsers.add_parser(
+        "servers", help="List environment/server/host deployments"
+    )
+    env_list_servers_parser.add_argument(
+        "--env", "-e",
+        help="Filter by environment name using regex pattern",
+    )
+    env_list_servers_parser.add_argument(
+        "--host",
+        help="Filter by host name using regex pattern (use '-' for undeployed)",
+    )
+    env_list_servers_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"
     )
 
@@ -699,6 +734,8 @@ def _route_env_command(args):
         handle_env_create,
         handle_env_remove,
         handle_env_list,
+        handle_env_list_hosts,
+        handle_env_list_servers,
         handle_env_use,
         handle_env_current,
         handle_env_show,
@@ -714,7 +751,15 @@ def _route_env_command(args):
     elif args.env_command == "remove":
         return handle_env_remove(args)
     elif args.env_command == "list":
-        return handle_env_list(args)
+        # Check for subcommand (hosts, servers) or default list behavior
+        list_command = getattr(args, 'list_command', None)
+        if list_command == "hosts":
+            return handle_env_list_hosts(args)
+        elif list_command == "servers":
+            return handle_env_list_servers(args)
+        else:
+            # Default: list environments
+            return handle_env_list(args)
     elif args.env_command == "use":
         return handle_env_use(args)
     elif args.env_command == "current":
