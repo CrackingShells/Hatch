@@ -85,7 +85,15 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
         import hatch.mcp_host_config.strategies
 
         available_hosts = MCPHostRegistry.detect_available_hosts()
-        print("Available MCP host platforms:")
+        print("Available MCP Host Platforms:")
+
+        # Define table columns per R02 §2.3
+        columns = [
+            ColumnDef(name="Host", width=18),
+            ColumnDef(name="Status", width=15),
+            ColumnDef(name="Config Path", width="auto"),
+        ]
+        formatter = TableFormatter(columns)
 
         for host_type in MCPHostType:
             try:
@@ -93,13 +101,13 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
                 config_path = strategy.get_config_path()
                 is_available = host_type in available_hosts
 
-                status = "✓ Available" if is_available else "✗ Not detected"
-                print(f"  {host_type.value}: {status}")
-                if config_path:
-                    print(f"    Config path: {config_path}")
+                status = "✓ Available" if is_available else "✗ Not Found"
+                path_str = str(config_path) if config_path else "-"
+                formatter.add_row([host_type.value, status, path_str])
             except Exception as e:
-                print(f"  {host_type.value}: Error - {e}")
+                formatter.add_row([host_type.value, f"Error", str(e)[:30]])
 
+        print(formatter.render())
         return EXIT_SUCCESS
     except Exception as e:
         print(f"Error discovering hosts: {e}")
