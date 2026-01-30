@@ -701,3 +701,137 @@ def handle_env_list_hosts(args: Namespace) -> int:
     
     print(formatter.render())
     return EXIT_SUCCESS
+
+
+def handle_env_list_servers(args: Namespace) -> int:
+    """Handle 'hatch env list servers' command.
+    
+    Lists environment/server/host deployments from environment data.
+    Shows only Hatch-managed packages. Undeployed packages show '-' in Host column.
+    
+    Args:
+        args: Namespace with:
+            - env_manager: HatchEnvironmentManager instance
+            - env: Optional regex pattern to filter by environment name
+            - host: Optional regex pattern to filter by host name (use '-' for undeployed)
+            - json: Optional flag for JSON output
+    
+    Returns:
+        Exit code (0 for success, 1 for error)
+    
+    Reference: R10 §3.4 (10-namespace_consistency_specification_v2.md)
+    """
+    import json as json_module
+    import re
+    
+    env_manager: "HatchEnvironmentManager" = args.env_manager
+    env_pattern: str = getattr(args, 'env', None)
+    host_pattern: str = getattr(args, 'host', None)
+    json_output: bool = getattr(args, 'json', False)
+    
+    # Compile regex patterns if provided
+    env_re = None
+    if env_pattern:
+        try:
+            env_re = re.compile(env_pattern)
+        except re.error as e:
+            print(f"[ERROR] Invalid env regex pattern: {e}")
+            return EXIT_ERROR
+    
+    # Special handling for '-' (undeployed filter)
+    filter_undeployed = host_pattern == "-"
+    host_re = None
+    if host_pattern and not filter_undeployed:
+        try:
+            host_re = re.compile(host_pattern)
+        except re.error as e:
+            print(f"[ERROR] Invalid host regex pattern: {e}")
+            return EXIT_ERROR
+    
+    # Get all environments
+    environments = env_manager.list_environments()
+    
+    # Collect rows: (environment, server, host, version)
+    rows = []
+    
+    for env_info in environments:
+        env_name = env_info.get("name", env_info) if isinstance(env_info, dict) else env_info
+        
+        # Apply environment filter
+        if env_re and not env_re.search(env_name):
+            continue
+        
+        try:
+            env_data = env_manager.get_environment_data(env_name)
+            packages = env_data.get("packages", []) if isinstance(env_data, dict) else []
+            
+            for pkg in packages:
+                pkg_name = pkg.get("name") if isinstance(pkg, dict) else None
+                pkg_version = pkg.get("version", "-") if isinstance(pkg, dict) else "-"
+                configured_hosts = pkg.get("configured_hosts", {}) if isinstance(pkg, dict) else {}
+                
+                if not pkg_name:
+                    continue
+                
+                if configured_hosts:
+                    # Package is deployed to one or more hosts
+                    for host_name in configured_hosts.keys():
+                        # Apply host filter
+                        if filter_undeployed:
+                            # Skip deployed packages when filtering for undeployed
+                            continue
+                        if host_re and not host_re.search(host_name):
+                            continue
+                        rows.append((env_name, pkg_name, host_name, pkg_version))
+                else:
+                    # Package is not deployed (undeployed)
+                    if host_re:
+                        # Skip undeployed when filtering by specific host pattern
+                        continue
+                    if not filter_undeployed and host_pattern:
+                        # Skip undeployed when filtering by host (unless specifically filtering for undeployed)
+                        continue
+                    rows.append((env_name, pkg_name, "-", pkg_version))
+        except Exception:
+            continue
+    
+    # Sort rows by environment (alphabetically), then server, then host
+    rows.sort(key=lambda x: (x[0], x[1], x[2]))
+    
+    # JSON output per R10 §8
+    if json_output:
+        rows_data = []
+        for env, server, host, version in rows:
+            rows_data.append({
+                "environment": env,
+                "server": server,
+                "host": host if host != "-" else None,
+                "version": version
+            })
+        print(json_module.dumps({"rows": rows_data}, indent=2))
+        return EXIT_SUCCESS
+    
+    # Display results
+    if not rows:
+        if env_pattern or host_pattern:
+            print("No matching environment server deployments found")
+        else:
+            print("No environment server deployments found")
+        return EXIT_SUCCESS
+    
+    print("Environment Servers:")
+    
+    # Define table columns per R10 §3.4: Environment → Server → Host → Version
+    columns = [
+        ColumnDef(name="Environment", width=15),
+        ColumnDef(name="Server", width=18),
+        ColumnDef(name="Host", width=18),
+        ColumnDef(name="Version", width=10),
+    ]
+    formatter = TableFormatter(columns)
+    
+    for env, server, host, version in rows:
+        formatter.add_row([env, server, host, version])
+    
+    print(formatter.render())
+    return EXIT_SUCCESS
