@@ -34,7 +34,12 @@ from pathlib import Path
 
 from hatch_validator import HatchPackageValidator
 
-from hatch.cli.cli_utils import EXIT_SUCCESS, EXIT_ERROR
+from hatch.cli.cli_utils import (
+    EXIT_SUCCESS,
+    EXIT_ERROR,
+    ResultReporter,
+    ConsequenceType,
+)
 from hatch.template_generator import create_package_template
 
 
@@ -52,17 +57,26 @@ def handle_create(args: Namespace) -> int:
     """
     target_dir = Path(args.dir).resolve()
     description = getattr(args, "description", "")
+    dry_run = getattr(args, "dry_run", False)
     
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch create", dry_run=dry_run)
+    reporter.add(ConsequenceType.CREATE, f"Package '{args.name}' at {target_dir}")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
+
     try:
         package_dir = create_package_template(
             target_dir=target_dir,
             package_name=args.name,
             description=description,
         )
-        print(f"Package template created at: {package_dir}")
+        reporter.report_result()
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Failed to create package template: {e}")
+        print(f"[ERROR] Failed to create package template: {e}")
         return EXIT_ERROR
 
 
@@ -82,6 +96,9 @@ def handle_validate(args: Namespace) -> int:
     env_manager: HatchEnvironmentManager = args.env_manager
     package_path = Path(args.package_dir).resolve()
 
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch validate", dry_run=False)
+
     # Create validator with registry data from environment manager
     validator = HatchPackageValidator(
         version="latest",
@@ -93,10 +110,11 @@ def handle_validate(args: Namespace) -> int:
     is_valid, validation_results = validator.validate_package(package_path)
 
     if is_valid:
-        print(f"Package validation SUCCESSFUL: {package_path}")
+        reporter.add(ConsequenceType.VALIDATE, f"Package '{package_path.name}'")
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"Package validation FAILED: {package_path}")
+        print(f"[ERROR] Package validation FAILED: {package_path}")
 
         # Print detailed validation results if available
         if validation_results and isinstance(validation_results, dict):
