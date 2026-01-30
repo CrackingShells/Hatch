@@ -113,13 +113,18 @@ def handle_env_remove(args: Namespace) -> int:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
             - name: Environment name to remove
+            - dry_run: Preview changes without execution
+            - auto_approve: Skip confirmation prompt
     
     Returns:
         Exit code (0 for success, 1 for error)
+    
+    Reference: R03 §3.1 (03-mutation_output_specification_v0.md)
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
     name = args.name
     dry_run = getattr(args, "dry_run", False)
+    auto_approve = getattr(args, "auto_approve", False)
 
     # Create reporter for unified output
     reporter = ResultReporter("hatch env remove", dry_run=dry_run)
@@ -128,6 +133,16 @@ def handle_env_remove(args: Namespace) -> int:
     if dry_run:
         reporter.report_result()
         return EXIT_SUCCESS
+
+    # Show prompt and request confirmation unless auto-approved
+    if not auto_approve:
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+        
+        if not request_confirmation("Proceed?"):
+            print("Operation cancelled.")
+            return EXIT_SUCCESS
 
     if env_manager.remove_environment(name):
         reporter.report_result()

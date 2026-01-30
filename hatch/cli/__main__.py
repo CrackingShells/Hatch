@@ -107,6 +107,9 @@ def _setup_env_commands(subparsers):
     env_remove_parser.add_argument(
         "--dry-run", action="store_true", help="Preview changes without execution"
     )
+    env_remove_parser.add_argument(
+        "--auto-approve", action="store_true", help="Skip confirmation prompt"
+    )
 
     # List environments command
     env_list_parser = env_subparsers.add_parser("list", help="List all available environments")
