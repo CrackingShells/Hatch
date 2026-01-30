@@ -445,18 +445,18 @@ class TestMCPListServersHostCentric:
         from hatch.mcp_host_config import MCPHostType, MCPServerConfig
         from hatch.mcp_host_config.models import HostConfiguration
         
-        # Create mock env_manager
+        # Create mock env_manager with dict-based return values (matching real implementation)
         mock_env_manager = MagicMock()
         mock_env_manager.list_environments.return_value = [{"name": "default"}]
-        mock_env_manager.get_environment_data.return_value = MagicMock(
-            packages=[
-                MagicMock(
-                    name="weather-server",
-                    version="1.0.0",
-                    configured_hosts={"claude-desktop": {"configured_at": "2026-01-30"}}
-                )
+        mock_env_manager.get_environment_data.return_value = {
+            "packages": [
+                {
+                    "name": "weather-server",
+                    "version": "1.0.0",
+                    "configured_hosts": {"claude-desktop": {"configured_at": "2026-01-30"}}
+                }
             ]
-        )
+        }
         
         args = Namespace(
             env_manager=mock_env_manager,
@@ -516,7 +516,7 @@ class TestMCPListServersHostCentric:
         # Create mock env_manager with NO packages (empty environment)
         mock_env_manager = MagicMock()
         mock_env_manager.list_environments.return_value = [{"name": "default"}]
-        mock_env_manager.get_environment_data.return_value = MagicMock(packages=[])
+        mock_env_manager.get_environment_data.return_value = {"packages": []}
         
         args = Namespace(
             env_manager=mock_env_manager,
@@ -560,7 +560,7 @@ class TestMCPListServersHostCentric:
         
         mock_env_manager = MagicMock()
         mock_env_manager.list_environments.return_value = [{"name": "default"}]
-        mock_env_manager.get_environment_data.return_value = MagicMock(packages=[])
+        mock_env_manager.get_environment_data.return_value = {"packages": []}
         
         args = Namespace(
             env_manager=mock_env_manager,
@@ -624,7 +624,7 @@ class TestMCPListServersHostCentric:
         
         mock_env_manager = MagicMock()
         mock_env_manager.list_environments.return_value = [{"name": "default"}]
-        mock_env_manager.get_environment_data.return_value = MagicMock(packages=[])
+        mock_env_manager.get_environment_data.return_value = {"packages": []}
         
         args = Namespace(
             env_manager=mock_env_manager,
@@ -672,15 +672,15 @@ class TestMCPListServersHostCentric:
         
         mock_env_manager = MagicMock()
         mock_env_manager.list_environments.return_value = [{"name": "default"}]
-        mock_env_manager.get_environment_data.return_value = MagicMock(
-            packages=[
-                MagicMock(
-                    name="managed-server",
-                    version="1.0.0",
-                    configured_hosts={"claude-desktop": {}}
-                )
+        mock_env_manager.get_environment_data.return_value = {
+            "packages": [
+                {
+                    "name": "managed-server",
+                    "version": "1.0.0",
+                    "configured_hosts": {"claude-desktop": {}}
+                }
             ]
-        )
+        }
         
         args = Namespace(
             env_manager=mock_env_manager,

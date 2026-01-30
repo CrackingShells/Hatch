@@ -317,51 +317,109 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
 def handle_mcp_list_servers(args: Namespace) -> int:
     """Handle 'hatch mcp list servers' command.
     
+    Lists MCP servers configured on hosts with Hatch management status.
+    This is a HOST-CENTRIC command that reads from actual host config files
+    and cross-references with Hatch environments to determine management status.
+    
     Args:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
-            - env: Optional environment name (uses current if not specified)
-            - host: Optional host filter
+            - host: Optional host filter (e.g., claude-desktop)
+            - pattern: Optional regex pattern to filter server names
             - json: Optional flag for JSON output
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+    
+    Reference: R02 §2.5 (02-list_output_format_specification_v2.md)
     """
     try:
         import json as json_module
+        import re
+        # Import strategies to trigger registration
+        import hatch.mcp_host_config.strategies
         
         env_manager: HatchEnvironmentManager = args.env_manager
-        env_name: Optional[str] = getattr(args, 'env', None)
         host_filter: Optional[str] = getattr(args, 'host', None)
+        pattern: Optional[str] = getattr(args, 'pattern', None)
         json_output: bool = getattr(args, 'json', False)
         
-        env_name = env_name or env_manager.get_current_environment()
-
-        if not env_manager.environment_exists(env_name):
-            print(f"Error: Environment '{env_name}' does not exist")
-            return EXIT_ERROR
-
-        packages = env_manager.list_packages(env_name)
+        # Compile regex pattern if provided
+        pattern_re = None
+        if pattern:
+            try:
+                pattern_re = re.compile(pattern)
+            except re.error as e:
+                print(f"Error: Invalid regex pattern '{pattern}': {e}")
+                return EXIT_ERROR
         
-        # Collect server data: (server_name, host, is_hatch_managed, env_name, version)
+        # Determine which hosts to scan
+        if host_filter:
+            # Validate host type
+            try:
+                host_type = MCPHostType(host_filter)
+                target_hosts = [host_type]
+            except ValueError:
+                print(
+                    f"Error: Invalid host '{host_filter}'. Supported hosts: {[h.value for h in MCPHostType]}"
+                )
+                return EXIT_ERROR
+        else:
+            # Scan all available hosts
+            target_hosts = MCPHostRegistry.detect_available_hosts()
+        
+        # Build Hatch management lookup: {server_name: {host: (env_name, version)}}
+        hatch_managed = {}
+        for env_info in env_manager.list_environments():
+            env_name = env_info.get("name", env_info) if isinstance(env_info, dict) else env_info
+            try:
+                env_data = env_manager.get_environment_data(env_name)
+                packages = env_data.get("packages", []) if isinstance(env_data, dict) else getattr(env_data, 'packages', [])
+                
+                for pkg in packages:
+                    pkg_name = pkg.get("name") if isinstance(pkg, dict) else getattr(pkg, 'name', None)
+                    pkg_version = pkg.get("version", "-") if isinstance(pkg, dict) else getattr(pkg, 'version', '-')
+                    configured_hosts = pkg.get("configured_hosts", {}) if isinstance(pkg, dict) else getattr(pkg, 'configured_hosts', {})
+                    
+                    if pkg_name:
+                        if pkg_name not in hatch_managed:
+                            hatch_managed[pkg_name] = {}
+                        for host_name in configured_hosts.keys():
+                            hatch_managed[pkg_name][host_name] = (env_name, pkg_version)
+            except Exception:
+                continue
+        
+        # Collect server data from host config files
+        # Format: (server_name, host, is_hatch_managed, env_name, version)
         server_rows = []
-
-        for package in packages:
-            package_name = package["name"]
-            version = package.get("version", "-")
-            configured_hosts = package.get("configured_hosts", {})
-            
-            if configured_hosts:
-                for host_name in configured_hosts.keys():
-                    # Apply host filter if specified
-                    if host_filter and host_name != host_filter:
+        
+        for host_type in target_hosts:
+            try:
+                strategy = MCPHostRegistry.get_strategy(host_type)
+                host_config = strategy.read_configuration()
+                host_name = host_type.value
+                
+                for server_name, server_config in host_config.servers.items():
+                    # Apply pattern filter if specified
+                    if pattern_re and not pattern_re.search(server_name):
                         continue
-                    server_rows.append((package_name, host_name, True, env_name, version))
-            else:
-                # Package not deployed to any host yet
-                if not host_filter:  # Only show if no host filter
-                    server_rows.append((package_name, "-", True, env_name, version))
-
+                    
+                    # Check if Hatch-managed
+                    is_hatch_managed = False
+                    env_name = "-"
+                    version = "-"
+                    
+                    if server_name in hatch_managed:
+                        host_info = hatch_managed[server_name].get(host_name)
+                        if host_info:
+                            is_hatch_managed = True
+                            env_name, version = host_info
+                    
+                    server_rows.append((server_name, host_name, is_hatch_managed, env_name, version))
+            except Exception as e:
+                # Skip hosts that can't be read
+                continue
+        
         # JSON output
         if json_output:
             servers_data = []
@@ -373,7 +431,7 @@ def handle_mcp_list_servers(args: Namespace) -> int:
                 if is_hatch:
                     server_entry["environment"] = env
                     server_entry["version"] = version
-                if host != "-":
+                if not host_filter:
                     server_entry["host"] = host
                 servers_data.append(server_entry)
             
@@ -385,14 +443,23 @@ def handle_mcp_list_servers(args: Namespace) -> int:
 
         if not server_rows:
             if host_filter:
-                print(f"No MCP servers on host '{host_filter}'")
+                if pattern:
+                    print(f"No MCP servers matching '{pattern}' on host '{host_filter}'")
+                else:
+                    print(f"No MCP servers on host '{host_filter}'")
             else:
-                print(f"No MCP servers in environment '{env_name}'")
+                if pattern:
+                    print(f"No MCP servers matching '{pattern}'")
+                else:
+                    print("No MCP servers found on any available hosts")
             return EXIT_SUCCESS
 
         # Display header based on filter
         if host_filter:
-            print(f"MCP servers on {host_filter}:")
+            if pattern:
+                print(f"MCP servers on {host_filter} (filtered):")
+            else:
+                print(f"MCP servers on {host_filter}:")
             columns = [
                 ColumnDef(name="Server Name", width=20),
                 ColumnDef(name="Hatch", width=8),
