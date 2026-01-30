@@ -1154,7 +1154,12 @@ def handle_mcp_sync(args: Namespace) -> int:
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
-    from hatch.cli.cli_utils import request_confirmation, parse_host_list
+    from hatch.cli.cli_utils import (
+        request_confirmation,
+        parse_host_list,
+        ResultReporter,
+        ConsequenceType,
+    )
     
     from_env = getattr(args, "from_env", None)
     from_host = getattr(args, "from_host", None)
@@ -1178,28 +1183,31 @@ def handle_mcp_sync(args: Namespace) -> int:
         if servers:
             server_list = [s.strip() for s in servers.split(",") if s.strip()]
 
+        # Create ResultReporter for unified output
+        reporter = ResultReporter("hatch mcp sync", dry_run=dry_run)
+        
+        # Build source description
+        source_desc = f"environment '{from_env}'" if from_env else f"host '{from_host}'"
+        
+        # Add sync consequences for preview
+        for target_host in target_hosts:
+            reporter.add(ConsequenceType.SYNC, f"{source_desc} → '{target_host}'")
+
         if dry_run:
-            source_desc = (
-                f"environment '{from_env}'" if from_env else f"host '{from_host}'"
-            )
-            target_desc = f"hosts: {', '.join(target_hosts)}"
-            print(f"[DRY RUN] Would synchronize from {source_desc} to {target_desc}")
-
+            reporter.report_result()
             if server_list:
-                print(f"[DRY RUN] Server filter: {', '.join(server_list)}")
+                print(f"  Server filter: {', '.join(server_list)}")
             elif pattern:
-                print(f"[DRY RUN] Pattern filter: {pattern}")
-
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+                print(f"  Pattern filter: {pattern}")
             return EXIT_SUCCESS
 
+        # Show prompt for confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+
         # Confirm operation unless auto-approved
-        source_desc = f"environment '{from_env}'" if from_env else f"host '{from_host}'"
-        target_desc = f"{len(target_hosts)} host(s)"
-        if not request_confirmation(
-            f"Synchronize MCP configurations from {source_desc} to {target_desc}?",
-            auto_approve,
-        ):
+        if not request_confirmation("Proceed?", auto_approve):
             print("Operation cancelled.")
             return EXIT_SUCCESS
 
@@ -1215,19 +1223,17 @@ def handle_mcp_sync(args: Namespace) -> int:
         )
 
         if result.success:
-            print(f"[SUCCESS] Synchronization completed")
-            print(f"  Servers synced: {result.servers_synced}")
-            print(f"  Hosts updated: {result.hosts_updated}")
-
-            # Show detailed results
+            # Create new reporter for results with actual sync details
+            result_reporter = ResultReporter("hatch mcp sync", dry_run=False)
             for res in result.results:
                 if res.success:
-                    backup_info = (
-                        f" (backup: {res.backup_path})" if res.backup_path else ""
-                    )
-                    print(f"  ✓ {res.hostname}{backup_info}")
+                    result_reporter.add(ConsequenceType.SYNC, f"→ {res.hostname}")
                 else:
-                    print(f"  ✗ {res.hostname}: {res.error_message}")
+                    result_reporter.add(ConsequenceType.SKIP, f"→ {res.hostname}: {res.error_message}")
+            
+            result_reporter.report_result()
+            print(f"  Servers synced: {result.servers_synced}")
+            print(f"  Hosts updated: {result.hosts_updated}")
 
             return EXIT_SUCCESS
         else:

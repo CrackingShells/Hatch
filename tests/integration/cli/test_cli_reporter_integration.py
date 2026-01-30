@@ -278,8 +278,9 @@ class TestMCPSyncHandlerIntegration:
             output = captured_output.getvalue()
             
             # Verify output uses ResultReporter format
-            assert "[SUCCESS]" in output or "[SYNCED]" in output, \
-                "Sync handler should use ResultReporter output format"
+            # ResultReporter uses [SYNC] for prompt and [SYNCED] for result, or [SUCCESS] header
+            assert "[SUCCESS]" in output or "[SYNCED]" in output or "[SYNC]" in output, \
+                f"Sync handler should use ResultReporter output format. Got: {output}"
 
 
 class TestMCPRemoveHandlerIntegration:
