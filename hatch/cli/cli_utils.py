@@ -41,6 +41,62 @@ from importlib.metadata import PackageNotFoundError, version
 # Color Infrastructure for CLI Output
 # =============================================================================
 
+import os as _os
+
+
+def _supports_truecolor() -> bool:
+    """Detect if terminal supports 24-bit true color.
+    
+    Checks environment variables and terminal identifiers to determine
+    if the terminal supports true color (24-bit RGB) output.
+    
+    Reference: R12 §3.1 (12-enhancing_colors_v0.md)
+    
+    Detection Logic:
+        1. COLORTERM='truecolor' or '24bit' → True
+        2. TERM contains 'truecolor' or '24bit' → True
+        3. TERM_PROGRAM in known true color terminals → True
+        4. WT_SESSION set (Windows Terminal) → True
+        5. Otherwise → False (fallback to 16-color)
+    
+    Returns:
+        bool: True if terminal supports true color, False otherwise.
+    
+    Example:
+        >>> if _supports_truecolor():
+        ...     # Use 24-bit RGB color codes
+        ...     color = "\\033[38;2;128;201;144m"
+        ... else:
+        ...     # Use 16-color ANSI codes
+        ...     color = "\\033[92m"
+    """
+    # Check COLORTERM for 'truecolor' or '24bit'
+    colorterm = _os.environ.get('COLORTERM', '')
+    if colorterm in ('truecolor', '24bit'):
+        return True
+    
+    # Check TERM for truecolor indicators
+    term = _os.environ.get('TERM', '')
+    if 'truecolor' in term or '24bit' in term:
+        return True
+    
+    # Check TERM_PROGRAM for known true color terminals
+    term_program = _os.environ.get('TERM_PROGRAM', '')
+    if term_program in ('iTerm.app', 'Apple_Terminal', 'vscode', 'Hyper'):
+        return True
+    
+    # Check WT_SESSION for Windows Terminal
+    if _os.environ.get('WT_SESSION'):
+        return True
+    
+    return False
+
+
+# Module-level constant for true color support detection
+# Evaluated once at module load time
+TRUECOLOR = _supports_truecolor()
+
+
 class Color(Enum):
     """ANSI color codes with brightness variants for tense distinction.
     
