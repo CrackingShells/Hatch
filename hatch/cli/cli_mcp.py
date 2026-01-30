@@ -898,7 +898,11 @@ def handle_mcp_remove(args: Namespace) -> int:
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
-    from hatch.cli.cli_utils import request_confirmation
+    from hatch.cli.cli_utils import (
+        request_confirmation,
+        ResultReporter,
+        ConsequenceType,
+    )
     
     host = args.host
     server_name = args.server_name
@@ -916,17 +920,21 @@ def handle_mcp_remove(args: Namespace) -> int:
             )
             return EXIT_ERROR
 
+        # Create ResultReporter for unified output
+        reporter = ResultReporter("hatch mcp remove", dry_run=dry_run)
+        reporter.add(ConsequenceType.REMOVE, f"Server '{server_name}' from '{host}'")
+
         if dry_run:
-            print(
-                f"[DRY RUN] Would remove MCP server '{server_name}' from host '{host}'"
-            )
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            reporter.report_result()
             return EXIT_SUCCESS
 
+        # Show prompt for confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+
         # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Remove MCP server '{server_name}' from host '{host}'?", auto_approve
-        ):
+        if not request_confirmation("Proceed?", auto_approve):
             print("Operation cancelled.")
             return EXIT_SUCCESS
 
@@ -937,11 +945,9 @@ def handle_mcp_remove(args: Namespace) -> int:
         )
 
         if result.success:
-            print(
-                f"[SUCCESS] Successfully removed MCP server '{server_name}' from host '{host}'"
-            )
+            reporter.report_result()
             if result.backup_path:
-                print(f"  Backup created: {result.backup_path}")
+                print(f"  Backup: {result.backup_path}")
             return EXIT_SUCCESS
         else:
             print(
@@ -972,7 +978,12 @@ def handle_mcp_remove_server(args: Namespace) -> int:
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
-    from hatch.cli.cli_utils import request_confirmation, parse_host_list
+    from hatch.cli.cli_utils import (
+        request_confirmation,
+        parse_host_list,
+        ResultReporter,
+        ConsequenceType,
+    )
     
     env_manager = args.env_manager
     server_name = args.server_name
@@ -998,18 +1009,22 @@ def handle_mcp_remove_server(args: Namespace) -> int:
             print("Error: No valid hosts specified")
             return EXIT_ERROR
 
+        # Create ResultReporter for unified output
+        reporter = ResultReporter("hatch mcp remove-server", dry_run=dry_run)
+        for host in target_hosts:
+            reporter.add(ConsequenceType.REMOVE, f"Server '{server_name}' from '{host}'")
+
         if dry_run:
-            print(
-                f"[DRY RUN] Would remove MCP server '{server_name}' from hosts: {', '.join(target_hosts)}"
-            )
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            reporter.report_result()
             return EXIT_SUCCESS
 
+        # Show prompt for confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+
         # Confirm operation unless auto-approved
-        hosts_str = ", ".join(target_hosts)
-        if not request_confirmation(
-            f"Remove MCP server '{server_name}' from hosts: {hosts_str}?", auto_approve
-        ):
+        if not request_confirmation("Proceed?", auto_approve):
             print("Operation cancelled.")
             return EXIT_SUCCESS
 
@@ -1017,6 +1032,9 @@ def handle_mcp_remove_server(args: Namespace) -> int:
         mcp_manager = MCPHostConfigurationManager()
         success_count = 0
         total_count = len(target_hosts)
+        
+        # Create result reporter for actual results
+        result_reporter = ResultReporter("hatch mcp remove-server", dry_run=False)
 
         for host in target_hosts:
             result = mcp_manager.remove_server(
@@ -1024,9 +1042,7 @@ def handle_mcp_remove_server(args: Namespace) -> int:
             )
 
             if result.success:
-                print(f"[SUCCESS] Successfully removed '{server_name}' from '{host}'")
-                if result.backup_path:
-                    print(f"  Backup created: {result.backup_path}")
+                result_reporter.add(ConsequenceType.REMOVE, f"'{server_name}' from '{host}'")
                 success_count += 1
 
                 # Update environment tracking for current environment only
@@ -1036,18 +1052,15 @@ def handle_mcp_remove_server(args: Namespace) -> int:
                         current_env, server_name, host
                     )
             else:
-                print(
-                    f"[ERROR] Failed to remove '{server_name}' from '{host}': {result.error_message}"
-                )
+                result_reporter.add(ConsequenceType.SKIP, f"'{server_name}' from '{host}': {result.error_message}")
 
         # Summary
         if success_count == total_count:
-            print(f"[SUCCESS] Removed '{server_name}' from all {total_count} hosts")
+            result_reporter.report_result()
             return EXIT_SUCCESS
         elif success_count > 0:
-            print(
-                f"[PARTIAL SUCCESS] Removed '{server_name}' from {success_count}/{total_count} hosts"
-            )
+            print(f"[WARNING] Partial success: {success_count}/{total_count} hosts")
+            result_reporter.report_result()
             return EXIT_ERROR
         else:
             print(f"[ERROR] Failed to remove '{server_name}' from any hosts")
@@ -1074,7 +1087,11 @@ def handle_mcp_remove_host(args: Namespace) -> int:
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
-    from hatch.cli.cli_utils import request_confirmation
+    from hatch.cli.cli_utils import (
+        request_confirmation,
+        ResultReporter,
+        ConsequenceType,
+    )
     
     env_manager = args.env_manager
     host_name = args.host_name
@@ -1092,16 +1109,21 @@ def handle_mcp_remove_host(args: Namespace) -> int:
             )
             return EXIT_ERROR
 
+        # Create ResultReporter for unified output
+        reporter = ResultReporter("hatch mcp remove-host", dry_run=dry_run)
+        reporter.add(ConsequenceType.REMOVE, f"All servers from host '{host_name}'")
+
         if dry_run:
-            print(f"[DRY RUN] Would remove entire host configuration for '{host_name}'")
-            print(f"[DRY RUN] Backup: {'Disabled' if no_backup else 'Enabled'}")
+            reporter.report_result()
             return EXIT_SUCCESS
 
+        # Show prompt for confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+
         # Confirm operation unless auto-approved
-        if not request_confirmation(
-            f"Remove entire host configuration for '{host_name}'? This will remove ALL MCP servers from this host.",
-            auto_approve,
-        ):
+        if not request_confirmation("Proceed?", auto_approve):
             print("Operation cancelled.")
             return EXIT_SUCCESS
 
@@ -1112,16 +1134,14 @@ def handle_mcp_remove_host(args: Namespace) -> int:
         )
 
         if result.success:
-            print(
-                f"[SUCCESS] Successfully removed host configuration for '{host_name}'"
-            )
+            reporter.report_result()
             if result.backup_path:
-                print(f"  Backup created: {result.backup_path}")
+                print(f"  Backup: {result.backup_path}")
 
             # Update environment tracking across all environments
             updates_count = env_manager.clear_host_from_all_packages_all_envs(host_name)
             if updates_count > 0:
-                print(f"Updated {updates_count} package entries across environments")
+                print(f"  Updated {updates_count} package entries across environments")
 
             return EXIT_SUCCESS
         else:
