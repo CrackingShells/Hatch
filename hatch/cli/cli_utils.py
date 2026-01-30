@@ -98,13 +98,25 @@ TRUECOLOR = _supports_truecolor()
 
 
 class Color(Enum):
-    """ANSI color codes with brightness variants for tense distinction.
+    """HCL color palette with true color support and 16-color fallback.
     
-    Bright colors are used for execution results (past tense).
-    Dim colors are used for confirmation prompts (present tense).
+    Uses a qualitative HCL palette with equal perceived brightness
+    for accessibility and visual harmony. True color (24-bit) is used
+    when supported, falling back to standard 16-color ANSI codes.
     
+    Reference: R12 §3.2 (12-enhancing_colors_v0.md)
     Reference: R06 §3.1 (06-dependency_analysis_v0.md)
     Reference: R03 §4 (03-mutation_output_specification_v0.md)
+    
+    HCL Palette Values:
+        GREEN   #80C990 → rgb(128, 201, 144)
+        RED     #EFA6A2 → rgb(239, 166, 162)
+        YELLOW  #C8C874 → rgb(200, 200, 116)
+        BLUE    #A3B8EF → rgb(163, 184, 239)
+        MAGENTA #E6A3DC → rgb(230, 163, 220)
+        CYAN    #50CACD → rgb(80, 202, 205)
+        GRAY    #808080 → rgb(128, 128, 128)
+        AMBER   #A69460 → rgb(166, 148, 96)
     
     Color Semantics:
         Green   → Constructive (CREATE, ADD, CONFIGURE, INSTALL, INITIALIZE)
@@ -114,6 +126,7 @@ class Color(Enum):
         Magenta → Transfer (SYNC)
         Cyan    → Informational (VALIDATE)
         Gray    → No-op (SKIP, EXISTS, UNCHANGED)
+        Amber   → Entity highlighting (show commands)
     
     Example:
         >>> from hatch.cli.cli_utils import Color, _colors_enabled
@@ -123,24 +136,55 @@ class Color(Enum):
         ...     print("Success")
     """
     
-    # Bright colors (execution results - past tense)
-    GREEN = "\033[92m"
-    RED = "\033[91m"
-    YELLOW = "\033[93m"
-    BLUE = "\033[94m"
-    MAGENTA = "\033[95m"
-    CYAN = "\033[96m"
+    # === Bright colors (execution results - past tense) ===
     
-    # Dim colors (confirmation prompts - present tense)
-    GREEN_DIM = "\033[2;32m"
-    RED_DIM = "\033[2;31m"
-    YELLOW_DIM = "\033[2;33m"
-    BLUE_DIM = "\033[2;34m"
-    MAGENTA_DIM = "\033[2;35m"
-    CYAN_DIM = "\033[2;36m"
+    # Green #80C990 - CREATE, ADD, CONFIGURE, INSTALL, INITIALIZE
+    GREEN = "\033[38;2;128;201;144m" if TRUECOLOR else "\033[92m"
     
-    # Utility colors
-    GRAY = "\033[90m"
+    # Red #EFA6A2 - REMOVE, DELETE, CLEAN
+    RED = "\033[38;2;239;166;162m" if TRUECOLOR else "\033[91m"
+    
+    # Yellow #C8C874 - SET, UPDATE
+    YELLOW = "\033[38;2;200;200;116m" if TRUECOLOR else "\033[93m"
+    
+    # Blue #A3B8EF - RESTORE
+    BLUE = "\033[38;2;163;184;239m" if TRUECOLOR else "\033[94m"
+    
+    # Magenta #E6A3DC - SYNC
+    MAGENTA = "\033[38;2;230;163;220m" if TRUECOLOR else "\033[95m"
+    
+    # Cyan #50CACD - VALIDATE
+    CYAN = "\033[38;2;80;202;205m" if TRUECOLOR else "\033[96m"
+    
+    # === Dim colors (confirmation prompts - present tense) ===
+    
+    # Aquamarine #5ACCAF (green shifted)
+    GREEN_DIM = "\033[38;2;90;204;175m" if TRUECOLOR else "\033[2;32m"
+    
+    # Orange #E0AF85 (red shifted)
+    RED_DIM = "\033[38;2;224;175;133m" if TRUECOLOR else "\033[2;31m"
+    
+    # Amber #A69460 (yellow shifted)
+    YELLOW_DIM = "\033[38;2;166;148;96m" if TRUECOLOR else "\033[2;33m"
+    
+    # Violet #CCACED (blue shifted)
+    BLUE_DIM = "\033[38;2;204;172;237m" if TRUECOLOR else "\033[2;34m"
+    
+    # Rose #F2A1C2 (magenta shifted)
+    MAGENTA_DIM = "\033[38;2;242;161;194m" if TRUECOLOR else "\033[2;35m"
+    
+    # Azure #74C3E4 (cyan shifted)
+    CYAN_DIM = "\033[38;2;116;195;228m" if TRUECOLOR else "\033[2;36m"
+    
+    # === Utility colors ===
+    
+    # Gray #808080 - SKIP, EXISTS, UNCHANGED
+    GRAY = "\033[38;2;128;128;128m" if TRUECOLOR else "\033[90m"
+    
+    # Amber #A69460 - Entity name highlighting (NEW)
+    AMBER = "\033[38;2;166;148;96m" if TRUECOLOR else "\033[33m"
+    
+    # Reset
     RESET = "\033[0m"
 
 
