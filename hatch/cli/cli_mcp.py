@@ -219,94 +219,134 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
 
 
 def handle_mcp_list_hosts(args: Namespace) -> int:
-    """Handle 'hatch mcp list hosts' command - shows configured hosts in environment.
+    """Handle 'hatch mcp list hosts' command - host-centric design.
+    
+    Lists host/server pairs from host configuration files. Shows ALL servers
+    on hosts (both Hatch-managed and 3rd party) with Hatch management status.
     
     Args:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
-            - env: Optional environment name (uses current if not specified)
-            - detailed: Whether to show detailed host information
+            - server: Optional regex pattern to filter by server name
             - json: Optional flag for JSON output
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+    
+    Reference: R10 §3.1 (10-namespace_consistency_specification_v2.md)
     """
     try:
         import json as json_module
-        from collections import defaultdict
-
-        env_manager: HatchEnvironmentManager = args.env_manager
-        env_name: Optional[str] = getattr(args, 'env', None)
-        detailed: bool = getattr(args, 'detailed', False)
-        json_output: bool = getattr(args, 'json', False)
-
-        # Resolve environment name
-        target_env = env_name or env_manager.get_current_environment()
-
-        # Validate environment exists
-        if not env_manager.environment_exists(target_env):
-            available_envs = env_manager.list_environments()
-            print(f"Error: Environment '{target_env}' does not exist.")
-            if available_envs:
-                print(f"Available environments: {', '.join(available_envs)}")
-            return EXIT_ERROR
-
-        # Collect hosts from configured_hosts across all packages in environment
-        hosts = defaultdict(int)
-        host_last_sync = {}
-
-        try:
-            env_data = env_manager.get_environment_data(target_env)
-            packages = env_data.get("packages", [])
-
-            for package in packages:
-                configured_hosts = package.get("configured_hosts", {})
-
-                for host_name, host_config in configured_hosts.items():
-                    hosts[host_name] += 1
-                    # Track most recent sync time
-                    configured_at = host_config.get("configured_at", "N/A")
-                    if host_name not in host_last_sync or configured_at > host_last_sync.get(host_name, ""):
-                        host_last_sync[host_name] = configured_at
-
-        except Exception as e:
-            print(f"Error reading environment data: {e}")
-            return EXIT_ERROR
-
-        # JSON output
-        if json_output:
-            hosts_data = []
-            for host_name, package_count in sorted(hosts.items()):
-                hosts_data.append({
-                    "host": host_name,
-                    "package_count": package_count,
-                    "last_synced": host_last_sync.get(host_name, None)
-                })
-            print(json_module.dumps({
-                "environment": target_env,
-                "hosts": hosts_data
-            }, indent=2))
-            return EXIT_SUCCESS
-
-        # Display results
-        if not hosts:
-            print(f"No configured hosts for environment '{target_env}'")
-            return EXIT_SUCCESS
-
-        print(f"Configured Hosts (environment: {target_env}):")
+        import re
+        # Import strategies to trigger registration
+        import hatch.mcp_host_config.strategies
         
-        # Define table columns per R02 §2.4
+        env_manager: HatchEnvironmentManager = args.env_manager
+        server_pattern: Optional[str] = getattr(args, 'server', None)
+        json_output: bool = getattr(args, 'json', False)
+        
+        # Compile regex pattern if provided
+        pattern_re = None
+        if server_pattern:
+            try:
+                pattern_re = re.compile(server_pattern)
+            except re.error as e:
+                print(f"Error: Invalid regex pattern '{server_pattern}': {e}")
+                return EXIT_ERROR
+        
+        # Build Hatch management lookup: {server_name: {host: env_name}}
+        hatch_managed = {}
+        for env_info in env_manager.list_environments():
+            env_name = env_info.get("name", env_info) if isinstance(env_info, dict) else env_info
+            try:
+                env_data = env_manager.get_environment_data(env_name)
+                packages = env_data.get("packages", []) if isinstance(env_data, dict) else getattr(env_data, 'packages', [])
+                
+                for pkg in packages:
+                    pkg_name = pkg.get("name") if isinstance(pkg, dict) else getattr(pkg, 'name', None)
+                    configured_hosts = pkg.get("configured_hosts", {}) if isinstance(pkg, dict) else getattr(pkg, 'configured_hosts', {})
+                    
+                    if pkg_name:
+                        if pkg_name not in hatch_managed:
+                            hatch_managed[pkg_name] = {}
+                        for host_name in configured_hosts.keys():
+                            hatch_managed[pkg_name][host_name] = env_name
+            except Exception:
+                continue
+        
+        # Get all available hosts and read their configurations
+        available_hosts = MCPHostRegistry.detect_available_hosts()
+        
+        # Collect host/server pairs from host config files
+        # Format: (host, server, is_hatch_managed, env_name)
+        host_rows = []
+        
+        for host_type in available_hosts:
+            try:
+                strategy = MCPHostRegistry.get_strategy(host_type)
+                host_config = strategy.read_configuration()
+                host_name = host_type.value
+                
+                for server_name, server_config in host_config.servers.items():
+                    # Apply server pattern filter if specified
+                    if pattern_re and not pattern_re.search(server_name):
+                        continue
+                    
+                    # Check if Hatch-managed
+                    is_hatch_managed = False
+                    env_name = None
+                    
+                    if server_name in hatch_managed:
+                        host_info = hatch_managed[server_name].get(host_name)
+                        if host_info:
+                            is_hatch_managed = True
+                            env_name = host_info
+                    
+                    host_rows.append((host_name, server_name, is_hatch_managed, env_name))
+            except Exception:
+                # Skip hosts that can't be read
+                continue
+        
+        # Sort rows by host (alphabetically), then by server
+        host_rows.sort(key=lambda x: (x[0], x[1]))
+        
+        # JSON output per R10 §8
+        if json_output:
+            rows_data = []
+            for host, server, is_hatch, env in host_rows:
+                rows_data.append({
+                    "host": host,
+                    "server": server,
+                    "hatch_managed": is_hatch,
+                    "environment": env
+                })
+            print(json_module.dumps({"rows": rows_data}, indent=2))
+            return EXIT_SUCCESS
+        
+        # Display results
+        if not host_rows:
+            if server_pattern:
+                print(f"No MCP servers matching '{server_pattern}' on any host")
+            else:
+                print("No MCP servers found on any available hosts")
+            return EXIT_SUCCESS
+        
+        print("MCP Hosts:")
+        
+        # Define table columns per R10 §3.1: Host → Server → Hatch → Environment
         columns = [
-            ColumnDef(name="Host", width=20),
-            ColumnDef(name="Packages", width=10, align="right"),
-            ColumnDef(name="Last Synced", width="auto"),
+            ColumnDef(name="Host", width=18),
+            ColumnDef(name="Server", width=18),
+            ColumnDef(name="Hatch", width=8),
+            ColumnDef(name="Environment", width=15),
         ]
         formatter = TableFormatter(columns)
-
-        for host_name, package_count in sorted(hosts.items()):
-            last_sync = host_last_sync.get(host_name, "N/A")
-            formatter.add_row([host_name, str(package_count), last_sync])
-
+        
+        for host, server, is_hatch, env in host_rows:
+            hatch_status = "✅" if is_hatch else "❌"
+            env_display = env if env else "-"
+            formatter.add_row([host, server, hatch_status, env_display])
+        
         print(formatter.render())
         return EXIT_SUCCESS
     except Exception as e:
