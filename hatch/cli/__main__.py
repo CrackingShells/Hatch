@@ -296,6 +296,9 @@ def _setup_package_commands(subparsers):
     pkg_remove_parser.add_argument(
         "--dry-run", action="store_true", help="Preview changes without execution"
     )
+    pkg_remove_parser.add_argument(
+        "--auto-approve", action="store_true", help="Skip confirmation prompt"
+    )
 
     # List packages command
     pkg_list_parser = pkg_subparsers.add_parser(

@@ -64,14 +64,19 @@ def handle_package_remove(args: Namespace) -> int:
             - env_manager: HatchEnvironmentManager instance
             - package_name: Name of package to remove
             - env: Optional environment name (default: current)
+            - dry_run: Preview changes without execution
+            - auto_approve: Skip confirmation prompt
     
     Returns:
         Exit code (0 for success, 1 for error)
+    
+    Reference: R03 §3.1 (03-mutation_output_specification_v0.md)
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
     package_name = args.package_name
     env = getattr(args, "env", None)
     dry_run = getattr(args, "dry_run", False)
+    auto_approve = getattr(args, "auto_approve", False)
 
     # Create reporter for unified output
     reporter = ResultReporter("hatch package remove", dry_run=dry_run)
@@ -80,6 +85,16 @@ def handle_package_remove(args: Namespace) -> int:
     if dry_run:
         reporter.report_result()
         return EXIT_SUCCESS
+
+    # Show prompt and request confirmation unless auto-approved
+    if not auto_approve:
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+        
+        if not request_confirmation("Proceed?"):
+            print("Operation cancelled.")
+            return EXIT_SUCCESS
 
     if env_manager.remove_package(package_name, env):
         reporter.report_result()
