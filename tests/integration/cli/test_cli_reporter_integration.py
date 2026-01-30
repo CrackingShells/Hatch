@@ -2378,3 +2378,62 @@ class TestMCPShowServersCommand:
                 server = data["servers"][0]
                 assert "name" in server, "Server should have 'name' key"
                 assert "hosts" in server, "Server should have 'hosts' key"
+
+
+class TestMCPShowCommandRemoval:
+    """Tests for mcp show command behavior after removal of legacy syntax.
+    
+    Reference: R11 §5 (11-enhancing_show_command_v0.md) - Migration Path
+    
+    These tests verify that:
+    1. 'hatch mcp show' without subcommand shows help/error
+    2. Invalid subcommands show appropriate error
+    """
+
+    def test_mcp_show_without_subcommand_shows_help(self):
+        """'hatch mcp show' without subcommand should show help message.
+        
+        Reference: R11 §5.3 - Clean removal
+        """
+        from hatch.cli.__main__ import _route_mcp_command
+        
+        # Create args with no show_command
+        args = Namespace(
+            mcp_command="show",
+            show_command=None,
+        )
+        
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = _route_mcp_command(args)
+        
+        output = captured_output.getvalue()
+        
+        # Should return error code
+        assert result == 1, "Should return error code when no subcommand"
+        
+        # Should show helpful message
+        assert "hosts" in output or "servers" in output, \
+            "Error message should mention available subcommands"
+
+    def test_mcp_show_invalid_subcommand_error(self):
+        """Invalid subcommand should show error message.
+        
+        Reference: R11 §5.3 - Clean removal
+        """
+        from hatch.cli.__main__ import _route_mcp_command
+        
+        # Create args with invalid show_command
+        args = Namespace(
+            mcp_command="show",
+            show_command="invalid",
+        )
+        
+        captured_output = io.StringIO()
+        with patch('sys.stdout', captured_output):
+            result = _route_mcp_command(args)
+        
+        output = captured_output.getvalue()
+        
+        # Should return error code
+        assert result == 1, "Should return error code for invalid subcommand"
