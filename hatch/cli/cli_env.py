@@ -200,12 +200,21 @@ def handle_env_use(args: Namespace) -> int:
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
     name = args.name
+    dry_run = getattr(args, "dry_run", False)
+
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch env use", dry_run=dry_run)
+    reporter.add(ConsequenceType.SET, f"Current environment → '{name}'")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
 
     if env_manager.set_current_environment(name):
-        print(f"Current environment set to: {name}")
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"Failed to set environment: {name}")
+        print(f"[ERROR] Failed to set environment: {name}")
         return EXIT_ERROR
 
 
