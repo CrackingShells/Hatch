@@ -419,12 +419,21 @@ def handle_env_python_add_hatch_mcp(args: Namespace) -> int:
     env_manager: "HatchEnvironmentManager" = args.env_manager
     hatch_env = getattr(args, "hatch_env", None)
     tag = getattr(args, "tag", None)
+    dry_run = getattr(args, "dry_run", False)
 
     env_name = hatch_env or env_manager.get_current_environment()
 
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch env python add-hatch-mcp", dry_run=dry_run)
+    reporter.add(ConsequenceType.INSTALL, f"hatch_mcp_server wrapper in '{env_name}'")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
+
     if env_manager.install_mcp_server(env_name, tag):
-        print(f"hatch_mcp_server wrapper installed successfully in environment: {env_name}")
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"Failed to install hatch_mcp_server wrapper in environment: {env_name}")
+        print(f"[ERROR] Failed to install hatch_mcp_server wrapper in environment: {env_name}")
         return EXIT_ERROR
