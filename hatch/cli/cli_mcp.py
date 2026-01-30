@@ -63,6 +63,8 @@ from hatch.cli.cli_utils import (
     EXIT_SUCCESS,
     EXIT_ERROR,
     get_package_mcp_server_config,
+    TableFormatter,
+    ColumnDef,
 )
 
 
@@ -198,28 +200,21 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
 
         # Collect hosts from configured_hosts across all packages in environment
         hosts = defaultdict(int)
-        host_details = defaultdict(list)
+        host_last_sync = {}
 
         try:
             env_data = env_manager.get_environment_data(target_env)
             packages = env_data.get("packages", [])
 
             for package in packages:
-                package_name = package.get("name", "unknown")
                 configured_hosts = package.get("configured_hosts", {})
 
                 for host_name, host_config in configured_hosts.items():
                     hosts[host_name] += 1
-                    if detailed:
-                        config_path = host_config.get("config_path", "N/A")
-                        configured_at = host_config.get("configured_at", "N/A")
-                        host_details[host_name].append(
-                            {
-                                "package": package_name,
-                                "config_path": config_path,
-                                "configured_at": configured_at,
-                            }
-                        )
+                    # Track most recent sync time
+                    configured_at = host_config.get("configured_at", "N/A")
+                    if host_name not in host_last_sync or configured_at > host_last_sync.get(host_name, ""):
+                        host_last_sync[host_name] = configured_at
 
         except Exception as e:
             print(f"Error reading environment data: {e}")
@@ -230,18 +225,21 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
             print(f"No configured hosts for environment '{target_env}'")
             return EXIT_SUCCESS
 
-        print(f"Configured hosts for environment '{target_env}':")
+        print(f"Configured Hosts (environment: {target_env}):")
+        
+        # Define table columns per R02 §2.4
+        columns = [
+            ColumnDef(name="Host", width=20),
+            ColumnDef(name="Packages", width=10, align="right"),
+            ColumnDef(name="Last Synced", width="auto"),
+        ]
+        formatter = TableFormatter(columns)
 
         for host_name, package_count in sorted(hosts.items()):
-            if detailed:
-                print(f"\n{host_name} ({package_count} packages):")
-                for detail in host_details[host_name]:
-                    print(f"  - Package: {detail['package']}")
-                    print(f"    Config path: {detail['config_path']}")
-                    print(f"    Configured at: {detail['configured_at']}")
-            else:
-                print(f"  - {host_name} ({package_count} packages)")
+            last_sync = host_last_sync.get(host_name, "N/A")
+            formatter.add_row([host_name, str(package_count), last_sync])
 
+        print(formatter.render())
         return EXIT_SUCCESS
     except Exception as e:
         print(f"Error listing hosts: {e}")
