@@ -92,6 +92,10 @@ def handle_package_remove(args: Namespace) -> int:
 def handle_package_list(args: Namespace) -> int:
     """Handle 'hatch package list' command.
     
+    .. deprecated::
+        This command is deprecated. Use 'hatch env list' instead,
+        which shows packages inline with environment information.
+    
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
@@ -100,6 +104,15 @@ def handle_package_list(args: Namespace) -> int:
     Returns:
         Exit code (0 for success)
     """
+    import sys
+    
+    # Emit deprecation warning to stderr
+    print(
+        "Warning: 'hatch package list' is deprecated. "
+        "Use 'hatch env list' instead, which shows packages inline.",
+        file=sys.stderr
+    )
+    
     env_manager: "HatchEnvironmentManager" = args.env_manager
     env = getattr(args, "env", None)
 

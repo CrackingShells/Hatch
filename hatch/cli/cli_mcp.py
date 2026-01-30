@@ -117,6 +117,9 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
 def handle_mcp_discover_servers(args: Namespace) -> int:
     """Handle 'hatch mcp discover servers' command.
     
+    .. deprecated::
+        This command is deprecated. Use 'hatch mcp list servers' instead.
+    
     Discovers MCP servers available in packages within an environment.
     
     Args:
@@ -127,6 +130,16 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
+    import warnings
+    import sys
+    
+    # Emit deprecation warning to stderr
+    print(
+        "Warning: 'hatch mcp discover servers' is deprecated. "
+        "Use 'hatch mcp list servers' instead.",
+        file=sys.stderr
+    )
+    
     try:
         env_manager: HatchEnvironmentManager = args.env_manager
         env_name: Optional[str] = getattr(args, 'env', None)
