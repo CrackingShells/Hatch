@@ -181,6 +181,10 @@ def generate_conversion_report(
 def display_report(report: ConversionReport) -> None:
     """Display conversion report to console.
     
+    .. deprecated::
+        Use ``ResultReporter.add_from_conversion_report()`` instead.
+        This function will be removed in a future version.
+    
     Prints a formatted report showing the operation performed and all
     field-level changes. Uses FieldOperation.__str__() for consistent
     formatting.
@@ -188,6 +192,13 @@ def display_report(report: ConversionReport) -> None:
     Args:
         report: ConversionReport to display
     """
+    import warnings
+    warnings.warn(
+        "display_report() is deprecated. Use ResultReporter.add_from_conversion_report() instead.",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    
     # Header
     if report.dry_run:
         print(f"[DRY RUN] Preview of changes for server '{report.server_name}':")
