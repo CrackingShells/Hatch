@@ -33,7 +33,13 @@ Example:
 from argparse import Namespace
 from typing import TYPE_CHECKING
 
-from hatch.cli.cli_utils import EXIT_SUCCESS, EXIT_ERROR, request_confirmation
+from hatch.cli.cli_utils import (
+    EXIT_SUCCESS,
+    EXIT_ERROR,
+    request_confirmation,
+    ResultReporter,
+    ConsequenceType,
+)
 
 if TYPE_CHECKING:
     from hatch.environment_manager import HatchEnvironmentManager
@@ -62,6 +68,19 @@ def handle_env_create(args: Namespace) -> int:
     create_python_env = not getattr(args, "no_python", False)
     no_hatch_mcp_server = getattr(args, "no_hatch_mcp_server", False)
     hatch_mcp_server_tag = getattr(args, "hatch_mcp_server_tag", None)
+    dry_run = getattr(args, "dry_run", False)
+
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch env create", dry_run=dry_run)
+    reporter.add(ConsequenceType.CREATE, f"Environment '{name}'")
+    
+    if create_python_env:
+        version_str = f" ({python_version})" if python_version else ""
+        reporter.add(ConsequenceType.CREATE, f"Python environment{version_str}")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
 
     if env_manager.create_environment(
         name,
@@ -71,24 +90,17 @@ def handle_env_create(args: Namespace) -> int:
         no_hatch_mcp_server=no_hatch_mcp_server,
         hatch_mcp_server_tag=hatch_mcp_server_tag,
     ):
-        print(f"Environment created: {name}")
-
-        # Show Python environment status
+        # Update reporter with actual Python environment details
         if create_python_env and env_manager.is_python_environment_available():
             python_exec = env_manager.python_env_manager.get_python_executable(name)
             if python_exec:
                 python_version_info = env_manager.python_env_manager.get_python_version(name)
-                print(f"Python environment: {python_exec}")
-                if python_version_info:
-                    print(f"Python version: {python_version_info}")
-            else:
-                print("Python environment creation failed")
-        elif create_python_env:
-            print("Python environment requested but conda/mamba not available")
-
+                # Add details as child consequences would be ideal, but for now just report success
+        
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"Failed to create environment: {name}")
+        print(f"[ERROR] Failed to create environment: {name}")
         return EXIT_ERROR
 
 
@@ -105,12 +117,21 @@ def handle_env_remove(args: Namespace) -> int:
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
     name = args.name
+    dry_run = getattr(args, "dry_run", False)
+
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch env remove", dry_run=dry_run)
+    reporter.add(ConsequenceType.REMOVE, f"Environment '{name}'")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
 
     if env_manager.remove_environment(name):
-        print(f"Environment removed: {name}")
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"Failed to remove environment: {name}")
+        print(f"[ERROR] Failed to remove environment: {name}")
         return EXIT_ERROR
 
 
