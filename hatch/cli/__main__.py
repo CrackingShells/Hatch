@@ -384,17 +384,13 @@ def _setup_mcp_commands(subparsers):
         "--json", action="store_true", help="Output in JSON format"
     )
 
-    # List servers command
+    # List servers command - per R10 §3.2 (--pattern removed, use mcp list hosts --server instead)
     mcp_list_servers_parser = mcp_list_subparsers.add_parser(
-        "servers", help="List MCP servers configured on hosts"
+        "servers", help="List server/host pairs from host configuration files"
     )
     mcp_list_servers_parser.add_argument(
         "--host",
-        help="Filter to specific host platform (e.g., claude-desktop, cursor)",
-    )
-    mcp_list_servers_parser.add_argument(
-        "--pattern",
-        help="Filter servers by name using regex pattern",
+        help="Filter by host name using regex pattern",
     )
     mcp_list_servers_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"

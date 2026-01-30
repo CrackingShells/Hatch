@@ -357,21 +357,19 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
 def handle_mcp_list_servers(args: Namespace) -> int:
     """Handle 'hatch mcp list servers' command.
     
-    Lists MCP servers configured on hosts with Hatch management status.
-    This is a HOST-CENTRIC command that reads from actual host config files
-    and cross-references with Hatch environments to determine management status.
+    Lists server/host pairs from host configuration files. Shows ALL servers
+    on hosts (both Hatch-managed and 3rd party) with Hatch management status.
     
     Args:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
-            - host: Optional host filter (e.g., claude-desktop)
-            - pattern: Optional regex pattern to filter server names
+            - host: Optional regex pattern to filter by host name
             - json: Optional flag for JSON output
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     
-    Reference: R02 §2.5 (02-list_output_format_specification_v2.md)
+    Reference: R10 §3.2 (10-namespace_consistency_specification_v2.md)
     """
     try:
         import json as json_module
@@ -380,33 +378,20 @@ def handle_mcp_list_servers(args: Namespace) -> int:
         import hatch.mcp_host_config.strategies
         
         env_manager: HatchEnvironmentManager = args.env_manager
-        host_filter: Optional[str] = getattr(args, 'host', None)
-        pattern: Optional[str] = getattr(args, 'pattern', None)
+        host_pattern: Optional[str] = getattr(args, 'host', None)
         json_output: bool = getattr(args, 'json', False)
         
-        # Compile regex pattern if provided
-        pattern_re = None
-        if pattern:
+        # Compile host regex pattern if provided
+        host_re = None
+        if host_pattern:
             try:
-                pattern_re = re.compile(pattern)
+                host_re = re.compile(host_pattern)
             except re.error as e:
-                print(f"Error: Invalid regex pattern '{pattern}': {e}")
+                print(f"Error: Invalid regex pattern '{host_pattern}': {e}")
                 return EXIT_ERROR
         
-        # Determine which hosts to scan
-        if host_filter:
-            # Validate host type
-            try:
-                host_type = MCPHostType(host_filter)
-                target_hosts = [host_type]
-            except ValueError:
-                print(
-                    f"Error: Invalid host '{host_filter}'. Supported hosts: {[h.value for h in MCPHostType]}"
-                )
-                return EXIT_ERROR
-        else:
-            # Scan all available hosts
-            target_hosts = MCPHostRegistry.detect_available_hosts()
+        # Get all available hosts
+        available_hosts = MCPHostRegistry.detect_available_hosts()
         
         # Build Hatch management lookup: {server_name: {host: (env_name, version)}}
         hatch_managed = {}
@@ -433,17 +418,17 @@ def handle_mcp_list_servers(args: Namespace) -> int:
         # Format: (server_name, host, is_hatch_managed, env_name, version)
         server_rows = []
         
-        for host_type in target_hosts:
+        for host_type in available_hosts:
             try:
                 strategy = MCPHostRegistry.get_strategy(host_type)
                 host_config = strategy.read_configuration()
                 host_name = host_type.value
                 
+                # Apply host pattern filter if specified
+                if host_re and not host_re.search(host_name):
+                    continue
+                
                 for server_name, server_config in host_config.servers.items():
-                    # Apply pattern filter if specified
-                    if pattern_re and not pattern_re.search(server_name):
-                        continue
-                    
                     # Check if Hatch-managed
                     is_hatch_managed = False
                     env_name = "-"
@@ -456,77 +441,50 @@ def handle_mcp_list_servers(args: Namespace) -> int:
                             env_name, version = host_info
                     
                     server_rows.append((server_name, host_name, is_hatch_managed, env_name, version))
-            except Exception as e:
+            except Exception:
                 # Skip hosts that can't be read
                 continue
+        
+        # Sort rows by server (alphabetically), then by host per R10 §3.2
+        server_rows.sort(key=lambda x: (x[0], x[1]))
         
         # JSON output
         if json_output:
             servers_data = []
             for server_name, host, is_hatch, env, version in server_rows:
                 server_entry = {
-                    "name": server_name,
+                    "server": server_name,
+                    "host": host,
                     "hatch_managed": is_hatch,
+                    "environment": env if is_hatch else None,
                 }
-                if is_hatch:
-                    server_entry["environment"] = env
-                    server_entry["version"] = version
-                if not host_filter:
-                    server_entry["host"] = host
                 servers_data.append(server_entry)
             
-            output = {"servers": servers_data}
-            if host_filter:
-                output["host"] = host_filter
-            print(json_module.dumps(output, indent=2))
+            print(json_module.dumps({"rows": servers_data}, indent=2))
             return EXIT_SUCCESS
 
         if not server_rows:
-            if host_filter:
-                if pattern:
-                    print(f"No MCP servers matching '{pattern}' on host '{host_filter}'")
-                else:
-                    print(f"No MCP servers on host '{host_filter}'")
+            if host_pattern:
+                print(f"No MCP servers on hosts matching '{host_pattern}'")
             else:
-                if pattern:
-                    print(f"No MCP servers matching '{pattern}'")
-                else:
-                    print("No MCP servers found on any available hosts")
+                print("No MCP servers found on any available hosts")
             return EXIT_SUCCESS
 
-        # Display header based on filter
-        if host_filter:
-            if pattern:
-                print(f"MCP servers on {host_filter} (filtered):")
-            else:
-                print(f"MCP servers on {host_filter}:")
-            columns = [
-                ColumnDef(name="Server Name", width=20),
-                ColumnDef(name="Hatch", width=8),
-                ColumnDef(name="Environment", width=15),
-                ColumnDef(name="Version", width=10),
-            ]
-        else:
-            print("MCP servers (all hosts):")
-            columns = [
-                ColumnDef(name="Server Name", width=20),
-                ColumnDef(name="Host", width=18),
-                ColumnDef(name="Hatch", width=8),
-                ColumnDef(name="Environment", width=15),
-                ColumnDef(name="Version", width=10),
-            ]
+        print("MCP Servers:")
         
+        # Define table columns per R10 §3.2: Server → Host → Hatch → Environment
+        columns = [
+            ColumnDef(name="Server", width=18),
+            ColumnDef(name="Host", width=18),
+            ColumnDef(name="Hatch", width=8),
+            ColumnDef(name="Environment", width=15),
+        ]
         formatter = TableFormatter(columns)
 
         for server_name, host, is_hatch, env, version in server_rows:
             hatch_status = "✅" if is_hatch else "❌"
             env_display = env if is_hatch else "-"
-            version_display = version if is_hatch else "-"
-            
-            if host_filter:
-                formatter.add_row([server_name, hatch_status, env_display, version_display])
-            else:
-                formatter.add_row([server_name, host, hatch_status, env_display, version_display])
+            formatter.add_row([server_name, host, hatch_status, env_display])
 
         print(formatter.render())
         return EXIT_SUCCESS
