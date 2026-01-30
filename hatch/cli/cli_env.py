@@ -39,6 +39,8 @@ from hatch.cli.cli_utils import (
     request_confirmation,
     ResultReporter,
     ConsequenceType,
+    TableFormatter,
+    ColumnDef,
 )
 
 if TYPE_CHECKING:
@@ -147,43 +149,45 @@ def handle_env_list(args: Namespace) -> int:
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
     environments = env_manager.list_environments()
-    print("Available environments:")
-
-    # Check if conda/mamba is available for status info
-    conda_available = env_manager.is_python_environment_available()
-
+    
+    print("Environments:")
+    
+    # Define table columns per R02 §2.1
+    columns = [
+        ColumnDef(name="Name", width=15),
+        ColumnDef(name="Python", width=10),
+        ColumnDef(name="Packages", width="auto"),
+    ]
+    formatter = TableFormatter(columns)
+    
     for env in environments:
+        # Name with current marker
         current_marker = "* " if env.get("is_current") else "  "
-        description = f" - {env.get('description')}" if env.get("description") else ""
-
-        # Show basic environment info
-        print(f"{current_marker}{env.get('name')}{description}")
-
-        # Show Python environment info if available
-        python_env = env.get("python_environment", False)
-        if python_env:
+        name = f"{current_marker}{env.get('name')}"
+        
+        # Python version
+        python_version = "-"
+        if env.get("python_environment", False):
             python_info = env_manager.get_python_environment_info(env.get("name"))
             if python_info:
                 python_version = python_info.get("python_version", "Unknown")
-                conda_env = python_info.get("conda_env_name", "N/A")
-                print(f"    Python: {python_version} (conda: {conda_env})")
+        
+        # Packages - get list and format inline
+        packages_list = env_manager.list_packages(env.get("name"))
+        if packages_list:
+            pkg_names = [pkg["name"] for pkg in packages_list]
+            count = len(pkg_names)
+            if count <= 3:
+                packages_str = ", ".join(pkg_names) + f" ({count})"
             else:
-                print(f"    Python: Configured but unavailable")
-        elif conda_available:
-            print(f"    Python: Not configured")
+                # Truncate to first 2 and show count
+                packages_str = ", ".join(pkg_names[:2]) + f", ... ({count} total)"
         else:
-            print(f"    Python: Conda/mamba not available")
-
-    # Show conda/mamba status
-    if conda_available:
-        manager_info = env_manager.python_env_manager.get_manager_info()
-        print(f"\nPython Environment Manager:")
-        print(f"  Conda executable: {manager_info.get('conda_executable', 'Not found')}")
-        print(f"  Mamba executable: {manager_info.get('mamba_executable', 'Not found')}")
-        print(f"  Preferred manager: {manager_info.get('preferred_manager', 'N/A')}")
-    else:
-        print(f"\nPython Environment Manager: Conda/mamba not available")
-
+            packages_str = "(empty)"
+        
+        formatter.add_row([name, python_version, packages_str])
+    
+    print(formatter.render())
     return EXIT_SUCCESS
 
 
