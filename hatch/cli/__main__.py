@@ -371,13 +371,15 @@ def _setup_mcp_commands(subparsers):
 
     # List servers command
     mcp_list_servers_parser = mcp_list_subparsers.add_parser(
-        "servers", help="List configured MCP servers from environment"
+        "servers", help="List MCP servers configured on hosts"
     )
     mcp_list_servers_parser.add_argument(
-        "--env",
-        "-e",
-        default=None,
-        help="Environment name (default: current environment)",
+        "--host",
+        help="Filter to specific host platform (e.g., claude-desktop, cursor)",
+    )
+    mcp_list_servers_parser.add_argument(
+        "--pattern",
+        help="Filter servers by name using regex pattern",
     )
     mcp_list_servers_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"
