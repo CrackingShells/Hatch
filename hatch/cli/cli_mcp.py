@@ -848,6 +848,215 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
         return EXIT_ERROR
 
 
+def handle_mcp_show_servers(args: Namespace) -> int:
+    """Handle 'hatch mcp show servers' command.
+    
+    Shows detailed hierarchical view of all MCP server configurations across hosts.
+    Supports --host filter for regex pattern matching.
+    
+    Args:
+        args: Parsed command-line arguments containing:
+            - env_manager: HatchEnvironmentManager instance
+            - host: Optional regex pattern to filter by host name
+            - json: Optional flag for JSON output
+    
+    Returns:
+        int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
+    
+    Reference: R11 §2.2 (11-enhancing_show_command_v0.md)
+    """
+    try:
+        import json as json_module
+        import re
+        # Import strategies to trigger registration
+        import hatch.mcp_host_config.strategies
+        from hatch.cli.cli_utils import highlight
+        
+        env_manager: HatchEnvironmentManager = args.env_manager
+        host_pattern: Optional[str] = getattr(args, 'host', None)
+        json_output: bool = getattr(args, 'json', False)
+        
+        # Compile regex pattern if provided
+        pattern_re = None
+        if host_pattern:
+            try:
+                pattern_re = re.compile(host_pattern)
+            except re.error as e:
+                print(f"Error: Invalid regex pattern '{host_pattern}': {e}")
+                return EXIT_ERROR
+        
+        # Build Hatch management lookup: {server_name: {host: (env_name, version, last_synced)}}
+        hatch_managed = {}
+        for env_info in env_manager.list_environments():
+            env_name = env_info.get("name", env_info) if isinstance(env_info, dict) else env_info
+            try:
+                env_data = env_manager.get_environment_data(env_name)
+                packages = env_data.get("packages", []) if isinstance(env_data, dict) else getattr(env_data, 'packages', [])
+                
+                for pkg in packages:
+                    pkg_name = pkg.get("name") if isinstance(pkg, dict) else getattr(pkg, 'name', None)
+                    pkg_version = pkg.get("version", "unknown") if isinstance(pkg, dict) else getattr(pkg, 'version', 'unknown')
+                    configured_hosts = pkg.get("configured_hosts", {}) if isinstance(pkg, dict) else getattr(pkg, 'configured_hosts', {})
+                    
+                    if pkg_name:
+                        if pkg_name not in hatch_managed:
+                            hatch_managed[pkg_name] = {}
+                        for host_name, host_info in configured_hosts.items():
+                            last_synced = host_info.get("configured_at", "N/A") if isinstance(host_info, dict) else "N/A"
+                            hatch_managed[pkg_name][host_name] = (env_name, pkg_version, last_synced)
+            except Exception:
+                continue
+        
+        # Get all available hosts
+        available_hosts = MCPHostRegistry.detect_available_hosts()
+        
+        # Build server → hosts mapping
+        # Format: {server_name: [(host_name, server_config, hatch_info), ...]}
+        server_hosts_map = {}
+        
+        for host_type in available_hosts:
+            host_name = host_type.value
+            
+            # Apply host pattern filter if specified
+            if pattern_re and not pattern_re.search(host_name):
+                continue
+            
+            try:
+                strategy = MCPHostRegistry.get_strategy(host_type)
+                host_config = strategy.read_configuration()
+                
+                for server_name, server_config in host_config.servers.items():
+                    if server_name not in server_hosts_map:
+                        server_hosts_map[server_name] = []
+                    
+                    # Get Hatch management info for this server on this host
+                    hatch_info = hatch_managed.get(server_name, {}).get(host_name)
+                    
+                    server_hosts_map[server_name].append((host_name, server_config, hatch_info))
+            except Exception:
+                continue
+        
+        # Sort servers alphabetically
+        sorted_servers = sorted(server_hosts_map.keys())
+        
+        # Collect server data for output
+        servers_data = []
+        
+        for server_name in sorted_servers:
+            host_entries = server_hosts_map[server_name]
+            
+            # Skip server if no matching hosts (after filter)
+            if not host_entries:
+                continue
+            
+            # Determine overall Hatch management status
+            # A server is Hatch-managed if it's managed on ANY host
+            any_hatch_managed = any(h[2] is not None for h in host_entries)
+            
+            # Get version from first Hatch-managed entry (if any)
+            pkg_version = None
+            pkg_env = None
+            for _, _, hatch_info in host_entries:
+                if hatch_info:
+                    pkg_env = hatch_info[0]
+                    pkg_version = hatch_info[1]
+                    break
+            
+            # Build host configurations data
+            hosts_data = []
+            for host_name, server_config, hatch_info in sorted(host_entries, key=lambda x: x[0]):
+                host_data = {
+                    "host": host_name,
+                    "command": getattr(server_config, 'command', None),
+                    "args": getattr(server_config, 'args', None),
+                    "url": getattr(server_config, 'url', None),
+                    "env": {},
+                    "last_synced": hatch_info[2] if hatch_info else None,
+                }
+                
+                # Get environment variables (hide sensitive values)
+                env_vars = getattr(server_config, 'env', None)
+                if env_vars:
+                    for key, value in env_vars.items():
+                        if any(sensitive in key.upper() for sensitive in ['KEY', 'SECRET', 'TOKEN', 'PASSWORD', 'CREDENTIAL']):
+                            host_data["env"][key] = "****** (hidden)"
+                        else:
+                            host_data["env"][key] = value
+                
+                hosts_data.append(host_data)
+            
+            servers_data.append({
+                "name": server_name,
+                "hatch_managed": any_hatch_managed,
+                "environment": pkg_env,
+                "version": pkg_version,
+                "hosts": hosts_data,
+            })
+        
+        # JSON output
+        if json_output:
+            print(json_module.dumps({"servers": servers_data}, indent=2))
+            return EXIT_SUCCESS
+        
+        # Human-readable output
+        if not servers_data:
+            if host_pattern:
+                print(f"No servers on hosts matching '{host_pattern}'")
+            else:
+                print("No MCP servers found")
+            return EXIT_SUCCESS
+        
+        separator = "═" * 79
+        
+        for server_data in servers_data:
+            # Horizontal separator
+            print(separator)
+            
+            # Server header with highlight
+            print(f"MCP Server: {highlight(server_data['name'])}")
+            if server_data['hatch_managed']:
+                print(f"  Hatch Managed: Yes ({server_data['environment']})")
+                if server_data['version']:
+                    print(f"  Package Version: {server_data['version']}")
+            else:
+                print(f"  Hatch Managed: No")
+            print()
+            
+            # Host Configurations section
+            print(f"  Host Configurations ({len(server_data['hosts'])}):")
+            
+            for host in server_data['hosts']:
+                # Host header with highlight
+                print(f"    {highlight(host['host'])}:")
+                
+                # Command and args
+                if host['command']:
+                    print(f"      Command: {host['command']}")
+                if host['args']:
+                    print(f"      Args: {host['args']}")
+                
+                # URL for remote servers
+                if host['url']:
+                    print(f"      URL: {host['url']}")
+                
+                # Environment variables
+                if host['env']:
+                    print(f"      Environment Variables:")
+                    for key, value in host['env'].items():
+                        print(f"        {key}: {value}")
+                
+                # Last synced (if Hatch-managed)
+                if host['last_synced']:
+                    print(f"      Last Synced: {host['last_synced']}")
+                
+                print()
+        
+        return EXIT_SUCCESS
+    except Exception as e:
+        print(f"Error showing server configurations: {e}")
+        return EXIT_ERROR
+
+
 def handle_mcp_backup_restore(args: Namespace) -> int:
     """Handle 'hatch mcp backup restore' command.
     
