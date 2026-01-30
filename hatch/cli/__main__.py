@@ -431,12 +431,33 @@ def _setup_mcp_commands(subparsers):
         "--json", action="store_true", help="Output in JSON format"
     )
 
-    # MCP show command (detailed host view)
-    mcp_show_parser = mcp_subparsers.add_parser(
-        "show", help="Show detailed MCP host configuration"
+    # MCP show commands (detailed views) - per R11 specification
+    mcp_show_subparsers = mcp_subparsers.add_parser(
+        "show", help="Show detailed MCP host or server configuration"
+    ).add_subparsers(dest="show_command", help="Show command to execute")
+
+    # Show hosts command - host-centric detailed view per R11 §2.1
+    mcp_show_hosts_parser = mcp_show_subparsers.add_parser(
+        "hosts", help="Show detailed host configurations"
     )
-    mcp_show_parser.add_argument(
-        "host", help="Host platform to show (e.g., claude-desktop, cursor)"
+    mcp_show_hosts_parser.add_argument(
+        "--server",
+        help="Filter by server name using regex pattern",
+    )
+    mcp_show_hosts_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
+    )
+
+    # Show servers command - server-centric detailed view per R11 §2.2
+    mcp_show_servers_parser = mcp_show_subparsers.add_parser(
+        "servers", help="Show detailed server configurations across hosts"
+    )
+    mcp_show_servers_parser.add_argument(
+        "--host",
+        help="Filter by host name using regex pattern",
+    )
+    mcp_show_servers_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
     )
 
     # MCP backup commands
