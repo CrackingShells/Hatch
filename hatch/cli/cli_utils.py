@@ -324,6 +324,64 @@ class ResultReporter:
         )
         self._consequences.append(consequence)
     
+    def add_from_conversion_report(self, report: "ConversionReport") -> None:
+        """Convert ConversionReport field operations to nested consequences.
+        
+        Maps ConversionReport data to the unified consequence model:
+        - report.operation → resource ConsequenceType
+        - field_op "UPDATED" → ConsequenceType.UPDATE
+        - field_op "UNSUPPORTED" → ConsequenceType.SKIP
+        - field_op "UNCHANGED" → ConsequenceType.UNCHANGED
+        
+        Reference: R06 §3.5 (06-dependency_analysis_v0.md)
+        Reference: R04 §1.2 (04-reporting_infrastructure_coexistence_v0.md)
+        
+        Args:
+            report: ConversionReport with field operations to convert
+        
+        Invariants:
+            - All field operations become children of resource consequence
+            - UNSUPPORTED fields include "(unsupported by host)" suffix
+        """
+        # Import here to avoid circular dependency
+        from hatch.mcp_host_config.reporting import ConversionReport
+        
+        # Map report.operation to resource ConsequenceType
+        operation_map = {
+            "create": ConsequenceType.CONFIGURE,
+            "update": ConsequenceType.CONFIGURE,
+            "delete": ConsequenceType.REMOVE,
+            "migrate": ConsequenceType.CONFIGURE,
+        }
+        resource_type = operation_map.get(report.operation, ConsequenceType.CONFIGURE)
+        
+        # Build resource message
+        resource_message = f"Server '{report.server_name}' on '{report.target_host.value}'"
+        
+        # Map field operations to child consequences
+        field_op_map = {
+            "UPDATED": ConsequenceType.UPDATE,
+            "UNSUPPORTED": ConsequenceType.SKIP,
+            "UNCHANGED": ConsequenceType.UNCHANGED,
+        }
+        
+        children = []
+        for field_op in report.field_operations:
+            child_type = field_op_map.get(field_op.operation, ConsequenceType.UPDATE)
+            
+            # Format field message based on operation type
+            if field_op.operation == "UPDATED":
+                child_message = f"{field_op.field_name}: {repr(field_op.old_value)} → {repr(field_op.new_value)}"
+            elif field_op.operation == "UNSUPPORTED":
+                child_message = f"{field_op.field_name}: (unsupported by host)"
+            else:  # UNCHANGED
+                child_message = f"{field_op.field_name}: {repr(field_op.new_value)}"
+            
+            children.append(Consequence(type=child_type, message=child_message))
+        
+        # Add the resource consequence with children
+        self.add(resource_type, resource_message, children=children)
+    
     def _format_consequence(
         self,
         consequence: Consequence,
