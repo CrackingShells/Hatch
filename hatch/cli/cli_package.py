@@ -399,6 +399,9 @@ def handle_package_sync(args: Namespace) -> int:
     auto_approve = getattr(args, "auto_approve", False)
     no_backup = getattr(args, "no_backup", False)
 
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch package sync", dry_run=dry_run)
+
     try:
         # Parse host list
         hosts = parse_host_list(host_arg)
@@ -457,48 +460,40 @@ def handle_package_sync(args: Namespace) -> int:
                 print(f"Warning: Could not get MCP configuration for package '{pkg_name}': {e}")
 
         if not server_configs:
-            print(f"Error: No MCP server configurations found for package '{package_name}' or its dependencies")
+            print(f"[ERROR] No MCP server configurations found for package '{package_name}' or its dependencies")
             return EXIT_ERROR
 
+        # Build consequences for preview/confirmation
+        for pkg_name, config in server_configs:
+            for host in hosts:
+                try:
+                    host_type = MCPHostType(host)
+                    report = generate_conversion_report(
+                        operation="create",
+                        server_name=config.name,
+                        target_host=host_type,
+                        config=config,
+                        dry_run=dry_run,
+                    )
+                    reporter.add_from_conversion_report(report)
+                except ValueError:
+                    reporter.add(ConsequenceType.SKIP, f"Invalid host '{host}'")
+
+        # Show preview and get confirmation
+        prompt = reporter.report_prompt()
+        if prompt:
+            print(prompt)
+
         if dry_run:
-            print(f"[DRY RUN] Would synchronize MCP servers for {len(server_configs)} package(s) to hosts: {hosts}")
-            for pkg_name, config in server_configs:
-                print(f"[DRY RUN] - {pkg_name}: {config.name} -> {' '.join(config.args)}")
-
-                # Generate and display conversion reports for dry-run mode
-                for host in hosts:
-                    try:
-                        host_type = MCPHostType(host)
-
-                        # Generate report using MCPServerConfig directly
-                        # Adapters handle host-specific validation and serialization
-                        report = generate_conversion_report(
-                            operation="create",
-                            server_name=config.name,
-                            target_host=host_type,
-                            config=config,
-                            dry_run=True,
-                        )
-                        print(f"[DRY RUN] Preview for {pkg_name} on {host}:")
-                        display_report(report)
-                    except ValueError as e:
-                        print(f"[DRY RUN] ✗ Invalid host '{host}': {e}")
+            reporter.report_result()
             return EXIT_SUCCESS
 
         # Confirm operation unless auto-approved
-        package_desc = (
-            f"package '{package_name}'"
-            if len(server_configs) == 1
-            else f"{len(server_configs)} packages ('{package_name}' + dependencies)"
-        )
-        if not request_confirmation(
-            f"Synchronize MCP servers for {package_desc} to {len(hosts)} host(s)?",
-            auto_approve,
-        ):
+        if not request_confirmation("Proceed?", auto_approve):
             print("Operation cancelled.")
             return EXIT_SUCCESS
 
-        # Perform synchronization
+        # Perform synchronization (reporter already has consequences from preview)
         success_count, total_operations = _configure_packages_on_hosts(
             env_manager=env_manager,
             mcp_manager=mcp_manager,
@@ -507,29 +502,19 @@ def handle_package_sync(args: Namespace) -> int:
             hosts=hosts,
             no_backup=no_backup,
             dry_run=False,
+            reporter=None,  # Don't add again, we already have consequences
         )
 
         # Report results
+        reporter.report_result()
+        
         if success_count == total_operations:
-            package_desc = (
-                f"package '{package_name}'"
-                if len(server_configs) == 1
-                else f"{len(server_configs)} packages"
-            )
-            print(f"Successfully synchronized {package_desc} to all {len(hosts)} host(s)")
             return EXIT_SUCCESS
         elif success_count > 0:
-            print(f"Partially synchronized: {success_count}/{total_operations} operations succeeded")
             return EXIT_ERROR
         else:
-            package_desc = (
-                f"package '{package_name}'"
-                if len(server_configs) == 1
-                else f"{len(server_configs)} packages"
-            )
-            print(f"Failed to synchronize {package_desc} to any hosts")
             return EXIT_ERROR
 
     except ValueError as e:
-        print(f"Error: {e}")
+        print(f"[ERROR] {e}")
         return EXIT_ERROR
