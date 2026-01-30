@@ -183,3 +183,149 @@ class TestResultReporter(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestConversionReportIntegration(unittest.TestCase):
+    """Tests for ConversionReport → ResultReporter integration.
+    
+    Reference: R05 §3.5 - ConversionReport Integration test group
+    Reference: R06 §3.5 - add_from_conversion_report interface
+    Reference: R04 §1.2 - field operation → ConsequenceType mapping
+    """
+
+    def test_add_from_conversion_report_method_exists(self):
+        """ResultReporter should have add_from_conversion_report method."""
+        from hatch.cli.cli_utils import ResultReporter
+        
+        reporter = ResultReporter("test")
+        self.assertTrue(hasattr(reporter, 'add_from_conversion_report'))
+        self.assertTrue(callable(reporter.add_from_conversion_report))
+
+    def test_updated_maps_to_update_type(self):
+        """FieldOperation 'UPDATED' should map to ConsequenceType.UPDATE."""
+        from hatch.cli.cli_utils import ResultReporter, ConsequenceType
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_SINGLE_UPDATE
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_SINGLE_UPDATE)
+        
+        # Should have one resource consequence with one child
+        self.assertEqual(len(reporter.consequences), 1)
+        self.assertEqual(len(reporter.consequences[0].children), 1)
+        self.assertEqual(reporter.consequences[0].children[0].type, ConsequenceType.UPDATE)
+
+    def test_unsupported_maps_to_skip_type(self):
+        """FieldOperation 'UNSUPPORTED' should map to ConsequenceType.SKIP."""
+        from hatch.cli.cli_utils import ResultReporter, ConsequenceType
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_ALL_UNSUPPORTED
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_ALL_UNSUPPORTED)
+        
+        # All children should be SKIP type
+        for child in reporter.consequences[0].children:
+            self.assertEqual(child.type, ConsequenceType.SKIP)
+
+    def test_unchanged_maps_to_unchanged_type(self):
+        """FieldOperation 'UNCHANGED' should map to ConsequenceType.UNCHANGED."""
+        from hatch.cli.cli_utils import ResultReporter, ConsequenceType
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_ALL_UNCHANGED
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_ALL_UNCHANGED)
+        
+        # All children should be UNCHANGED type
+        for child in reporter.consequences[0].children:
+            self.assertEqual(child.type, ConsequenceType.UNCHANGED)
+
+    def test_field_name_preserved_in_mapping(self):
+        """Field name should be preserved in consequence message."""
+        from hatch.cli.cli_utils import ResultReporter
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_SINGLE_UPDATE
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_SINGLE_UPDATE)
+        
+        child_message = reporter.consequences[0].children[0].message
+        self.assertIn("command", child_message)
+
+    def test_old_new_values_preserved(self):
+        """Old and new values should be preserved in consequence message."""
+        from hatch.cli.cli_utils import ResultReporter
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_MIXED_OPERATIONS
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_MIXED_OPERATIONS)
+        
+        # Find the command field child (first one with UPDATED)
+        command_child = reporter.consequences[0].children[0]
+        self.assertIn("node", command_child.message)  # old value
+        self.assertIn("python", command_child.message)  # new value
+
+    def test_all_fields_mapped_no_data_loss(self):
+        """All field operations should be mapped (no data loss)."""
+        from hatch.cli.cli_utils import ResultReporter
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_MIXED_OPERATIONS
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_MIXED_OPERATIONS)
+        
+        # REPORT_MIXED_OPERATIONS has 4 field operations
+        self.assertEqual(len(reporter.consequences[0].children), 4)
+
+    def test_empty_conversion_report_handled(self):
+        """Empty ConversionReport should not raise exception."""
+        from hatch.cli.cli_utils import ResultReporter
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_EMPTY_FIELDS
+        
+        reporter = ResultReporter("test")
+        # Should not raise
+        reporter.add_from_conversion_report(REPORT_EMPTY_FIELDS)
+        
+        # Should have resource consequence with no children
+        self.assertEqual(len(reporter.consequences), 1)
+        self.assertEqual(len(reporter.consequences[0].children), 0)
+
+    def test_resource_consequence_type_from_operation(self):
+        """Resource consequence type should be derived from report.operation."""
+        from hatch.cli.cli_utils import ResultReporter, ConsequenceType
+        from tests.test_data.fixtures.cli_reporter_fixtures import (
+            REPORT_SINGLE_UPDATE,  # operation="create"
+            REPORT_MIXED_OPERATIONS,  # operation="update"
+        )
+        
+        reporter1 = ResultReporter("test")
+        reporter1.add_from_conversion_report(REPORT_SINGLE_UPDATE)
+        # "create" operation should map to CONFIGURE (for MCP server creation)
+        self.assertIn(
+            reporter1.consequences[0].type,
+            [ConsequenceType.CONFIGURE, ConsequenceType.CREATE]
+        )
+        
+        reporter2 = ResultReporter("test")
+        reporter2.add_from_conversion_report(REPORT_MIXED_OPERATIONS)
+        # "update" operation should map to CONFIGURE or UPDATE
+        self.assertIn(
+            reporter2.consequences[0].type,
+            [ConsequenceType.CONFIGURE, ConsequenceType.UPDATE]
+        )
+
+    def test_server_name_in_resource_message(self):
+        """Server name should appear in resource consequence message."""
+        from hatch.cli.cli_utils import ResultReporter
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_MIXED_OPERATIONS
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_MIXED_OPERATIONS)
+        
+        self.assertIn("weather-server", reporter.consequences[0].message)
+
+    def test_target_host_in_resource_message(self):
+        """Target host should appear in resource consequence message."""
+        from hatch.cli.cli_utils import ResultReporter
+        from tests.test_data.fixtures.cli_reporter_fixtures import REPORT_MIXED_OPERATIONS
+        
+        reporter = ResultReporter("test")
+        reporter.add_from_conversion_report(REPORT_MIXED_OPERATIONS)
+        
+        self.assertIn("cursor", reporter.consequences[0].message.lower())
