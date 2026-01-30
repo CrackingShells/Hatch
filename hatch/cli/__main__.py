@@ -372,20 +372,13 @@ def _setup_mcp_commands(subparsers):
         "list", help="List MCP hosts and servers"
     ).add_subparsers(dest="list_command", help="List command to execute")
 
-    # List hosts command
+    # List hosts command - host-centric design per R10 §3.1
     mcp_list_hosts_parser = mcp_list_subparsers.add_parser(
-        "hosts", help="List configured MCP hosts from environment"
+        "hosts", help="List host/server pairs from host configuration files"
     )
     mcp_list_hosts_parser.add_argument(
-        "--env",
-        "-e",
-        default=None,
-        help="Environment name (default: current environment)",
-    )
-    mcp_list_hosts_parser.add_argument(
-        "--detailed",
-        action="store_true",
-        help="Show detailed host configuration information",
+        "--server",
+        help="Filter by server name using regex pattern",
     )
     mcp_list_hosts_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"
