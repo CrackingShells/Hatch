@@ -356,6 +356,14 @@ def _setup_mcp_commands(subparsers):
         help="Environment name (default: current environment)",
     )
 
+    # MCP show command (detailed host view)
+    mcp_show_parser = mcp_subparsers.add_parser(
+        "show", help="Show detailed MCP host configuration"
+    )
+    mcp_show_parser.add_argument(
+        "host", help="Host platform to show (e.g., claude-desktop, cursor)"
+    )
+
     # MCP backup commands
     mcp_backup_subparsers = mcp_subparsers.add_parser(
         "backup", help="Backup management commands"
@@ -718,6 +726,7 @@ def _route_mcp_command(args):
         handle_mcp_discover_servers,
         handle_mcp_list_hosts,
         handle_mcp_list_servers,
+        handle_mcp_show,
         handle_mcp_backup_restore,
         handle_mcp_backup_list,
         handle_mcp_backup_clean,
@@ -744,6 +753,9 @@ def _route_mcp_command(args):
         else:
             print("Unknown list command")
             return 1
+
+    elif args.mcp_command == "show":
+        return handle_mcp_show(args)
 
     elif args.mcp_command == "backup":
         if args.backup_command == "restore":
