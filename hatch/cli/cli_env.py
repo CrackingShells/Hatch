@@ -143,16 +143,30 @@ def handle_env_list(args: Namespace) -> int:
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
+            - pattern: Optional regex pattern to filter environments
             - json: Optional flag for JSON output
     
     Returns:
         Exit code (0 for success)
+    
+    Reference: R02 §2.1 (02-list_output_format_specification_v2.md)
     """
     import json as json_module
+    import re
     
     env_manager: "HatchEnvironmentManager" = args.env_manager
     json_output: bool = getattr(args, 'json', False)
+    pattern: str = getattr(args, 'pattern', None)
     environments = env_manager.list_environments()
+    
+    # Apply pattern filter if specified
+    if pattern:
+        try:
+            regex = re.compile(pattern)
+            environments = [env for env in environments if regex.search(env.get("name", ""))]
+        except re.error as e:
+            print(f"[ERROR] Invalid regex pattern: {e}")
+            return EXIT_ERROR
     
     if json_output:
         # JSON output per R02 §8.1

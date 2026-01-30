@@ -108,6 +108,10 @@ def _setup_env_commands(subparsers):
     # List environments command
     env_list_parser = env_subparsers.add_parser("list", help="List all available environments")
     env_list_parser.add_argument(
+        "--pattern",
+        help="Filter environments by name using regex pattern",
+    )
+    env_list_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"
     )
 
