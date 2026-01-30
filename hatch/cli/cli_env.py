@@ -441,3 +441,94 @@ def handle_env_python_add_hatch_mcp(args: Namespace) -> int:
     else:
         print(f"[ERROR] Failed to install hatch_mcp_server wrapper in environment: {env_name}")
         return EXIT_ERROR
+
+
+def handle_env_show(args: Namespace) -> int:
+    """Handle 'hatch env show' command.
+    
+    Displays detailed hierarchical view of a specific environment.
+    
+    Args:
+        args: Namespace with:
+            - env_manager: HatchEnvironmentManager instance
+            - name: Environment name to show
+    
+    Returns:
+        Exit code (0 for success, 1 for error)
+    
+    Reference: R02 §2.2 (02-list_output_format_specification_v2.md)
+    """
+    env_manager: "HatchEnvironmentManager" = args.env_manager
+    name = args.name
+
+    # Validate environment exists
+    if not env_manager.environment_exists(name):
+        print(f"Error: Environment '{name}' does not exist")
+        return EXIT_ERROR
+
+    # Get environment data
+    env_data = env_manager.get_environment_data(name)
+    current_env = env_manager.get_current_environment()
+    is_current = name == current_env
+
+    # Header
+    status = " (active)" if is_current else ""
+    print(f"Environment: {name}{status}")
+    
+    # Description
+    description = env_data.get("description", "")
+    if description:
+        print(f"  Description: {description}")
+    
+    # Created timestamp
+    created_at = env_data.get("created_at", "Unknown")
+    print(f"  Created: {created_at}")
+    print()
+
+    # Python Environment section
+    python_info = env_manager.get_python_environment_info(name)
+    print("  Python Environment:")
+    if python_info:
+        print(f"    Version: {python_info.get('python_version', 'Unknown')}")
+        print(f"    Executable: {python_info.get('python_executable', 'N/A')}")
+        conda_env = python_info.get('conda_env_name', 'N/A')
+        if conda_env and conda_env != 'N/A':
+            print(f"    Conda env: {conda_env}")
+        status = "Active" if python_info.get('enabled', False) else "Inactive"
+        print(f"    Status: {status}")
+    else:
+        print("    (not initialized)")
+    print()
+
+    # Packages section
+    packages = env_manager.list_packages(name)
+    pkg_count = len(packages) if packages else 0
+    print(f"  Packages ({pkg_count}):")
+    
+    if packages:
+        for pkg in packages:
+            pkg_name = pkg.get("name", "unknown")
+            print(f"    {pkg_name}")
+            
+            # Version
+            version = pkg.get("version", "unknown")
+            print(f"      Version: {version}")
+            
+            # Source
+            source = pkg.get("source", {})
+            source_type = source.get("type", "unknown")
+            source_path = source.get("path", source.get("url", "N/A"))
+            print(f"      Source: {source_type} ({source_path})")
+            
+            # Deployed hosts
+            configured_hosts = pkg.get("configured_hosts", {})
+            if configured_hosts:
+                hosts_list = ", ".join(configured_hosts.keys())
+                print(f"      Deployed to: {hosts_list}")
+            else:
+                print(f"      Deployed to: (none)")
+            print()
+    else:
+        print("    (empty)")
+
+    return EXIT_SUCCESS

@@ -111,6 +111,12 @@ def _setup_env_commands(subparsers):
     # Show current environment command
     env_subparsers.add_parser("current", help="Show the current environment")
 
+    # Show environment details command
+    env_show_parser = env_subparsers.add_parser(
+        "show", help="Show detailed environment configuration"
+    )
+    env_show_parser.add_argument("name", help="Environment name to show")
+
     # Python environment management commands
     env_python_subparsers = env_subparsers.add_parser(
         "python", help="Manage Python environments"
@@ -644,6 +650,7 @@ def _route_env_command(args):
         handle_env_list,
         handle_env_use,
         handle_env_current,
+        handle_env_show,
         handle_env_python_init,
         handle_env_python_info,
         handle_env_python_remove,
@@ -661,6 +668,8 @@ def _route_env_command(args):
         return handle_env_use(args)
     elif args.env_command == "current":
         return handle_env_current(args)
+    elif args.env_command == "show":
+        return handle_env_show(args)
     elif args.env_command == "python":
         if args.python_command == "init":
             return handle_env_python_init(args)
