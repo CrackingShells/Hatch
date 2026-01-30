@@ -53,6 +53,9 @@ def _setup_create_command(subparsers):
     create_parser.add_argument(
         "--description", "-D", default="", help="Package description"
     )
+    create_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
+    )
 
 
 def _setup_validate_command(subparsers):
@@ -120,6 +123,9 @@ def _setup_env_commands(subparsers):
         "use", help="Set the current environment"
     )
     env_use_parser.add_argument("name", help="Environment name")
+    env_use_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
+    )
 
     # Show current environment command
     env_subparsers.add_parser("current", help="Show the current environment")
@@ -191,6 +197,9 @@ def _setup_env_commands(subparsers):
         "--tag",
         default=None,
         help="Git tag/branch reference for wrapper installation (e.g., 'dev', 'v0.1.0')",
+    )
+    hatch_mcp_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
     )
 
     # Remove Python environment
@@ -265,6 +274,9 @@ def _setup_package_commands(subparsers):
     pkg_add_parser.add_argument(
         "--host",
         help="Comma-separated list of MCP host platforms to configure (e.g., claude-desktop,cursor)",
+    )
+    pkg_add_parser.add_argument(
+        "--dry-run", action="store_true", help="Preview changes without execution"
     )
 
     # Remove package command
