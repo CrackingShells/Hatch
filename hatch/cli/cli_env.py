@@ -143,13 +143,42 @@ def handle_env_list(args: Namespace) -> int:
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
+            - json: Optional flag for JSON output
     
     Returns:
         Exit code (0 for success)
     """
+    import json as json_module
+    
     env_manager: "HatchEnvironmentManager" = args.env_manager
+    json_output: bool = getattr(args, 'json', False)
     environments = env_manager.list_environments()
     
+    if json_output:
+        # JSON output per R02 §8.1
+        env_data = []
+        for env in environments:
+            env_name = env.get("name")
+            python_version = None
+            if env.get("python_environment", False):
+                python_info = env_manager.get_python_environment_info(env_name)
+                if python_info:
+                    python_version = python_info.get("python_version")
+            
+            packages_list = env_manager.list_packages(env_name)
+            pkg_names = [pkg["name"] for pkg in packages_list] if packages_list else []
+            
+            env_data.append({
+                "name": env_name,
+                "is_current": env.get("is_current", False),
+                "python_version": python_version,
+                "packages": pkg_names
+            })
+        
+        print(json_module.dumps({"environments": env_data}, indent=2))
+        return EXIT_SUCCESS
+    
+    # Table output
     print("Environments:")
     
     # Define table columns per R02 §2.1

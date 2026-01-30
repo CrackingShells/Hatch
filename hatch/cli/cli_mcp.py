@@ -74,17 +74,46 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
     Detects and displays available MCP host platforms on the system.
     
     Args:
-        args: Parsed command-line arguments (currently unused but required
-              for standardized handler signature)
+        args: Parsed command-line arguments containing:
+            - json: Optional flag for JSON output
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     try:
+        import json as json_module
+        
         # Import strategies to trigger registration
         import hatch.mcp_host_config.strategies
 
+        json_output: bool = getattr(args, 'json', False)
         available_hosts = MCPHostRegistry.detect_available_hosts()
+        
+        if json_output:
+            # JSON output
+            hosts_data = []
+            for host_type in MCPHostType:
+                try:
+                    strategy = MCPHostRegistry.get_strategy(host_type)
+                    config_path = strategy.get_config_path()
+                    is_available = host_type in available_hosts
+                    
+                    hosts_data.append({
+                        "host": host_type.value,
+                        "available": is_available,
+                        "config_path": str(config_path) if config_path else None
+                    })
+                except Exception as e:
+                    hosts_data.append({
+                        "host": host_type.value,
+                        "available": False,
+                        "error": str(e)
+                    })
+            
+            print(json_module.dumps({"hosts": hosts_data}, indent=2))
+            return EXIT_SUCCESS
+        
+        # Table output
         print("Available MCP Host Platforms:")
 
         # Define table columns per R02 §2.3
@@ -197,16 +226,19 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
             - env_manager: HatchEnvironmentManager instance
             - env: Optional environment name (uses current if not specified)
             - detailed: Whether to show detailed host information
+            - json: Optional flag for JSON output
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     try:
+        import json as json_module
         from collections import defaultdict
 
         env_manager: HatchEnvironmentManager = args.env_manager
         env_name: Optional[str] = getattr(args, 'env', None)
         detailed: bool = getattr(args, 'detailed', False)
+        json_output: bool = getattr(args, 'json', False)
 
         # Resolve environment name
         target_env = env_name or env_manager.get_current_environment()
@@ -240,6 +272,21 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
         except Exception as e:
             print(f"Error reading environment data: {e}")
             return EXIT_ERROR
+
+        # JSON output
+        if json_output:
+            hosts_data = []
+            for host_name, package_count in sorted(hosts.items()):
+                hosts_data.append({
+                    "host": host_name,
+                    "package_count": package_count,
+                    "last_synced": host_last_sync.get(host_name, None)
+                })
+            print(json_module.dumps({
+                "environment": target_env,
+                "hosts": hosts_data
+            }, indent=2))
+            return EXIT_SUCCESS
 
         # Display results
         if not hosts:
@@ -275,14 +322,18 @@ def handle_mcp_list_servers(args: Namespace) -> int:
             - env_manager: HatchEnvironmentManager instance
             - env: Optional environment name (uses current if not specified)
             - host: Optional host filter
+            - json: Optional flag for JSON output
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     try:
+        import json as json_module
+        
         env_manager: HatchEnvironmentManager = args.env_manager
         env_name: Optional[str] = getattr(args, 'env', None)
         host_filter: Optional[str] = getattr(args, 'host', None)
+        json_output: bool = getattr(args, 'json', False)
         
         env_name = env_name or env_manager.get_current_environment()
 
@@ -310,6 +361,27 @@ def handle_mcp_list_servers(args: Namespace) -> int:
                 # Package not deployed to any host yet
                 if not host_filter:  # Only show if no host filter
                     server_rows.append((package_name, "-", True, env_name, version))
+
+        # JSON output
+        if json_output:
+            servers_data = []
+            for server_name, host, is_hatch, env, version in server_rows:
+                server_entry = {
+                    "name": server_name,
+                    "hatch_managed": is_hatch,
+                }
+                if is_hatch:
+                    server_entry["environment"] = env
+                    server_entry["version"] = version
+                if host != "-":
+                    server_entry["host"] = host
+                servers_data.append(server_entry)
+            
+            output = {"servers": servers_data}
+            if host_filter:
+                output["host"] = host_filter
+            print(json_module.dumps(output, indent=2))
+            return EXIT_SUCCESS
 
         if not server_rows:
             if host_filter:
@@ -614,15 +686,18 @@ def handle_mcp_backup_list(args: Namespace) -> int:
         args: Parsed command-line arguments containing:
             - host: Host platform to list backups for
             - detailed: Show detailed backup information
+            - json: Optional flag for JSON output
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     try:
+        import json as json_module
         from hatch.mcp_host_config.backup import MCPHostConfigBackupManager
 
         host: str = args.host
         detailed: bool = getattr(args, 'detailed', False)
+        json_output: bool = getattr(args, 'json', False)
 
         # Validate host type
         try:
@@ -635,6 +710,22 @@ def handle_mcp_backup_list(args: Namespace) -> int:
 
         backup_manager = MCPHostConfigBackupManager()
         backups = backup_manager.list_backups(host)
+
+        # JSON output
+        if json_output:
+            backups_data = []
+            for backup in backups:
+                backups_data.append({
+                    "file": backup.file_path.name,
+                    "created": backup.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                    "size_bytes": backup.file_size,
+                    "age_days": backup.age_days
+                })
+            print(json_module.dumps({
+                "host": host,
+                "backups": backups_data
+            }, indent=2))
+            return EXIT_SUCCESS
 
         if not backups:
             print(f"No backups found for host '{host}'")

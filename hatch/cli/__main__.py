@@ -100,7 +100,10 @@ def _setup_env_commands(subparsers):
     env_remove_parser.add_argument("name", help="Environment name")
 
     # List environments command
-    env_subparsers.add_parser("list", help="List all available environments")
+    env_list_parser = env_subparsers.add_parser("list", help="List all available environments")
+    env_list_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
+    )
 
     # Set current environment command
     env_use_parser = env_subparsers.add_parser(
@@ -309,8 +312,11 @@ def _setup_mcp_commands(subparsers):
     ).add_subparsers(dest="discover_command", help="Discovery command to execute")
 
     # Discover hosts command
-    mcp_discover_subparsers.add_parser(
+    mcp_discover_hosts_parser = mcp_discover_subparsers.add_parser(
         "hosts", help="Discover available MCP host platforms"
+    )
+    mcp_discover_hosts_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
     )
 
     # Discover servers command
@@ -344,6 +350,9 @@ def _setup_mcp_commands(subparsers):
         action="store_true",
         help="Show detailed host configuration information",
     )
+    mcp_list_hosts_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
+    )
 
     # List servers command
     mcp_list_servers_parser = mcp_list_subparsers.add_parser(
@@ -354,6 +363,9 @@ def _setup_mcp_commands(subparsers):
         "-e",
         default=None,
         help="Environment name (default: current environment)",
+    )
+    mcp_list_servers_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
     )
 
     # MCP show command (detailed host view)
@@ -400,6 +412,9 @@ def _setup_mcp_commands(subparsers):
     )
     mcp_backup_list_parser.add_argument(
         "--detailed", "-d", action="store_true", help="Show detailed backup information"
+    )
+    mcp_backup_list_parser.add_argument(
+        "--json", action="store_true", help="Output in JSON format"
     )
 
     # Clean backups command
