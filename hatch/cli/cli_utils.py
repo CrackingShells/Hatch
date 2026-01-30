@@ -480,6 +480,151 @@ class ResultReporter:
                 print(self._format_consequence(child, use_result_tense=True, indent=4))
 
 
+# =============================================================================
+# TableFormatter Infrastructure for List Commands
+# =============================================================================
+
+from typing import Union, Literal
+
+
+@dataclass
+class ColumnDef:
+    """Column definition for TableFormatter.
+    
+    Reference: R06 §3.6 (06-dependency_analysis_v0.md)
+    Reference: R02 §5 (02-list_output_format_specification_v2.md)
+    
+    Attributes:
+        name: Column header text
+        width: Fixed width (int) or "auto" for auto-calculation
+        align: Text alignment ("left", "right", "center")
+    
+    Example:
+        >>> col = ColumnDef(name="Name", width=20, align="left")
+        >>> col_auto = ColumnDef(name="Count", width="auto", align="right")
+    """
+    
+    name: str
+    width: Union[int, Literal["auto"]]
+    align: Literal["left", "right", "center"] = "left"
+
+
+class TableFormatter:
+    """Aligned table output for list commands.
+    
+    Renders data as aligned columns with headers and separator line.
+    Supports fixed and auto-calculated column widths.
+    
+    Reference: R06 §3.6 (06-dependency_analysis_v0.md)
+    Reference: R02 §5 (02-list_output_format_specification_v2.md)
+    
+    Attributes:
+        columns: List of column definitions
+    
+    Example:
+        >>> columns = [
+        ...     ColumnDef(name="Name", width=20),
+        ...     ColumnDef(name="Status", width=10),
+        ... ]
+        >>> formatter = TableFormatter(columns)
+        >>> formatter.add_row(["my-server", "active"])
+        >>> print(formatter.render())
+        Name                 Status
+        ─────────────────────────────────
+        my-server            active
+    """
+    
+    def __init__(self, columns: List[ColumnDef]):
+        """Initialize TableFormatter with column definitions.
+        
+        Args:
+            columns: List of ColumnDef specifying table structure
+        """
+        self._columns = columns
+        self._rows: List[List[str]] = []
+    
+    def add_row(self, values: List[str]) -> None:
+        """Add a data row to the table.
+        
+        Args:
+            values: List of string values, one per column
+        """
+        self._rows.append(values)
+    
+    def _calculate_widths(self) -> List[int]:
+        """Calculate actual column widths, resolving 'auto' widths.
+        
+        Returns:
+            List of integer widths for each column
+        """
+        widths = []
+        for i, col in enumerate(self._columns):
+            if col.width == "auto":
+                # Calculate from header and all row values
+                max_width = len(col.name)
+                for row in self._rows:
+                    if i < len(row):
+                        max_width = max(max_width, len(row[i]))
+                widths.append(max_width)
+            else:
+                widths.append(col.width)
+        return widths
+    
+    def _align_value(self, value: str, width: int, align: str) -> str:
+        """Align a value within the specified width.
+        
+        Args:
+            value: The string value to align
+            width: Target width
+            align: Alignment type ("left", "right", "center")
+        
+        Returns:
+            Aligned string, truncated with ellipsis if too long
+        """
+        # Truncate if too long
+        if len(value) > width:
+            if width > 1:
+                return value[:width - 1] + "…"
+            return value[:width]
+        
+        # Apply alignment
+        if align == "right":
+            return value.rjust(width)
+        elif align == "center":
+            return value.center(width)
+        else:  # left (default)
+            return value.ljust(width)
+    
+    def render(self) -> str:
+        """Render the table as a formatted string.
+        
+        Returns:
+            Multi-line string with headers, separator, and data rows
+        """
+        widths = self._calculate_widths()
+        lines = []
+        
+        # Header row
+        header_parts = []
+        for i, col in enumerate(self._columns):
+            header_parts.append(self._align_value(col.name, widths[i], col.align))
+        lines.append("  " + "  ".join(header_parts))
+        
+        # Separator line
+        total_width = sum(widths) + (len(widths) - 1) * 2 + 2  # columns + separators + indent
+        lines.append("  " + "─" * (total_width - 2))
+        
+        # Data rows
+        for row in self._rows:
+            row_parts = []
+            for i, col in enumerate(self._columns):
+                value = row[i] if i < len(row) else ""
+                row_parts.append(self._align_value(value, widths[i], col.align))
+            lines.append("  " + "  ".join(row_parts))
+        
+        return "\n".join(lines)
+
+
 # Exit code constants for consistent CLI return values
 EXIT_SUCCESS = 0
 EXIT_ERROR = 1
