@@ -221,6 +221,32 @@ def _colors_enabled() -> bool:
     return True
 
 
+def highlight(text: str) -> str:
+    """Apply highlight formatting (bold + amber) to entity names.
+    
+    Used in show commands to emphasize host and server names for
+    quick visual scanning of detailed output.
+    
+    Reference: R12 §3.3 (12-enhancing_colors_v0.md)
+    Reference: R11 §3.2 (11-enhancing_show_command_v0.md)
+    
+    Args:
+        text: The entity name to highlight
+    
+    Returns:
+        str: Text with bold + amber formatting if colors enabled,
+             otherwise plain text.
+    
+    Example:
+        >>> print(f"MCP Host: {highlight('claude-desktop')}")
+        MCP Host: claude-desktop  # (bold + amber in TTY)
+    """
+    if _colors_enabled():
+        # Bold (\033[1m) + Amber color
+        return f"\033[1m{Color.AMBER.value}{text}{Color.RESET.value}"
+    return text
+
+
 class ConsequenceType(Enum):
     """Action types with dual-tense labels and semantic colors.
     
