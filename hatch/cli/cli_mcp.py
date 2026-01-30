@@ -253,6 +253,7 @@ def handle_mcp_list_servers(args: Namespace) -> int:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
             - env: Optional environment name (uses current if not specified)
+            - host: Optional host filter
     
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
@@ -260,6 +261,7 @@ def handle_mcp_list_servers(args: Namespace) -> int:
     try:
         env_manager: HatchEnvironmentManager = args.env_manager
         env_name: Optional[str] = getattr(args, 'env', None)
+        host_filter: Optional[str] = getattr(args, 'host', None)
         
         env_name = env_name or env_manager.get_current_environment()
 
@@ -268,84 +270,65 @@ def handle_mcp_list_servers(args: Namespace) -> int:
             return EXIT_ERROR
 
         packages = env_manager.list_packages(env_name)
-        mcp_packages = []
+        
+        # Collect server data: (server_name, host, is_hatch_managed, env_name, version)
+        server_rows = []
 
         for package in packages:
-            # Check if package has host configuration tracking (indicating MCP server)
+            package_name = package["name"]
+            version = package.get("version", "-")
             configured_hosts = package.get("configured_hosts", {})
+            
             if configured_hosts:
-                # Use the tracked server configuration from any host
-                first_host = next(iter(configured_hosts.values()))
-                server_config_data = first_host.get("server_config", {})
-
-                # Create a simple server config object
-                class SimpleServerConfig:
-                    def __init__(self, data):
-                        self.name = data.get("name", package["name"])
-                        self.command = data.get("command", "unknown")
-                        self.args = data.get("args", [])
-
-                server_config = SimpleServerConfig(server_config_data)
-                mcp_packages.append(
-                    {"package": package, "server_config": server_config}
-                )
+                for host_name in configured_hosts.keys():
+                    # Apply host filter if specified
+                    if host_filter and host_name != host_filter:
+                        continue
+                    server_rows.append((package_name, host_name, True, env_name, version))
             else:
-                # Try the original method as fallback
-                try:
-                    server_config = get_package_mcp_server_config(
-                        env_manager, env_name, package["name"]
-                    )
-                    mcp_packages.append(
-                        {"package": package, "server_config": server_config}
-                    )
-                except:
-                    # Package doesn't have MCP server or method failed
-                    continue
+                # Package not deployed to any host yet
+                if not host_filter:  # Only show if no host filter
+                    server_rows.append((package_name, "-", True, env_name, version))
 
-        if not mcp_packages:
-            print(f"No MCP servers configured in environment '{env_name}'")
+        if not server_rows:
+            if host_filter:
+                print(f"No MCP servers on host '{host_filter}'")
+            else:
+                print(f"No MCP servers in environment '{env_name}'")
             return EXIT_SUCCESS
 
-        print(f"MCP servers in environment '{env_name}':")
-        print(f"{'Server Name':<20} {'Package':<20} {'Version':<10} {'Command'}")
-        print("-" * 80)
+        # Display header based on filter
+        if host_filter:
+            print(f"MCP servers on {host_filter}:")
+            columns = [
+                ColumnDef(name="Server Name", width=20),
+                ColumnDef(name="Hatch", width=8),
+                ColumnDef(name="Environment", width=15),
+                ColumnDef(name="Version", width=10),
+            ]
+        else:
+            print("MCP servers (all hosts):")
+            columns = [
+                ColumnDef(name="Server Name", width=20),
+                ColumnDef(name="Host", width=18),
+                ColumnDef(name="Hatch", width=8),
+                ColumnDef(name="Environment", width=15),
+                ColumnDef(name="Version", width=10),
+            ]
+        
+        formatter = TableFormatter(columns)
 
-        for item in mcp_packages:
-            package = item["package"]
-            server_config = item["server_config"]
-
-            server_name = server_config.name
-            package_name = package["name"]
-            version = package.get("version", "unknown")
-            command = f"{server_config.command} {' '.join(server_config.args)}"
-
-            print(f"{server_name:<20} {package_name:<20} {version:<10} {command}")
-
-            # Display host configuration tracking information
-            configured_hosts = package.get("configured_hosts", {})
-            if configured_hosts:
-                print(f"{'':>20} Configured on hosts:")
-                for hostname, host_config in configured_hosts.items():
-                    config_path = host_config.get("config_path", "unknown")
-                    last_synced = host_config.get("last_synced", "unknown")
-                    # Format the timestamp for better readability
-                    if last_synced != "unknown":
-                        try:
-                            from datetime import datetime
-
-                            dt = datetime.fromisoformat(
-                                last_synced.replace("Z", "+00:00")
-                            )
-                            last_synced = dt.strftime("%Y-%m-%d %H:%M:%S")
-                        except:
-                            pass  # Keep original format if parsing fails
-                    print(
-                        f"{'':>22} - {hostname}: {config_path} (synced: {last_synced})"
-                    )
+        for server_name, host, is_hatch, env, version in server_rows:
+            hatch_status = "✅" if is_hatch else "❌"
+            env_display = env if is_hatch else "-"
+            version_display = version if is_hatch else "-"
+            
+            if host_filter:
+                formatter.add_row([server_name, hatch_status, env_display, version_display])
             else:
-                print(f"{'':>20} No host configurations tracked")
-            print()  # Add blank line between servers
+                formatter.add_row([server_name, host, hatch_status, env_display, version_display])
 
+        print(formatter.render())
         return EXIT_SUCCESS
     except Exception as e:
         print(f"Error listing servers: {e}")
