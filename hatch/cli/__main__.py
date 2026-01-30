@@ -835,7 +835,7 @@ def _route_mcp_command(args):
         handle_mcp_discover_servers,
         handle_mcp_list_hosts,
         handle_mcp_list_servers,
-        handle_mcp_show,
+        handle_mcp_show_hosts,
         handle_mcp_backup_restore,
         handle_mcp_backup_list,
         handle_mcp_backup_clean,
@@ -864,7 +864,16 @@ def _route_mcp_command(args):
             return 1
 
     elif args.mcp_command == "show":
-        return handle_mcp_show(args)
+        show_command = getattr(args, 'show_command', None)
+        if show_command == "hosts":
+            return handle_mcp_show_hosts(args)
+        elif show_command == "servers":
+            # TODO: Implement in M1.27
+            print("'hatch mcp show servers' not yet implemented")
+            return 1
+        else:
+            print("Unknown show command. Use 'hatch mcp show hosts' or 'hatch mcp show servers'")
+            return 1
 
     elif args.mcp_command == "backup":
         if args.backup_command == "restore":
