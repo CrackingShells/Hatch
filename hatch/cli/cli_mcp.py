@@ -489,15 +489,22 @@ def handle_mcp_backup_list(args: Namespace) -> int:
         print(f"Backups for host '{host}' ({len(backups)} found):")
 
         if detailed:
-            print(f"{'Backup File':<40} {'Created':<20} {'Size':<10} {'Age (days)'}")
-            print("-" * 80)
+            # Define table columns per R02 §2.7
+            columns = [
+                ColumnDef(name="Backup File", width=40),
+                ColumnDef(name="Created", width=20),
+                ColumnDef(name="Size", width=12, align="right"),
+                ColumnDef(name="Age (days)", width=10, align="right"),
+            ]
+            formatter = TableFormatter(columns)
 
             for backup in backups:
                 created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
                 size = f"{backup.file_size:,} B"
-                age = backup.age_days
+                age = str(backup.age_days)
+                formatter.add_row([backup.file_path.name, created, size, age])
 
-                print(f"{backup.file_path.name:<40} {created:<20} {size:<10} {age}")
+            print(formatter.render())
         else:
             for backup in backups:
                 created = backup.timestamp.strftime("%Y-%m-%d %H:%M:%S")
