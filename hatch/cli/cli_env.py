@@ -256,6 +256,18 @@ def handle_env_python_init(args: Namespace) -> int:
     force = getattr(args, "force", False)
     no_hatch_mcp_server = getattr(args, "no_hatch_mcp_server", False)
     hatch_mcp_server_tag = getattr(args, "hatch_mcp_server_tag", None)
+    dry_run = getattr(args, "dry_run", False)
+
+    env_name = hatch_env or env_manager.get_current_environment()
+
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch env python init", dry_run=dry_run)
+    version_str = f" ({python_version})" if python_version else ""
+    reporter.add(ConsequenceType.INITIALIZE, f"Python environment for '{env_name}'{version_str}")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
 
     if env_manager.create_python_environment_only(
         hatch_env,
@@ -264,20 +276,10 @@ def handle_env_python_init(args: Namespace) -> int:
         no_hatch_mcp_server=no_hatch_mcp_server,
         hatch_mcp_server_tag=hatch_mcp_server_tag,
     ):
-        env_name = hatch_env or env_manager.get_current_environment()
-        print(f"Python environment initialized for: {env_name}")
-
-        # Show Python environment info
-        python_info = env_manager.get_python_environment_info(hatch_env)
-        if python_info:
-            print(f"  Python executable: {python_info['python_executable']}")
-            print(f"  Python version: {python_info.get('python_version', 'Unknown')}")
-            print(f"  Conda environment: {python_info.get('conda_env_name', 'N/A')}")
-
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        env_name = hatch_env or env_manager.get_current_environment()
-        print(f"Failed to initialize Python environment for: {env_name}")
+        print(f"[ERROR] Failed to initialize Python environment for: {env_name}")
         return EXIT_ERROR
 
 
@@ -352,21 +354,29 @@ def handle_env_python_remove(args: Namespace) -> int:
     env_manager: "HatchEnvironmentManager" = args.env_manager
     hatch_env = getattr(args, "hatch_env", None)
     force = getattr(args, "force", False)
+    dry_run = getattr(args, "dry_run", False)
+
+    env_name = hatch_env or env_manager.get_current_environment()
+
+    # Create reporter for unified output
+    reporter = ResultReporter("hatch env python remove", dry_run=dry_run)
+    reporter.add(ConsequenceType.REMOVE, f"Python environment for '{env_name}'")
+
+    if dry_run:
+        reporter.report_result()
+        return EXIT_SUCCESS
 
     if not force:
         # Ask for confirmation using TTY-aware function
-        env_name = hatch_env or env_manager.get_current_environment()
         if not request_confirmation(f"Remove Python environment for '{env_name}'?"):
             print("Operation cancelled")
             return EXIT_SUCCESS
 
     if env_manager.remove_python_environment_only(hatch_env):
-        env_name = hatch_env or env_manager.get_current_environment()
-        print(f"Python environment removed from: {env_name}")
+        reporter.report_result()
         return EXIT_SUCCESS
     else:
-        env_name = hatch_env or env_manager.get_current_environment()
-        print(f"Failed to remove Python environment from: {env_name}")
+        print(f"[ERROR] Failed to remove Python environment from: {env_name}")
         return EXIT_ERROR
 
 
