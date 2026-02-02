@@ -135,11 +135,136 @@ Syntax:
 
 #### `hatch env list`
 
+List all environments with package counts.
+
 Syntax:
 
-`hatch env list`
+`hatch env list [--pattern PATTERN] [--json]`
 
-Description: Lists all environments. When a Python manager (conda/mamba) is available additional status and manager info are displayed.
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--pattern` | string | Filter environments by name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch env list
+Environments:
+  Name             Python        Packages
+  ───────────────────────────────────────
+  * default        3.14.2               0
+    test-env       3.11.5               3
+```
+
+**Key Details**:
+- Header: `"Environments:"` only
+- Columns: Name (width 15), Python (width 10), Packages (width 10, right-aligned)
+- Current environment marked with `"* "` prefix
+- Packages column shows COUNT only
+- Separator: `"─"` character (U+2500)
+
+#### `hatch env list hosts`
+
+List environment/host/server deployments from environment data.
+
+Syntax:
+
+`hatch env list hosts [--env PATTERN] [--server PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env`, `-e` | string | Filter by environment name using regex pattern | none |
+| `--server` | string | Filter by server name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch env list hosts
+Environment Host Deployments:
+  Environment      Host                Server              Version
+  ─────────────────────────────────────────────────────────────────
+  default          claude-desktop      weather-server      1.0.0
+  default          cursor              weather-server      1.0.0
+```
+
+**Description**:
+Lists environment/host/server deployments from environment data. Shows only Hatch-managed packages and their host deployments.
+
+#### `hatch env list servers`
+
+List environment/server/host deployments from environment data.
+
+Syntax:
+
+`hatch env list servers [--env PATTERN] [--host PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env`, `-e` | string | Filter by environment name using regex pattern | none |
+| `--host` | string | Filter by host name using regex pattern (use '-' for undeployed) | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch env list servers
+Environment Servers:
+  Environment      Server              Host                Version
+  ─────────────────────────────────────────────────────────────────
+  default          weather-server      claude-desktop      1.0.0
+  default          weather-server      cursor              1.0.0
+  test-env         utility-pkg         -                   2.1.0
+```
+
+**Description**:
+Lists environment/server/host deployments from environment data. Shows only Hatch-managed packages. Undeployed packages show '-' in Host column.
+
+#### `hatch env show`
+
+Display detailed hierarchical view of a specific environment.
+
+Syntax:
+
+`hatch env show <name>`
+
+| Argument | Type | Description |
+|---:|---|---|
+| `name` | string (positional) | Environment name to show (required) |
+
+**Example Output**:
+
+```bash
+$ hatch env show default
+Environment: default (active)
+  Description: My development environment
+  Created: 2026-01-15 10:30:00
+
+  Python Environment:
+    Version: 3.14.2
+    Executable: /path/to/python
+    Conda env: N/A
+    Status: Active
+
+  Packages (2):
+    weather-server
+      Version: 1.0.0
+      Source: registry (https://registry.example.com)
+      Deployed to: claude-desktop, cursor
+
+    utility-pkg
+      Version: 2.1.0
+      Source: local (/path/to/package)
+      Deployed to: (none)
+```
+
+**Key Details**:
+- Header shows `"(active)"` suffix if current environment
+- Hierarchical structure with 2-space indentation
+- No separator lines between sections
+- Packages section shows count in header
+- Each package shows version, source, and deployed hosts
 
 #### `hatch env use`
 
