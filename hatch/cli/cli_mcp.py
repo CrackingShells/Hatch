@@ -1534,9 +1534,9 @@ def handle_mcp_configure(args: Namespace) -> int:
         )
 
         if result.success:
-            reporter.report_result()
             if result.backup_path:
-                print(f"  Backup: {result.backup_path}")
+                reporter.add(ConsequenceType.CREATE, f"Backup: {result.backup_path}")
+            reporter.report_result()
             return EXIT_SUCCESS
         else:
             print(
@@ -1615,9 +1615,9 @@ def handle_mcp_remove(args: Namespace) -> int:
         )
 
         if result.success:
-            reporter.report_result()
             if result.backup_path:
-                print(f"  Backup: {result.backup_path}")
+                reporter.add(ConsequenceType.CREATE, f"Backup: {result.backup_path}")
+            reporter.report_result()
             return EXIT_SUCCESS
         else:
             print(
@@ -1819,15 +1819,15 @@ def handle_mcp_remove_host(args: Namespace) -> int:
         )
 
         if result.success:
-            reporter.report_result()
             if result.backup_path:
-                print(f"  Backup: {result.backup_path}")
+                reporter.add(ConsequenceType.CREATE, f"Backup: {result.backup_path}")
 
             # Update environment tracking across all environments
             updates_count = env_manager.clear_host_from_all_packages_all_envs(host_name)
             if updates_count > 0:
-                print(f"  Updated {updates_count} package entries across environments")
+                reporter.add(ConsequenceType.UPDATE, f"Updated {updates_count} package entries across environments")
 
+            reporter.report_result()
             return EXIT_SUCCESS
         else:
             print(
