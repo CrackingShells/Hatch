@@ -45,6 +45,7 @@ from hatch.cli.cli_utils import (
     ResultReporter,
     ConsequenceType,
     format_warning,
+    format_info,
 )
 from hatch.mcp_host_config import (
     MCPHostConfigurationManager,
@@ -94,7 +95,7 @@ def handle_package_remove(args: Namespace) -> int:
             print(prompt)
         
         if not request_confirmation("Proceed?"):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
     if env_manager.remove_package(package_name, env):
@@ -535,7 +536,7 @@ def handle_package_sync(args: Namespace) -> int:
 
         # Confirm operation unless auto-approved
         if not request_confirmation("Proceed?", auto_approve):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform synchronization (reporter already has consequences from preview)

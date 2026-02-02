@@ -67,6 +67,7 @@ from hatch.cli.cli_utils import (
     ColumnDef,
     ValidationError,
     format_validation_error,
+    format_info,
     ResultReporter,
 )
 
@@ -1024,7 +1025,7 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
 
         # Confirm operation unless auto-approved
         if not request_confirmation("Proceed?", auto_approve):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform restoration
@@ -1253,7 +1254,7 @@ def handle_mcp_backup_clean(args: Namespace) -> int:
 
         # Confirm operation unless auto-approved
         if not request_confirmation("Proceed?", auto_approve):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform cleanup
@@ -1524,7 +1525,7 @@ def handle_mcp_configure(args: Namespace) -> int:
         if not request_confirmation(
             f"Proceed?", auto_approve
         ):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform configuration
@@ -1605,7 +1606,7 @@ def handle_mcp_remove(args: Namespace) -> int:
 
         # Confirm operation unless auto-approved
         if not request_confirmation("Proceed?", auto_approve):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform removal
@@ -1707,7 +1708,7 @@ def handle_mcp_remove_server(args: Namespace) -> int:
 
         # Confirm operation unless auto-approved
         if not request_confirmation("Proceed?", auto_approve):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform removal on each host
@@ -1809,7 +1810,7 @@ def handle_mcp_remove_host(args: Namespace) -> int:
 
         # Confirm operation unless auto-approved
         if not request_confirmation("Proceed?", auto_approve):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform host configuration removal
@@ -1918,7 +1919,7 @@ def handle_mcp_sync(args: Namespace) -> int:
 
         # Confirm operation unless auto-approved
         if not request_confirmation("Proceed?", auto_approve):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
         # Perform synchronization

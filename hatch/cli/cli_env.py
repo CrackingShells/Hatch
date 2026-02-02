@@ -43,6 +43,7 @@ from hatch.cli.cli_utils import (
     ColumnDef,
     ValidationError,
     format_validation_error,
+    format_info,
 )
 
 if TYPE_CHECKING:
@@ -143,7 +144,7 @@ def handle_env_remove(args: Namespace) -> int:
             print(prompt)
         
         if not request_confirmation("Proceed?"):
-            print("Operation cancelled.")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
     if env_manager.remove_environment(name):
@@ -428,7 +429,7 @@ def handle_env_python_remove(args: Namespace) -> int:
     if not force:
         # Ask for confirmation using TTY-aware function
         if not request_confirmation(f"Remove Python environment for '{env_name}'?"):
-            print("Operation cancelled")
+            format_info("Operation cancelled")
             return EXIT_SUCCESS
 
     if env_manager.remove_python_environment_only(hatch_env):
