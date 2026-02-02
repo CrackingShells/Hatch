@@ -152,6 +152,40 @@ hatch package list
 
 For more in-depth information, please refer to the [tutorials](tutorials/01-getting-started/01-installation.md) section.
 
+## Quick Reference: Viewing Commands
+
+Hatch provides multiple commands for viewing your environments, packages, and host configurations:
+
+### Environment Views
+
+- `hatch env list`: List all environments with package counts
+- `hatch env show <name>`: Detailed view of specific environment
+- `hatch env list hosts`: View environment deployments by host
+- `hatch env list servers`: View environment deployments by server
+
+### MCP Host Views
+
+- `hatch mcp list hosts`: Table view of hosts and servers
+- `hatch mcp list servers`: Table view of servers and hosts
+- `hatch mcp show hosts`: Detailed view of all host configurations
+- `hatch mcp show servers`: Detailed view of all server configurations
+
+### Discovery
+
+- `hatch mcp discover hosts`: Detect available MCP host platforms
+
+**Filtering**: All list and show commands support regex filtering:
+```bash
+# Filter by server name
+hatch mcp list hosts --server "weather.*"
+
+# Filter by host name
+hatch mcp show servers --host "claude.*"
+
+# Filter by environment
+hatch env list hosts --env "my-project"
+```
+
 ## Understanding Hatch Concepts
 
 ### Environments
