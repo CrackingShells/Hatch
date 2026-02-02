@@ -1054,7 +1054,11 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
                     )
 
             except Exception as e:
-                print(f"  Warning: Could not synchronize environment tracking: {e}")
+                from hatch.cli.cli_utils import Color, _colors_enabled
+                if _colors_enabled():
+                    print(f"  {Color.YELLOW.value}[WARNING]{Color.RESET.value} Could not synchronize environment tracking: {e}")
+                else:
+                    print(f"  [WARNING] Could not synchronize environment tracking: {e}")
 
             return EXIT_SUCCESS
         else:
@@ -1402,7 +1406,11 @@ def handle_mcp_configure(args: Namespace) -> int:
                         split_args = shlex.split(arg)
                         processed_args.extend(split_args)
                     except ValueError as e:
-                        print(f"Warning: Invalid quote in argument '{arg}': {e}")
+                        from hatch.cli.cli_utils import Color, _colors_enabled
+                        if _colors_enabled():
+                            print(f"{Color.YELLOW.value}[WARNING]{Color.RESET.value} Invalid quote in argument '{arg}': {e}")
+                        else:
+                            print(f"[WARNING] Invalid quote in argument '{arg}': {e}")
                         processed_args.append(arg)
             config_data["args"] = processed_args if processed_args else None
         if env_dict:
