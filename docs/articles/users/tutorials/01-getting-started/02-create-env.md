@@ -62,17 +62,17 @@ hatch env list
 You should see output similar to:
 
 ```txt
-Available environments:
-  my_first_env - My first Hatch environment
-    Python: Not configured
-  my_python_env - Environment with Python support
-    Python: 3.11.x (conda: my_python_env)
-
-Python Environment Manager:
-  Conda executable: /path/to/conda
-  Mamba executable: /path/to/mamba
-  Preferred manager: mamba
+Environments:
+  Name             Python        Packages
+  ───────────────────────────────────────
+  * my_first_env   -                    0
+    my_python_env  3.11.5               0
 ```
+
+**Key Details**:
+- Current environment marked with `*` prefix
+- Python column shows version or `-` if no Python environment
+- Packages column shows count of installed packages
 
 **Exercise:**
 Initialize a Python environment inside `my_first_env`. Try both initializing without `hatch_mcp_server` wrapper and adding it afterwards. Hint: Use `hatch env python --help` to explore available Python subcommands and flags.
