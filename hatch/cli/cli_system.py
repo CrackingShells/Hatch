@@ -76,7 +76,10 @@ def handle_create(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"[ERROR] Failed to create package template: {e}")
+        reporter.report_error(
+            f"Failed to create package template",
+            details=[f"Reason: {e}"]
+        )
         return EXIT_ERROR
 
 
@@ -114,9 +117,9 @@ def handle_validate(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Package validation FAILED: {package_path}")
-
-        # Print detailed validation results if available
+        # Collect detailed validation errors
+        error_details = [f"Package: {package_path}"]
+        
         if validation_results and isinstance(validation_results, dict):
             for category, result in validation_results.items():
                 if (
@@ -125,8 +128,9 @@ def handle_validate(args: Namespace) -> int:
                     and isinstance(result, dict)
                 ):
                     if not result.get("valid", True) and result.get("errors"):
-                        print(f"\n{category.replace('_', ' ').title()} errors:")
+                        error_details.append(f"{category.replace('_', ' ').title()} errors:")
                         for error in result["errors"]:
-                            print(f"  - {error}")
-
+                            error_details.append(f"  - {error}")
+        
+        reporter.report_error("Package validation failed", details=error_details)
         return EXIT_ERROR
