@@ -771,83 +771,221 @@ Syntax:
 
 #### `hatch mcp list hosts`
 
-List MCP hosts configured in the current environment.
+List host/server pairs from host configuration files.
 
-**Purpose**: Shows hosts that have MCP servers configured in the specified environment, with package-level details.
+**Purpose**: Shows ALL servers on hosts (both Hatch-managed and third-party) with Hatch management status.
 
 Syntax:
 
-`hatch mcp list hosts [--env ENV] [--detailed]`
+`hatch mcp list hosts [--server PATTERN] [--json]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
-| `--env` | string | Environment to list hosts from | current environment |
-| `--detailed` | flag | Show detailed configuration information | false |
+| `--server` | string | Filter by server name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
 
 **Example Output**:
 
-```text
-Configured hosts for environment 'my-project':
-  claude-desktop (2 packages)
-  cursor (1 package)
+```bash
+$ hatch mcp list hosts
+MCP Hosts:
+  Host                Server              Hatch     Environment
+  ─────────────────────────────────────────────────────────────────
+  claude-desktop      weather-server      ✅        default
+  claude-desktop      third-party-tool    ❌        -
+  cursor              weather-server      ✅        default
 ```
 
-**Detailed Output** (`--detailed`):
-
-```text
-Configured hosts for environment 'my-project':
-  claude-desktop (2 packages):
-    - weather-toolkit: ~/.claude/config.json (configured: 2025-09-25T10:00:00)
-    - news-aggregator: ~/.claude/config.json (configured: 2025-09-25T11:30:00)
-  cursor (1 package):
-    - weather-toolkit: ~/.cursor/config.json (configured: 2025-09-25T10:15:00)
-```
-
-**Example Output**:
-
-```text
-Available MCP Host Platforms:
-✓ claude-desktop    Available    /Users/user/.claude/config.json
-✓ cursor           Available    /Users/user/.cursor/config.json
-✗ vscode           Not Found    /Users/user/.vscode/settings.json
-✗ lmstudio         Not Found    /Users/user/.lmstudio/config.json
-```
+**Key Details**:
+- Header: `"MCP Hosts:"`
+- Columns: Host (width 18), Server (width 18), Hatch (width 8), Environment (width 15)
+- Hatch column: `"✅"` for Hatch-managed, `"❌"` for third-party
+- Shows ALL servers on hosts (both Hatch-managed and third-party)
+- Environment column: environment name if Hatch-managed, `"-"` otherwise
+- Sorted by: host (alphabetically), then server
 
 #### `hatch mcp list servers`
 
-List MCP servers from environment with host configuration tracking information.
+List server/host pairs from host configuration files.
 
-**Purpose**: Shows servers from environment packages with detailed host configuration tracking, including which hosts each server is configured on and last sync timestamps.
+**Purpose**: Shows ALL servers on hosts (both Hatch-managed and third-party) with Hatch management status.
 
 Syntax:
 
-`hatch mcp list servers [--env ENV]`
+`hatch mcp list servers [--host PATTERN] [--json]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
-| `--env`, `-e` | string | Environment name (defaults to current) | current environment |
+| `--host` | string | Filter by host name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
 
 **Example Output**:
 
-```text
-MCP servers in environment 'default':
-Server Name          Package              Version    Command
---------------------------------------------------------------------------------
-weather-server       weather-toolkit      1.0.0      python weather.py
-                     Configured on hosts:
-                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
-                       cursor: /Users/user/.cursor/config.json (last synced: 2025-09-24T09:30:00)
-
-news-aggregator      news-toolkit         2.1.0      python news.py
-                     Configured on hosts:
-                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
+```bash
+$ hatch mcp list servers
+MCP Servers:
+  Server              Host                Hatch     Environment
+  ─────────────────────────────────────────────────────────────────
+  third-party-tool    claude-desktop      ❌        -
+  weather-server      claude-desktop      ✅        default
+  weather-server      cursor              ✅        default
 ```
+
+**Key Details**:
+- Header: `"MCP Servers:"`
+- Columns: Server (width 18), Host (width 18), Hatch (width 8), Environment (width 15)
+- Hatch column: `"✅"` for Hatch-managed, `"❌"` for third-party
+- Shows ALL servers on hosts (both Hatch-managed and third-party)
+- Environment column: environment name if Hatch-managed, `"-"` otherwise
+- Sorted by: server (alphabetically), then host
+
+#### `hatch mcp show hosts`
+
+Show detailed hierarchical view of all MCP host configurations.
+
+**Purpose**: Displays comprehensive configuration details for all hosts with their servers.
+
+Syntax:
+
+`hatch mcp show hosts [--server PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--server` | string | Filter by server name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch mcp show hosts
+═══════════════════════════════════════════════════════════════════════════════
+MCP Host: claude-desktop
+  Config Path: /Users/user/.config/claude/claude_desktop_config.json
+  Last Modified: 2026-02-01 15:30:00
+  Backup Available: Yes (3 backups)
+
+  Configured Servers (2):
+    weather-server (Hatch-managed: default)
+      Command: python
+      Args: ['-m', 'weather_server']
+      Environment Variables:
+        API_KEY: ****** (hidden)
+        DEBUG: true
+      Last Synced: 2026-02-01 15:30:00
+      Package Version: 1.0.0
+
+    third-party-tool (Not Hatch-managed)
+      Command: node
+      Args: ['server.js']
+
+═══════════════════════════════════════════════════════════════════════════════
+MCP Host: cursor
+  Config Path: /Users/user/.cursor/mcp.json
+  Last Modified: 2026-02-01 14:20:00
+  Backup Available: No
+
+  Configured Servers (1):
+    weather-server (Hatch-managed: default)
+      Command: python
+      Args: ['-m', 'weather_server']
+      Last Synced: 2026-02-01 14:20:00
+      Package Version: 1.0.0
+```
+
+**Key Details**:
+- Separator: `"═" * 79` (U+2550) between hosts
+- Host and server names highlighted (bold + amber when colors enabled)
+- Hatch-managed servers show: `"(Hatch-managed: {environment})"`
+- Third-party servers show: `"(Not Hatch-managed)"`
+- Sensitive environment variables shown as `"****** (hidden)"`
+- Hierarchical structure with 2-space indentation per level
+
+#### `hatch mcp show servers`
+
+Show detailed hierarchical view of all MCP server configurations across hosts.
+
+**Purpose**: Displays comprehensive configuration details for all servers across their host deployments.
+
+Syntax:
+
+`hatch mcp show servers [--host PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--host` | string | Filter by host name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch mcp show servers
+═══════════════════════════════════════════════════════════════════════════════
+MCP Server: weather-server
+  Hatch Managed: Yes (default)
+  Package Version: 1.0.0
+
+  Host Configurations (2):
+    claude-desktop:
+      Command: python
+      Args: ['-m', 'weather_server']
+      Environment Variables:
+        API_KEY: ****** (hidden)
+        DEBUG: true
+      Last Synced: 2026-02-01 15:30:00
+
+    cursor:
+      Command: python
+      Args: ['-m', 'weather_server']
+      Last Synced: 2026-02-01 14:20:00
+
+═══════════════════════════════════════════════════════════════════════════════
+MCP Server: third-party-tool
+  Hatch Managed: No
+
+  Host Configurations (1):
+    claude-desktop:
+      Command: node
+      Args: ['server.js']
+```
+
+**Key Details**:
+- Separator: `"═" * 79` between servers
+- Server and host names highlighted (bold + amber when colors enabled)
+- Hatch-managed servers show: `"Hatch Managed: Yes ({environment})"`
+- Third-party servers show: `"Hatch Managed: No"`
+- Hierarchical structure with 2-space indentation per level
 
 #### `hatch mcp discover hosts`
 
 Discover available MCP host platforms on the system.
 
 **Purpose**: Shows ALL host platforms (both available and unavailable) with system detection status.
+
+Syntax:
+
+`hatch mcp discover hosts [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch mcp discover hosts
+Available MCP Host Platforms:
+  Host                Status           Config Path
+  ─────────────────────────────────────────────────────────────────
+  claude-desktop      ✓ Available      /Users/user/.config/claude/...
+  cursor              ✓ Available      /Users/user/.cursor/mcp.json
+  vscode              ✗ Not Found      -
+```
+
+**Key Details**:
+- Header: `"Available MCP Host Platforms:"`
+- Columns: Host (width 18), Status (width 15), Config Path (width "auto")
+- Status: `"✓ Available"` or `"✗ Not Found"`
+- Shows ALL host types (MCPHostType enum), not just available ones
 
 Syntax:
 
