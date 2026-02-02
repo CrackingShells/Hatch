@@ -380,5 +380,3 @@ The test architecture follows a three-tier structure:
 | Integration | `tests/integration/mcp/` | CLI → Adapter → Strategy flow |
 | Regression | `tests/regression/mcp/` | Field filtering edge cases |
 
-See [Test Architecture](../../devs/architecture/test_architecture.md) for details.
-
