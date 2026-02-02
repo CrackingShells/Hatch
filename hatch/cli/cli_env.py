@@ -41,6 +41,8 @@ from hatch.cli.cli_utils import (
     ConsequenceType,
     TableFormatter,
     ColumnDef,
+    ValidationError,
+    format_validation_error,
 )
 
 if TYPE_CHECKING:
@@ -512,7 +514,11 @@ def handle_env_show(args: Namespace) -> int:
 
     # Validate environment exists
     if not env_manager.environment_exists(name):
-        print(f"Error: Environment '{name}' does not exist")
+        format_validation_error(ValidationError(
+            f"Environment '{name}' does not exist",
+            field="name",
+            suggestion="Use 'hatch env list' to see available environments"
+        ))
         return EXIT_ERROR
 
     # Get environment data
