@@ -1100,8 +1100,9 @@ def parse_env_vars(env_list: Optional[list]) -> dict:
     env_dict = {}
     for env_var in env_list:
         if "=" not in env_var:
-            print(
-                f"Warning: Invalid environment variable format '{env_var}'. Expected KEY=VALUE"
+            format_warning(
+                f"Invalid environment variable format '{env_var}'",
+                suggestion="Expected KEY=VALUE"
             )
             continue
         key, value = env_var.split("=", 1)
@@ -1125,7 +1126,10 @@ def parse_header(header_list: Optional[list]) -> dict:
     headers_dict = {}
     for header in header_list:
         if "=" not in header:
-            print(f"Warning: Invalid header format '{header}'. Expected KEY=VALUE")
+            format_warning(
+                f"Invalid header format '{header}'",
+                suggestion="Expected KEY=VALUE"
+            )
             continue
         key, value = header.split("=", 1)
         headers_dict[key.strip()] = value.strip()
@@ -1152,8 +1156,9 @@ def parse_input(input_list: Optional[list]) -> Optional[list]:
     for input_str in input_list:
         parts = [p.strip() for p in input_str.split(",")]
         if len(parts) < 3:
-            print(
-                f"Warning: Invalid input format '{input_str}'. Expected: type,id,description[,password=true]"
+            format_warning(
+                f"Invalid input format '{input_str}'",
+                suggestion="Expected: type,id,description[,password=true]"
             )
             continue
 
