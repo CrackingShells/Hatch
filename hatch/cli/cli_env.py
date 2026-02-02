@@ -104,7 +104,7 @@ def handle_env_create(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Failed to create environment: {name}")
+        reporter.report_error(f"Failed to create environment '{name}'")
         return EXIT_ERROR
 
 
@@ -150,7 +150,7 @@ def handle_env_remove(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Failed to remove environment: {name}")
+        reporter.report_error(f"Failed to remove environment '{name}'")
         return EXIT_ERROR
 
 
@@ -182,7 +182,11 @@ def handle_env_list(args: Namespace) -> int:
             regex = re.compile(pattern)
             environments = [env for env in environments if regex.search(env.get("name", ""))]
         except re.error as e:
-            print(f"[ERROR] Invalid regex pattern: {e}")
+            format_validation_error(ValidationError(
+                f"Invalid regex pattern: {e}",
+                field="--pattern",
+                suggestion="Use a valid Python regex pattern"
+            ))
             return EXIT_ERROR
     
     if json_output:
@@ -269,7 +273,7 @@ def handle_env_use(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Failed to set environment: {name}")
+        reporter.report_error(f"Failed to set environment '{name}'")
         return EXIT_ERROR
 
 
@@ -334,7 +338,7 @@ def handle_env_python_init(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Failed to initialize Python environment for: {env_name}")
+        reporter.report_error(f"Failed to initialize Python environment for '{env_name}'")
         return EXIT_ERROR
 
 
@@ -431,7 +435,7 @@ def handle_env_python_remove(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Failed to remove Python environment from: {env_name}")
+        reporter.report_error(f"Failed to remove Python environment from '{env_name}'")
         return EXIT_ERROR
 
 
@@ -455,7 +459,8 @@ def handle_env_python_shell(args: Namespace) -> int:
         return EXIT_SUCCESS
     else:
         env_name = hatch_env or env_manager.get_current_environment()
-        print(f"Failed to launch Python shell for: {env_name}")
+        reporter = ResultReporter("hatch env python shell")
+        reporter.report_error(f"Failed to launch Python shell for '{env_name}'")
         return EXIT_ERROR
 
 
@@ -490,7 +495,7 @@ def handle_env_python_add_hatch_mcp(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Failed to install hatch_mcp_server wrapper in environment: {env_name}")
+        reporter.report_error(f"Failed to install hatch_mcp_server wrapper in environment '{env_name}'")
         return EXIT_ERROR
 
 
@@ -621,7 +626,11 @@ def handle_env_list_hosts(args: Namespace) -> int:
         try:
             env_re = re.compile(env_pattern)
         except re.error as e:
-            print(f"[ERROR] Invalid env regex pattern: {e}")
+            format_validation_error(ValidationError(
+                f"Invalid env regex pattern: {e}",
+                field="--env",
+                suggestion="Use a valid Python regex pattern"
+            ))
             return EXIT_ERROR
     
     server_re = None
@@ -629,7 +638,11 @@ def handle_env_list_hosts(args: Namespace) -> int:
         try:
             server_re = re.compile(server_pattern)
         except re.error as e:
-            print(f"[ERROR] Invalid server regex pattern: {e}")
+            format_validation_error(ValidationError(
+                f"Invalid server regex pattern: {e}",
+                field="--server",
+                suggestion="Use a valid Python regex pattern"
+            ))
             return EXIT_ERROR
     
     # Get all environments
@@ -741,7 +754,11 @@ def handle_env_list_servers(args: Namespace) -> int:
         try:
             env_re = re.compile(env_pattern)
         except re.error as e:
-            print(f"[ERROR] Invalid env regex pattern: {e}")
+            format_validation_error(ValidationError(
+                f"Invalid env regex pattern: {e}",
+                field="--env",
+                suggestion="Use a valid Python regex pattern"
+            ))
             return EXIT_ERROR
     
     # Special handling for '-' (undeployed filter)
@@ -751,7 +768,11 @@ def handle_env_list_servers(args: Namespace) -> int:
         try:
             host_re = re.compile(host_pattern)
         except re.error as e:
-            print(f"[ERROR] Invalid host regex pattern: {e}")
+            format_validation_error(ValidationError(
+                f"Invalid host regex pattern: {e}",
+                field="--host",
+                suggestion="Use a valid Python regex pattern"
+            ))
             return EXIT_ERROR
     
     # Get all environments
