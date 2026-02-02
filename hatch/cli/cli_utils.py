@@ -780,6 +780,53 @@ class ResultReporter:
 
 
 # =============================================================================
+# Error Formatting Utilities
+# =============================================================================
+
+
+def format_validation_error(error: "ValidationError") -> None:
+    """Print formatted validation error with color.
+    
+    Prints error message with [ERROR] prefix in bright red color.
+    Optionally includes field name and suggestion if provided.
+    
+    Reference: R13 §4.3 (13-error_message_formatting_v0.md)
+    
+    Args:
+        error: ValidationError instance with message, field, and suggestion
+    
+    Output format:
+        [ERROR] <message>
+          Field: <field> (if provided)
+          Suggestion: <suggestion> (if provided)
+    
+    Example:
+        >>> from hatch.cli.cli_utils import ValidationError, format_validation_error
+        >>> format_validation_error(ValidationError(
+        ...     "Invalid host 'vsc'",
+        ...     field="--host",
+        ...     suggestion="Supported hosts: claude-desktop, vscode, cursor"
+        ... ))
+        [ERROR] Invalid host 'vsc'
+          Field: --host
+          Suggestion: Supported hosts: claude-desktop, vscode, cursor
+    """
+    # Print error header with color
+    if _colors_enabled():
+        print(f"{Color.RED.value}[ERROR]{Color.RESET.value} {error.message}")
+    else:
+        print(f"[ERROR] {error.message}")
+    
+    # Print field if provided
+    if error.field:
+        print(f"  Field: {error.field}")
+    
+    # Print suggestion if provided
+    if error.suggestion:
+        print(f"  Suggestion: {error.suggestion}")
+
+
+# =============================================================================
 # TableFormatter Infrastructure for List Commands
 # =============================================================================
 
