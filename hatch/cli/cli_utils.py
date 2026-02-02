@@ -349,6 +349,51 @@ class ConsequenceType(Enum):
         return self.value[3]
 
 
+# =============================================================================
+# ValidationError Exception for Structured Error Reporting
+# =============================================================================
+
+
+class ValidationError(Exception):
+    """Validation error with structured context.
+    
+    Provides structured error information for input validation failures,
+    including optional field name and suggestion for resolution.
+    
+    Reference: R13 §4.2.2 (13-error_message_formatting_v0.md)
+    
+    Attributes:
+        message: Human-readable error description
+        field: Optional field/argument name that caused the error
+        suggestion: Optional suggestion for resolving the error
+    
+    Example:
+        >>> raise ValidationError(
+        ...     "Invalid host 'vsc'",
+        ...     field="--host",
+        ...     suggestion="Supported hosts: claude-desktop, vscode, cursor"
+        ... )
+    """
+    
+    def __init__(
+        self,
+        message: str,
+        field: str = None,
+        suggestion: str = None
+    ):
+        """Initialize ValidationError.
+        
+        Args:
+            message: Human-readable error description
+            field: Optional field/argument name that caused the error
+            suggestion: Optional suggestion for resolving the error
+        """
+        self.message = message
+        self.field = field
+        self.suggestion = suggestion
+        super().__init__(message)
+
+
 from dataclasses import dataclass, field
 from typing import List
 
