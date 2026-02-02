@@ -100,7 +100,7 @@ def handle_package_remove(args: Namespace) -> int:
         reporter.report_result()
         return EXIT_SUCCESS
     else:
-        print(f"[ERROR] Failed to remove package: {package_name}")
+        reporter.report_error(f"Failed to remove package '{package_name}'")
         return EXIT_ERROR
 
 
@@ -376,7 +376,7 @@ def handle_package_add(args: Namespace) -> int:
         refresh_registry,
         auto_approve,
     ):
-        print(f"[ERROR] Failed to add package: {package_path_or_name}")
+        reporter.report_error(f"Failed to add package '{package_path_or_name}'")
         return EXIT_ERROR
 
     # Handle MCP host configuration if requested
@@ -497,7 +497,9 @@ def handle_package_sync(args: Namespace) -> int:
                 print(f"Warning: Could not get MCP configuration for package '{pkg_name}': {e}")
 
         if not server_configs:
-            print(f"[ERROR] No MCP server configurations found for package '{package_name}' or its dependencies")
+            reporter.report_error(
+                f"No MCP server configurations found for package '{package_name}' or its dependencies"
+            )
             return EXIT_ERROR
 
         # Build consequences for preview/confirmation
@@ -553,5 +555,5 @@ def handle_package_sync(args: Namespace) -> int:
             return EXIT_ERROR
 
     except ValueError as e:
-        print(f"[ERROR] {e}")
+        reporter.report_error(str(e))
         return EXIT_ERROR
