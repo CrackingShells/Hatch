@@ -65,6 +65,8 @@ from hatch.cli.cli_utils import (
     get_package_mcp_server_config,
     TableFormatter,
     ColumnDef,
+    ValidationError,
+    format_validation_error,
 )
 
 
@@ -176,7 +178,11 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
         env_name = env_name or env_manager.get_current_environment()
 
         if not env_manager.environment_exists(env_name):
-            print(f"Error: Environment '{env_name}' does not exist")
+            format_validation_error(ValidationError(
+                f"Environment '{env_name}' does not exist",
+                field="--env",
+                suggestion="Use 'hatch env list' to see available environments"
+            ))
             return EXIT_ERROR
 
         packages = env_manager.list_packages(env_name)
@@ -251,7 +257,11 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
             try:
                 pattern_re = re.compile(server_pattern)
             except re.error as e:
-                print(f"Error: Invalid regex pattern '{server_pattern}': {e}")
+                format_validation_error(ValidationError(
+                    f"Invalid regex pattern '{server_pattern}': {e}",
+                    field="--server",
+                    suggestion="Use a valid Python regex pattern"
+                ))
                 return EXIT_ERROR
         
         # Build Hatch management lookup: {server_name: {host: env_name}}
@@ -387,7 +397,11 @@ def handle_mcp_list_servers(args: Namespace) -> int:
             try:
                 host_re = re.compile(host_pattern)
             except re.error as e:
-                print(f"Error: Invalid regex pattern '{host_pattern}': {e}")
+                format_validation_error(ValidationError(
+                    f"Invalid regex pattern '{host_pattern}': {e}",
+                    field="--host",
+                    suggestion="Use a valid Python regex pattern"
+                ))
                 return EXIT_ERROR
         
         # Get all available hosts
@@ -531,7 +545,11 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
             try:
                 pattern_re = re.compile(server_pattern)
             except re.error as e:
-                print(f"Error: Invalid regex pattern '{server_pattern}': {e}")
+                format_validation_error(ValidationError(
+                    f"Invalid regex pattern '{server_pattern}': {e}",
+                    field="--server",
+                    suggestion="Use a valid Python regex pattern"
+                ))
                 return EXIT_ERROR
         
         # Build Hatch management lookup: {server_name: {host: (env_name, version, last_synced)}}
@@ -742,7 +760,11 @@ def handle_mcp_show_servers(args: Namespace) -> int:
             try:
                 pattern_re = re.compile(host_pattern)
             except re.error as e:
-                print(f"Error: Invalid regex pattern '{host_pattern}': {e}")
+                format_validation_error(ValidationError(
+                    f"Invalid regex pattern '{host_pattern}': {e}",
+                    field="--host",
+                    suggestion="Use a valid Python regex pattern"
+                ))
                 return EXIT_ERROR
         
         # Build Hatch management lookup: {server_name: {host: (env_name, version, last_synced)}}
@@ -950,9 +972,11 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
         try:
             host_type = MCPHostType(host)
         except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
+            format_validation_error(ValidationError(
+                f"Invalid host '{host}'",
+                field="--host",
+                suggestion=f"Supported hosts: {', '.join(h.value for h in MCPHostType)}"
+            ))
             return EXIT_ERROR
 
         backup_manager = MCPHostConfigBackupManager()
@@ -961,12 +985,20 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
         if backup_file:
             backup_path = backup_manager.backup_root / host / backup_file
             if not backup_path.exists():
-                print(f"Error: Backup file '{backup_file}' not found for host '{host}'")
+                format_validation_error(ValidationError(
+                    f"Backup file '{backup_file}' not found for host '{host}'",
+                    field="backup_file",
+                    suggestion=f"Use 'hatch mcp backup list {host}' to see available backups"
+                ))
                 return EXIT_ERROR
         else:
             backup_path = backup_manager._get_latest_backup(host)
             if not backup_path:
-                print(f"Error: No backups found for host '{host}'")
+                format_validation_error(ValidationError(
+                    f"No backups found for host '{host}'",
+                    field="--host",
+                    suggestion="Create a backup first with 'hatch mcp configure' which auto-creates backups"
+                ))
                 return EXIT_ERROR
             backup_file = backup_path.name
 
@@ -1051,9 +1083,11 @@ def handle_mcp_backup_list(args: Namespace) -> int:
         try:
             host_type = MCPHostType(host)
         except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
+            format_validation_error(ValidationError(
+                f"Invalid host '{host}'",
+                field="--host",
+                suggestion=f"Supported hosts: {', '.join(h.value for h in MCPHostType)}"
+            ))
             return EXIT_ERROR
 
         backup_manager = MCPHostConfigBackupManager()
@@ -1144,14 +1178,19 @@ def handle_mcp_backup_clean(args: Namespace) -> int:
         try:
             host_type = MCPHostType(host)
         except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
+            format_validation_error(ValidationError(
+                f"Invalid host '{host}'",
+                field="--host",
+                suggestion=f"Supported hosts: {', '.join(h.value for h in MCPHostType)}"
+            ))
             return EXIT_ERROR
 
         # Validate cleanup criteria
         if not older_than_days and not keep_count:
-            print("Error: Must specify either --older-than-days or --keep-count")
+            format_validation_error(ValidationError(
+                "Must specify either --older-than-days or --keep-count",
+                suggestion="Use --older-than-days N to remove backups older than N days, or --keep-count N to keep only the N most recent"
+            ))
             return EXIT_ERROR
 
         backup_manager = MCPHostConfigBackupManager()
@@ -1286,30 +1325,38 @@ def handle_mcp_configure(args: Namespace) -> int:
         try:
             host_type = MCPHostType(host)
         except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
+            format_validation_error(ValidationError(
+                f"Invalid host '{host}'",
+                field="--host",
+                suggestion=f"Supported hosts: {', '.join(h.value for h in MCPHostType)}"
+            ))
             return EXIT_ERROR
 
         # Validate Claude Desktop/Code transport restrictions (Issue 2)
         if host_type in (MCPHostType.CLAUDE_DESKTOP, MCPHostType.CLAUDE_CODE):
             if url is not None:
-                print(
-                    f"Error: {host} does not support remote servers (--url). Only local servers with --command are supported."
-                )
+                format_validation_error(ValidationError(
+                    f"{host} does not support remote servers (--url)",
+                    field="--url",
+                    suggestion="Only local servers with --command are supported for this host"
+                ))
                 return EXIT_ERROR
 
         # Validate argument dependencies
         if command and header:
-            print(
-                "Error: --header can only be used with --url or --http-url (remote servers), not with --command (local servers)"
-            )
+            format_validation_error(ValidationError(
+                "--header can only be used with --url or --http-url (remote servers)",
+                field="--header",
+                suggestion="Remove --header when using --command (local servers)"
+            ))
             return EXIT_ERROR
 
         if (url or http_url) and cmd_args:
-            print(
-                "Error: --args can only be used with --command (local servers), not with --url or --http-url (remote servers)"
-            )
+            format_validation_error(ValidationError(
+                "--args can only be used with --command (local servers)",
+                field="--args",
+                suggestion="Remove --args when using --url or --http-url (remote servers)"
+            ))
             return EXIT_ERROR
 
         # Check if server exists (for partial update support)
@@ -1320,9 +1367,10 @@ def handle_mcp_configure(args: Namespace) -> int:
         # Conditional validation: Create requires command OR url OR http_url, update does not
         if not is_update:
             if not command and not url and not http_url:
-                print(
-                    f"Error: When creating a new server, you must provide either --command (for local servers), --url (for SSE remote servers), or --http-url (for HTTP remote servers, Gemini only)"
-                )
+                format_validation_error(ValidationError(
+                    "When creating a new server, you must provide a transport type",
+                    suggestion="Use --command (local servers), --url (SSE remote servers), or --http-url (HTTP remote servers)"
+                ))
                 return EXIT_ERROR
 
         # Parse environment variables, headers, and inputs
@@ -1516,9 +1564,11 @@ def handle_mcp_remove(args: Namespace) -> int:
         try:
             host_type = MCPHostType(host)
         except ValueError:
-            print(
-                f"Error: Invalid host '{host}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
+            format_validation_error(ValidationError(
+                f"Invalid host '{host}'",
+                field="--host",
+                suggestion=f"Supported hosts: {', '.join(h.value for h in MCPHostType)}"
+            ))
             return EXIT_ERROR
 
         # Create ResultReporter for unified output
@@ -1600,14 +1650,25 @@ def handle_mcp_remove_server(args: Namespace) -> int:
             target_hosts = parse_host_list(hosts)
         elif env:
             # TODO: Implement environment-based server removal
-            print("Error: Environment-based removal not yet implemented")
+            format_validation_error(ValidationError(
+                "Environment-based removal not yet implemented",
+                field="--env",
+                suggestion="Use --host to specify target hosts directly"
+            ))
             return EXIT_ERROR
         else:
-            print("Error: Must specify either --host or --env")
+            format_validation_error(ValidationError(
+                "Must specify either --host or --env",
+                suggestion="Use --host HOST1,HOST2 or --env ENV_NAME"
+            ))
             return EXIT_ERROR
 
         if not target_hosts:
-            print("Error: No valid hosts specified")
+            format_validation_error(ValidationError(
+                "No valid hosts specified",
+                field="--host",
+                suggestion=f"Supported hosts: {', '.join(h.value for h in MCPHostType)}"
+            ))
             return EXIT_ERROR
 
         # Create ResultReporter for unified output
@@ -1705,9 +1766,11 @@ def handle_mcp_remove_host(args: Namespace) -> int:
         try:
             host_type = MCPHostType(host_name)
         except ValueError:
-            print(
-                f"Error: Invalid host '{host_name}'. Supported hosts: {[h.value for h in MCPHostType]}"
-            )
+            format_validation_error(ValidationError(
+                f"Invalid host '{host_name}'",
+                field="host_name",
+                suggestion=f"Supported hosts: {', '.join(h.value for h in MCPHostType)}"
+            ))
             return EXIT_ERROR
 
         # Create ResultReporter for unified output
@@ -1794,7 +1857,11 @@ def handle_mcp_sync(args: Namespace) -> int:
     try:
         # Parse target hosts
         if not to_hosts:
-            print("Error: Must specify --to-host")
+            format_validation_error(ValidationError(
+                "Must specify --to-host",
+                field="--to-host",
+                suggestion="Use --to-host HOST1,HOST2 or --to-host all"
+            ))
             return EXIT_ERROR
 
         target_hosts = parse_host_list(to_hosts)
@@ -1865,7 +1932,7 @@ def handle_mcp_sync(args: Namespace) -> int:
             return EXIT_ERROR
 
     except ValueError as e:
-        print(f"Error: {e}")
+        format_validation_error(ValidationError(str(e)))
         return EXIT_ERROR
     except Exception as e:
         print(f"Error during synchronization: {e}")
