@@ -957,7 +957,7 @@ def main():
     )
 
     # Create argument parser
-    parser = argparse.ArgumentParser(description="Hatch package manager CLI")
+    parser = HatchArgumentParser(description="Hatch package manager CLI")
 
     # Add version argument
     parser.add_argument(
