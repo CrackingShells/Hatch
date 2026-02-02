@@ -38,7 +38,39 @@ import logging
 import sys
 from pathlib import Path
 
-from hatch.cli.cli_utils import get_hatch_version
+from hatch.cli.cli_utils import get_hatch_version, Color, _colors_enabled
+
+
+class HatchArgumentParser(argparse.ArgumentParser):
+    """Custom ArgumentParser with formatted error messages.
+    
+    Overrides the error() method to format argparse errors with
+    [ERROR] prefix and bright red color (when colors enabled).
+    
+    Reference: R13 §4.2.1 (13-error_message_formatting_v0.md)
+    
+    Output format:
+        [ERROR] <message>
+    
+    Example:
+        >>> parser = HatchArgumentParser(description="Test CLI")
+        >>> parser.parse_args(['--invalid'])
+        [ERROR] unrecognized arguments: --invalid
+    """
+    
+    def error(self, message: str) -> None:
+        """Override to format errors with [ERROR] prefix and color.
+        
+        Args:
+            message: Error message from argparse
+        
+        Note:
+            Preserves exit code 2 (argparse convention).
+        """
+        if _colors_enabled():
+            self.exit(2, f"{Color.RED.value}[ERROR]{Color.RESET.value} {message}\n")
+        else:
+            self.exit(2, f"[ERROR] {message}\n")
 
 
 def _setup_create_command(subparsers):
