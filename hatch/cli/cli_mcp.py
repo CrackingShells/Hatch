@@ -1941,9 +1941,11 @@ def handle_mcp_sync(args: Namespace) -> int:
                 else:
                     result_reporter.add(ConsequenceType.SKIP, f"→ {res.hostname}: {res.error_message}")
             
+            # Add sync statistics as summary details
+            result_reporter.add(ConsequenceType.UPDATE, f"Servers synced: {result.servers_synced}")
+            result_reporter.add(ConsequenceType.UPDATE, f"Hosts updated: {result.hosts_updated}")
+            
             result_reporter.report_result()
-            print(f"  Servers synced: {result.servers_synced}")
-            print(f"  Hosts updated: {result.hosts_updated}")
 
             return EXIT_SUCCESS
         else:
