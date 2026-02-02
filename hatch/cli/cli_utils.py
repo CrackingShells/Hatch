@@ -826,6 +826,31 @@ def format_validation_error(error: "ValidationError") -> None:
         print(f"  Suggestion: {error.suggestion}")
 
 
+def format_info(message: str) -> None:
+    """Print formatted info message with color.
+    
+    Prints message with [INFO] prefix in bright blue color.
+    Used for informational messages like "Operation cancelled".
+    
+    Reference: R13-B §B.6.2 (13-error_message_formatting_appendix_b_v0.md)
+    
+    Args:
+        message: Info message to display
+    
+    Output format:
+        [INFO] <message>
+    
+    Example:
+        >>> from hatch.cli.cli_utils import format_info
+        >>> format_info("Operation cancelled")
+        [INFO] Operation cancelled
+    """
+    if _colors_enabled():
+        print(f"{Color.BLUE.value}[INFO]{Color.RESET.value} {message}")
+    else:
+        print(f"[INFO] {message}")
+
+
 # =============================================================================
 # TableFormatter Infrastructure for List Commands
 # =============================================================================
