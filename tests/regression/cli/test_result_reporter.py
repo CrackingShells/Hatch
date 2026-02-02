@@ -329,3 +329,258 @@ class TestConversionReportIntegration(unittest.TestCase):
         reporter.add_from_conversion_report(REPORT_MIXED_OPERATIONS)
         
         self.assertIn("cursor", reporter.consequences[0].message.lower())
+
+
+class TestReportError(unittest.TestCase):
+    """Tests for ResultReporter.report_error() method.
+    
+    Reference: R13 §4.2.3 (13-error_message_formatting_v0.md)
+    Reference: R13 §7 - Contracts & Invariants
+    """
+
+    def test_report_error_basic(self):
+        """report_error should print [ERROR] prefix with summary."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        # Capture stdout
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_error("Test error message")
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("[ERROR]", output)
+        self.assertIn("Test error message", output)
+
+    def test_report_error_with_details(self):
+        """report_error should print details with indentation."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_error("Summary", details=["Detail 1", "Detail 2"])
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("Detail 1", output)
+        self.assertIn("Detail 2", output)
+        # Details should be indented (2 spaces)
+        self.assertIn("  Detail 1", output)
+
+    def test_report_error_empty_summary_no_output(self):
+        """report_error with empty summary should produce no output."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_error("")
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertEqual(output, "")
+
+    def test_report_error_no_color_in_non_tty(self):
+        """report_error should not include ANSI codes when not in TTY."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        # StringIO is not a TTY, so colors should be disabled
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_error("Test error")
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        # Should not contain ANSI escape codes
+        self.assertNotIn("\033[", output)
+
+    def test_report_error_none_details_handled(self):
+        """report_error should handle None details gracefully."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_error("Test error", details=None)
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("[ERROR]", output)
+        self.assertIn("Test error", output)
+
+
+class TestReportPartialSuccess(unittest.TestCase):
+    """Tests for ResultReporter.report_partial_success() method.
+    
+    Reference: R13 §4.2.3 (13-error_message_formatting_v0.md)
+    Reference: R13 §7 - Contracts & Invariants
+    """
+
+    def test_report_partial_success_basic(self):
+        """report_partial_success should print [WARNING] prefix."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_partial_success("Test summary", ["ok"], [("fail", "reason")])
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("[WARNING]", output)
+        self.assertIn("Test summary", output)
+
+    def test_report_partial_success_unicode_symbols(self):
+        """report_partial_success should use ✓/✗ symbols in UTF-8 terminals."""
+        from hatch.cli.cli_utils import ResultReporter, _supports_unicode
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_partial_success("Test", ["success"], [("fail", "reason")])
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        if _supports_unicode():
+            self.assertIn("✓", output)
+            self.assertIn("✗", output)
+        else:
+            self.assertIn("+", output)
+            self.assertIn("x", output)
+
+    def test_report_partial_success_ascii_fallback(self):
+        """report_partial_success should use +/x in non-UTF8 terminals."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        import unittest.mock as mock
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            # Mock _supports_unicode to return False
+            with mock.patch('hatch.cli.cli_utils._supports_unicode', return_value=False):
+                reporter.report_partial_success("Test", ["success"], [("fail", "reason")])
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("+", output)
+        self.assertIn("x", output)
+
+    def test_report_partial_success_summary_line(self):
+        """report_partial_success should include summary line with counts."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_partial_success(
+                "Test",
+                ["ok1", "ok2"],
+                [("fail1", "r1"), ("fail2", "r2"), ("fail3", "r3")]
+            )
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("Summary: 2/5 succeeded", output)
+
+    def test_report_partial_success_no_color_in_non_tty(self):
+        """report_partial_success should not include ANSI codes when not in TTY."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_partial_success("Test", ["ok"], [("fail", "reason")])
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertNotIn("\033[", output)
+
+    def test_report_partial_success_failure_reason_shown(self):
+        """report_partial_success should show failure reason after colon."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_partial_success("Test", [], [("cursor", "Config file not found")])
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("cursor: Config file not found", output)
+
+    def test_report_partial_success_empty_lists(self):
+        """report_partial_success should handle empty success/failure lists."""
+        from hatch.cli.cli_utils import ResultReporter
+        import io
+        import sys
+        
+        reporter = ResultReporter("test")
+        
+        captured = io.StringIO()
+        sys.stdout = captured
+        try:
+            reporter.report_partial_success("Test", [], [])
+        finally:
+            sys.stdout = sys.__stdout__
+        
+        output = captured.getvalue()
+        self.assertIn("[WARNING]", output)
+        self.assertIn("Summary: 0/0 succeeded", output)
