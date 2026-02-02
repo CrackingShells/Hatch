@@ -425,6 +425,8 @@ Syntax:
 
 #### `hatch package list`
 
+**⚠️ DEPRECATED**: This command is deprecated. Use `hatch env list` to see packages inline with environment information, or `hatch env show <name>` for detailed package information.
+
 List packages installed in a Hatch environment.
 
 Syntax:
@@ -435,7 +437,19 @@ Syntax:
 |---:|---|---|---|
 | `--env`, `-e` | string | Hatch environment name (defaults to current) | current environment |
 
-Output: each package row includes name, version, hatch compliance flag, source URI and installation location.
+**Example Output**:
+
+```bash
+$ hatch package list
+Warning: 'hatch package list' is deprecated. Use 'hatch env list' instead, which shows packages inline.
+Packages in environment 'default':
+weather-server (1.0.0)	Hatch compliant: True	source: https://registry.example.com	location: /path/to/package
+```
+
+**Migration Guide**:
+- For package counts: Use `hatch env list` (shows package count per environment)
+- For detailed package info: Use `hatch env show <name>` (shows full package details)
+- For deployment info: Use `hatch env list hosts` or `hatch env list servers`
 
 #### `hatch package sync`
 
