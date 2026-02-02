@@ -67,6 +67,7 @@ from hatch.cli.cli_utils import (
     ColumnDef,
     ValidationError,
     format_validation_error,
+    ResultReporter,
 )
 
 
@@ -141,7 +142,8 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
         print(formatter.render())
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Error discovering hosts: {e}")
+        reporter = ResultReporter("hatch mcp discover hosts")
+        reporter.report_error("Failed to discover hosts", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -220,7 +222,8 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
 
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Error discovering servers: {e}")
+        reporter = ResultReporter("hatch mcp discover servers")
+        reporter.report_error("Failed to discover servers", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -360,7 +363,8 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
         print(formatter.render())
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Error listing hosts: {e}")
+        reporter = ResultReporter("hatch mcp list hosts")
+        reporter.report_error("Failed to list hosts", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -503,7 +507,8 @@ def handle_mcp_list_servers(args: Namespace) -> int:
         print(formatter.render())
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Error listing servers: {e}")
+        reporter = ResultReporter("hatch mcp list servers")
+        reporter.report_error("Failed to list servers", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -722,7 +727,8 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
         
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Error showing host configurations: {e}")
+        reporter = ResultReporter("hatch mcp show hosts")
+        reporter.report_error("Failed to show host configurations", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -935,7 +941,8 @@ def handle_mcp_show_servers(args: Namespace) -> int:
         
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Error showing server configurations: {e}")
+        reporter = ResultReporter("hatch mcp show servers")
+        reporter.report_error("Failed to show server configurations", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1055,7 +1062,8 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
             return EXIT_ERROR
 
     except Exception as e:
-        print(f"Error restoring backup: {e}")
+        reporter = ResultReporter("hatch mcp backup restore")
+        reporter.report_error("Failed to restore backup", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1141,7 +1149,8 @@ def handle_mcp_backup_list(args: Namespace) -> int:
 
         return EXIT_SUCCESS
     except Exception as e:
-        print(f"Error listing backups: {e}")
+        reporter = ResultReporter("hatch mcp backup list")
+        reporter.report_error("Failed to list backups", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1260,7 +1269,8 @@ def handle_mcp_backup_clean(args: Namespace) -> int:
             return EXIT_SUCCESS
 
     except Exception as e:
-        print(f"Error cleaning backups: {e}")
+        reporter = ResultReporter("hatch mcp backup clean")
+        reporter.report_error("Failed to clean backups", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1527,7 +1537,8 @@ def handle_mcp_configure(args: Namespace) -> int:
             return EXIT_ERROR
 
     except Exception as e:
-        print(f"Error configuring MCP server: {e}")
+        reporter = ResultReporter("hatch mcp configure")
+        reporter.report_error("Failed to configure MCP server", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1607,7 +1618,8 @@ def handle_mcp_remove(args: Namespace) -> int:
             return EXIT_ERROR
 
     except Exception as e:
-        print(f"Error removing MCP server: {e}")
+        reporter = ResultReporter("hatch mcp remove")
+        reporter.report_error("Failed to remove MCP server", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1729,7 +1741,8 @@ def handle_mcp_remove_server(args: Namespace) -> int:
             return EXIT_ERROR
 
     except Exception as e:
-        print(f"Error removing MCP server: {e}")
+        reporter = ResultReporter("hatch mcp remove-server")
+        reporter.report_error("Failed to remove MCP server", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1815,7 +1828,8 @@ def handle_mcp_remove_host(args: Namespace) -> int:
             return EXIT_ERROR
 
     except Exception as e:
-        print(f"Error removing host configuration: {e}")
+        reporter = ResultReporter("hatch mcp remove-host")
+        reporter.report_error("Failed to remove host configuration", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
 
 
@@ -1935,5 +1949,6 @@ def handle_mcp_sync(args: Namespace) -> int:
         format_validation_error(ValidationError(str(e)))
         return EXIT_ERROR
     except Exception as e:
-        print(f"Error during synchronization: {e}")
+        reporter = ResultReporter("hatch mcp sync")
+        reporter.report_error("Failed to synchronize", details=[f"Reason: {str(e)}"])
         return EXIT_ERROR
