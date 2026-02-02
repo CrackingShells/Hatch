@@ -188,6 +188,28 @@ class Color(Enum):
     RESET = "\033[0m"
 
 
+def _supports_unicode() -> bool:
+    """Check if terminal supports UTF-8 for unicode symbols.
+    
+    Used to determine whether to use ✓/✗ symbols or ASCII fallback (+/x)
+    in partial success reporting.
+    
+    Reference: R13 §12.3 (13-error_message_formatting_v0.md)
+    
+    Returns:
+        bool: True if terminal supports UTF-8, False otherwise.
+    
+    Example:
+        >>> if _supports_unicode():
+        ...     success_symbol = "✓"
+        ... else:
+        ...     success_symbol = "+"
+    """
+    import locale
+    encoding = locale.getpreferredencoding(False)
+    return encoding.lower() in ('utf-8', 'utf8')
+
+
 def _colors_enabled() -> bool:
     """Check if color output should be enabled.
     
