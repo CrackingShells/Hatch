@@ -851,6 +851,37 @@ def format_info(message: str) -> None:
         print(f"[INFO] {message}")
 
 
+def format_warning(message: str, suggestion: str = None) -> None:
+    """Print formatted warning message with color.
+    
+    Prints message with [WARNING] prefix in bright yellow color.
+    Used for non-fatal warnings that don't prevent operation completion.
+    
+    Reference: R13-A §A.5 P3 (13-error_message_formatting_appendix_a_v0.md)
+    
+    Args:
+        message: Warning message to display
+        suggestion: Optional suggestion for resolution
+    
+    Output format:
+        [WARNING] <message>
+          Suggestion: <suggestion> (if provided)
+    
+    Example:
+        >>> from hatch.cli.cli_utils import format_warning
+        >>> format_warning("Invalid header format 'foo'", suggestion="Expected KEY=VALUE")
+        [WARNING] Invalid header format 'foo'
+          Suggestion: Expected KEY=VALUE
+    """
+    if _colors_enabled():
+        print(f"{Color.YELLOW.value}[WARNING]{Color.RESET.value} {message}")
+    else:
+        print(f"[WARNING] {message}")
+    
+    if suggestion:
+        print(f"  Suggestion: {suggestion}")
+
+
 # =============================================================================
 # TableFormatter Infrastructure for List Commands
 # =============================================================================
