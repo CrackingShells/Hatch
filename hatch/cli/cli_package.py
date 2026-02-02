@@ -44,6 +44,7 @@ from hatch.cli.cli_utils import (
     get_package_mcp_server_config,
     ResultReporter,
     ConsequenceType,
+    format_warning,
 )
 from hatch.mcp_host_config import (
     MCPHostConfigurationManager,
@@ -191,12 +192,14 @@ def _get_package_names_with_dependencies(
                         break
 
             if package_service is None:
-                print(
-                    f"Warning: Could not find package '{package_name}' in environment '{env_name}'. Skipping dependency analysis."
+                format_warning(
+                    f"Could not find package '{package_name}' in environment '{env_name}'",
+                    suggestion="Skipping dependency analysis"
                 )
         except Exception as e:
-            print(
-                f"Warning: Could not load package metadata for '{package_name}': {e}. Skipping dependency analysis."
+            format_warning(
+                f"Could not load package metadata for '{package_name}': {e}",
+                suggestion="Skipping dependency analysis"
             )
 
     # Get dependency names if we have package service
@@ -216,8 +219,8 @@ def _get_package_names_with_dependencies(
                         dep_service = PackageService(dep_metadata)
                     package_names[i] = dep_service.get_field("name")
                 except Exception as e:
-                    print(
-                        f"Warning: Could not resolve dependency path '{package_names[i]}': {e}"
+                    format_warning(
+                        f"Could not resolve dependency path '{package_names[i]}': {e}"
                     )
 
     # Add the main package to the list
@@ -260,7 +263,7 @@ def _configure_packages_on_hosts(
             config = get_package_mcp_server_config(env_manager, env_name, pkg_name)
             server_configs.append((pkg_name, config))
         except Exception as e:
-            print(f"Warning: Could not get MCP configuration for package '{pkg_name}': {e}")
+            format_warning(f"Could not get MCP configuration for package '{pkg_name}': {e}")
 
     if not server_configs:
         return 0, 0
@@ -317,7 +320,7 @@ def _configure_packages_on_hosts(
                                 server_config=server_config_dict,
                             )
                         except Exception as e:
-                            print(f"[WARNING] Failed to update package metadata for {pkg_name}: {e}")
+                            format_warning(f"Failed to update package metadata for {pkg_name}: {e}")
                     else:
                         print(f"✗ Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
 
@@ -401,7 +404,7 @@ def handle_package_add(args: Namespace) -> int:
             )
 
         except ValueError as e:
-            print(f"Warning: MCP host configuration failed: {e}")
+            format_warning(f"MCP host configuration failed: {e}")
             # Don't fail the entire operation for MCP configuration issues
 
     # Report results
@@ -475,16 +478,19 @@ def handle_package_sync(args: Namespace) -> int:
                     # Add dependencies to the sync list (before main package)
                     package_names = dep_names + [package_name]
                 else:
-                    print(
-                        f"Warning: Package '{package_name}' not found in environment '{env_name}'. Syncing only the specified package."
+                    format_warning(
+                        f"Package '{package_name}' not found in environment '{env_name}'",
+                        suggestion="Syncing only the specified package"
                     )
             else:
-                print(
-                    f"Warning: Could not access environment '{env_name}'. Syncing only the specified package."
+                format_warning(
+                    f"Could not access environment '{env_name}'",
+                    suggestion="Syncing only the specified package"
                 )
         except Exception as e:
-            print(
-                f"Warning: Could not analyze dependencies for '{package_name}': {e}. Syncing only the specified package."
+            format_warning(
+                f"Could not analyze dependencies for '{package_name}': {e}",
+                suggestion="Syncing only the specified package"
             )
 
         # Get MCP server configurations for all packages
@@ -494,7 +500,7 @@ def handle_package_sync(args: Namespace) -> int:
                 config = get_package_mcp_server_config(env_manager, env_name, pkg_name)
                 server_configs.append((pkg_name, config))
             except Exception as e:
-                print(f"Warning: Could not get MCP configuration for package '{pkg_name}': {e}")
+                format_warning(f"Could not get MCP configuration for package '{pkg_name}': {e}")
 
         if not server_configs:
             reporter.report_error(
