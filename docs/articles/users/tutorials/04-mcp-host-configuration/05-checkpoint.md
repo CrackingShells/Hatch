@@ -120,12 +120,16 @@ You now have comprehensive skills for managing MCP server deployments across dif
 **Environment Issues**:
 - List available environments with `hatch env list`
 - Verify current environment with `hatch env current`
-- Check package installation with `hatch package list`
+- View environment details with `hatch env show <name>`
 
 **Practical Diagnostics**:
 - Check host platform detection: `hatch mcp discover hosts`
-- List configured servers: `hatch mcp list servers --env <env_name>`
-- Check server configuration details: `hatch mcp list servers --env <env_name> --host <host>`
+- List environment deployments by host: `hatch env list hosts --env <env_name>`
+- List environment deployments by server: `hatch env list servers --env <env_name>`
+- List host/server pairs from host configs: `hatch mcp list hosts`
+- List server/host pairs from host configs: `hatch mcp list servers`
+- View detailed host configurations: `hatch mcp show hosts`
+- View detailed server configurations: `hatch mcp show servers`
 - Validate package structure: `hatch validate <package_dir>`
 - Test configuration preview: `--dry-run` flag on any command
 - Check backup status: `hatch mcp backup list <host>`
