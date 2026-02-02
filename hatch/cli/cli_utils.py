@@ -389,7 +389,7 @@ class Consequence:
     children: List["Consequence"] = field(default_factory=list)
 
 
-from typing import Optional
+from typing import Optional, Tuple
 
 
 class ResultReporter:
@@ -666,6 +666,72 @@ class ResultReporter:
         if details:
             for detail in details:
                 print(f"  {detail}")
+    
+    def report_partial_success(
+        self,
+        summary: str,
+        successes: List[str],
+        failures: List[Tuple[str, str]]
+    ) -> None:
+        """Report mixed success/failure results with ✓/✗ symbols.
+        
+        Prints warning message with [WARNING] prefix in bright yellow color.
+        Uses ✓/✗ symbols for success/failure items (with ASCII fallback).
+        Includes summary line showing success ratio.
+        
+        Reference: R13 §4.2.3 (13-error_message_formatting_v0.md)
+        
+        Args:
+            summary: High-level summary description
+            successes: List of successful item descriptions
+            failures: List of (item, reason) tuples for failed items
+        
+        Output format:
+            [WARNING] <summary>
+              ✓ <success_item>
+              ✗ <failure_item>: <reason>
+              Summary: X/Y succeeded
+        
+        Example:
+            >>> reporter = ResultReporter("hatch mcp sync")
+            >>> reporter.report_partial_success(
+            ...     "Partial synchronization",
+            ...     successes=["claude-desktop (backup: ~/.hatch/backups/...)"],
+            ...     failures=[("cursor", "Config file not found")]
+            ... )
+            [WARNING] Partial synchronization
+              ✓ claude-desktop (backup: ~/.hatch/backups/...)
+              ✗ cursor: Config file not found
+              Summary: 1/2 succeeded
+        """
+        # Determine symbols based on unicode support
+        success_symbol = "✓" if _supports_unicode() else "+"
+        failure_symbol = "✗" if _supports_unicode() else "x"
+        
+        # Print warning header with color
+        if _colors_enabled():
+            print(f"{Color.YELLOW.value}[WARNING]{Color.RESET.value} {summary}")
+        else:
+            print(f"[WARNING] {summary}")
+        
+        # Print success items
+        for item in successes:
+            if _colors_enabled():
+                print(f"  {Color.GREEN.value}{success_symbol}{Color.RESET.value} {item}")
+            else:
+                print(f"  {success_symbol} {item}")
+        
+        # Print failure items
+        for item, reason in failures:
+            if _colors_enabled():
+                print(f"  {Color.RED.value}{failure_symbol}{Color.RESET.value} {item}: {reason}")
+            else:
+                print(f"  {failure_symbol} {item}: {reason}")
+        
+        # Print summary line
+        total = len(successes) + len(failures)
+        succeeded = len(successes)
+        print(f"  Summary: {succeeded}/{total} succeeded")
 
 
 # =============================================================================
