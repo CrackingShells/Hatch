@@ -68,6 +68,45 @@ hatch mcp list servers
 hatch mcp list servers --env-var production
 ```
 
+### Viewing Host Configurations
+
+Hatch provides multiple ways to view MCP host configurations:
+
+**Table Views** (for quick overview):
+- `hatch mcp list hosts`: View all hosts and their servers
+- `hatch mcp list servers`: View all servers and their hosts
+
+**Detailed Views** (for comprehensive information):
+- `hatch mcp show hosts`: Detailed view of all host configurations
+- `hatch mcp show servers`: Detailed view of all server configurations
+
+**Filtering**:
+All commands support regex filtering:
+- `hatch mcp list hosts --server "weather.*"`: Show only servers matching pattern
+- `hatch mcp show servers --host "claude.*"`: Show only hosts matching pattern
+
+**Examples**:
+
+```bash
+# View all hosts with their servers (table view)
+hatch mcp list hosts
+
+# View all servers with their hosts (table view)
+hatch mcp list servers
+
+# View detailed host configurations
+hatch mcp show hosts
+
+# View detailed server configurations
+hatch mcp show servers
+
+# Filter by server name using regex
+hatch mcp show hosts --server "weather.*"
+
+# Filter by host name using regex
+hatch mcp show servers --host "claude.*"
+```
+
 ### Remove a Server
 
 Remove an MCP server from a host:
