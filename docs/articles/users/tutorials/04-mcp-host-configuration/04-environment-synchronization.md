@@ -145,12 +145,16 @@ hatch mcp sync --from-env project_beta --to-host all
 Check what was deployed to each host for each project:
 
 ```bash
-# Check project_alpha deployments
-hatch env use project_alpha
-hatch mcp list servers
+# View environment deployments by host (environment → host → server)
+hatch env list hosts --env project_alpha
 
-# Check project_beta deployments
-hatch env use project_beta
+# View environment deployments by server (environment → server → host)
+hatch env list servers --env project_alpha
+
+# Check host configurations (shows all servers on all hosts)
+hatch mcp list hosts
+
+# Check server configurations (shows all servers across hosts)
 hatch mcp list servers
 ```
 
@@ -223,12 +227,23 @@ Will restore the latest backup available. For a more granular restoration, you c
 Use environment-scoped commands to verify your project configurations:
 
 ```bash
-# Check project_alpha server deployments
-hatch env use project_alpha
-hatch mcp list servers
+# View environment deployments by host
+hatch env list hosts --env project_alpha
 
-# Check which hosts have project_alpha servers configured
-hatch mcp list hosts
+# View environment deployments by server
+hatch env list servers --env project_alpha
+
+# View detailed host configurations
+hatch mcp show hosts
+
+# View detailed server configurations
+hatch mcp show servers
+
+# Filter by server name using regex
+hatch mcp show hosts --server "weather.*"
+
+# Filter by host name using regex
+hatch mcp show servers --host "claude.*"
 ```
 
 ### Common Project Isolation Issues
