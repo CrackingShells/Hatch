@@ -626,6 +626,46 @@ class ResultReporter:
                 # Optionally filter out UNCHANGED/SKIP in results for noise reduction
                 # For now, show all for transparency
                 print(self._format_consequence(child, use_result_tense=True, indent=4))
+    
+    def report_error(self, summary: str, details: Optional[List[str]] = None) -> None:
+        """Report execution failure with structured details.
+        
+        Prints error message with [ERROR] prefix in bright red color (when colors enabled).
+        Details are indented with 2 spaces for visual hierarchy.
+        
+        Reference: R13 §4.2.3 (13-error_message_formatting_v0.md)
+        
+        Args:
+            summary: High-level error description
+            details: Optional list of detail lines to print below summary
+        
+        Output format:
+            [ERROR] <summary>
+              <detail_line_1>
+              <detail_line_2>
+        
+        Example:
+            >>> reporter = ResultReporter("hatch env create")
+            >>> reporter.report_error(
+            ...     "Failed to create environment 'dev'",
+            ...     details=["Python environment creation failed: conda not available"]
+            ... )
+            [ERROR] Failed to create environment 'dev'
+              Python environment creation failed: conda not available
+        """
+        if not summary:
+            return
+        
+        # Print error header with color
+        if _colors_enabled():
+            print(f"{Color.RED.value}[ERROR]{Color.RESET.value} {summary}")
+        else:
+            print(f"[ERROR] {summary}")
+        
+        # Print details with indentation
+        if details:
+            for detail in details:
+                print(f"  {detail}")
 
 
 # =============================================================================
