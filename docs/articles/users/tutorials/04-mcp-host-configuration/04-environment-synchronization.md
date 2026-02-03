@@ -121,11 +121,14 @@ hatch mcp sync --from-env project_alpha --to-host claude-desktop,cursor
 **Expected Output**:
 
 ```text
-Synchronize MCP configurations from host 'claude-desktop' to 1 host(s)? [y/N]: y
-[SUCCESS] Synchronization completed
-  Servers synced: 4
-  Hosts updated: 1
-  ✓ cursor (backup: path\to\.hatch\mcp_host_config_backups\cursor\mcp.json.cursor.20251124_225305_495653)
+[SYNC] MCP configurations from environment 'project_alpha' to 2 host(s)
+
+Proceed? [y/N]: y
+[SUCCESS] Operation completed:
+  [SYNCED] Servers synced: 4
+  [UPDATED] Hosts updated: 2
+  [CREATED] Backup: ~/.hatch/mcp_host_config_backups/cursor/mcp.json.cursor.20251124_225305_495653
+  [CREATED] Backup: ~/.hatch/mcp_host_config_backups/claude-desktop/mcp.json.claude-desktop.20251124_225306_123456
 ```
 
 ### Deploy Project-Beta to All Hosts
@@ -273,7 +276,7 @@ Hatch creates automatic backups before any configuration changes. You don't need
 
 ```bash
 # List available backups (always created automatically)
-hatch mcp backup list --host claude-desktop
+hatch mcp backup list claude-desktop
 
 # Clean old backups if needed
 hatch mcp backup clean claude-desktop --keep-count 10
@@ -282,8 +285,11 @@ hatch mcp backup clean claude-desktop --keep-count 10
 **Restore Project Configuration**:
 
 ```bash
-# Restore from specific backup
-hatch mcp backup restore claude-desktop project_alpha-stable
+# Restore latest backup
+hatch mcp backup restore claude-desktop
+
+# Restore from specific backup file
+hatch mcp backup restore claude-desktop --backup-file mcp.json.claude-desktop.20231201_143022
 
 # Then re-sync current project if needed
 hatch env use project_alpha

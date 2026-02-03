@@ -115,22 +115,20 @@ Hatch currently supports configuration for these MCP host platforms:
 hatch mcp discover hosts
 ```
 
-**Possible Output (depending on the software you have installed)**:
+**Example Output (depending on the software you have installed)**:
 
 ```plaintext
-Available MCP host platforms:
-  claude-desktop: ✓ Available
-    Config path: path/to/claude_desktop_config.json
-  claude-code: ✗ Not detected
-    Config path: path/to/.claude/mcp_config.json
-  vscode: ✗ Not detected
-    Config path: path/to/.vscode/settings.json
-  cursor: ✓ Available
-    Config path: path/to/.cursor/mcp.json
-  lmstudio: ✓ Available
-    Config path: path/toLMStudio/mcp.json
-  gemini: ✓ Available
-    Config path: path/to/.gemini/settings.json
+Available MCP Host Platforms:
+  Host                Status           Config Path
+  ─────────────────────────────────────────────────────────────────
+  claude-desktop      ✓ Available      /Users/user/.config/claude/claude_desktop_config.json
+  claude-code         ✗ Not Found      -
+  vscode              ✗ Not Found      -
+  cursor              ✓ Available      /Users/user/.cursor/mcp.json
+  kiro                ✗ Not Found      -
+  codex               ✗ Not Found      -
+  lmstudio            ✓ Available      /Users/user/Library/Application Support/LMStudio/mcp.json
+  gemini              ✓ Available      /Users/user/.gemini/settings.json
 ```
 
 ### Check Current Environment
