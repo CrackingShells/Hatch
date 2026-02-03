@@ -69,7 +69,13 @@ hatch --help
 
 ```txt
 hatch/
-├── cli_hatch.py                    # Main CLI entry point
+├── cli/                            # Modular CLI package
+│   ├── __main__.py                # Entry point and routing
+│   ├── cli_utils.py               # Shared utilities
+│   ├── cli_env.py                 # Environment handlers
+│   ├── cli_package.py             # Package handlers
+│   ├── cli_mcp.py                 # MCP handlers
+│   └── cli_system.py              # System handlers
 ├── environment_manager.py          # Environment lifecycle management
 ├── package_loader.py              # Package loading and validation
 ├── registry_retriever.py          # Package downloads and caching

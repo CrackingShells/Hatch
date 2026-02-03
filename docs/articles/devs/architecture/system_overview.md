@@ -22,9 +22,16 @@ Hatch is a sophisticated package management system designed for the CrackingShel
 
 The command-line interface provides the primary user interaction point:
 
-- **`hatch/cli_hatch.py`** - Command-line interface with argument parsing and validation
+- **`hatch/cli/`** - Modular CLI package with handler-based architecture
+  - `__main__.py` - Entry point with argument parsing and routing
+  - `cli_utils.py` - Shared utilities and formatting infrastructure
+  - `cli_env.py` - Environment management handlers
+  - `cli_package.py` - Package management handlers
+  - `cli_mcp.py` - MCP host configuration handlers
+  - `cli_system.py` - System-level command handlers
 - Delegates operations to appropriate management components
 - Provides consistent user experience across all operations
+- Uses unified output formatting (ResultReporter, TableFormatter)
 
 ### Environment Management Layer
 

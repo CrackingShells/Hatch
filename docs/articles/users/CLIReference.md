@@ -1086,5 +1086,5 @@ Syntax:
 
 ## Notes
 
-- The implementation in `hatch/cli_hatch.py` does not provide a `--version` flag or a top-level `version` command. Use `hatch --help` to inspect available commands and options.
-- This reference mirrors the command names and option names implemented in `hatch/cli_hatch.py`. If you change CLI arguments in code, update this file to keep documentation in sync.
+- The CLI is implemented in the `hatch/cli/` package with modular handler modules. Use `hatch --help` to inspect available commands and options.
+- This reference mirrors the command names and option names implemented in the CLI handlers. If you change CLI arguments in code, update this file to keep documentation in sync.

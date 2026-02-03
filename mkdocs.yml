@@ -71,6 +71,7 @@ nav:
           - Overview: articles/devs/architecture/index.md
           - System Overview: articles/devs/architecture/system_overview.md
           - Component Architecture: articles/devs/architecture/component_architecture.md
+          - CLI Architecture: articles/devs/architecture/cli_architecture.md
           - MCP Host Configuration: articles/devs/architecture/mcp_host_configuration.md
           - MCP Host Backup System: articles/devs/architecture/mcp_backup_system.md
       - Contribution Guides:
@@ -83,6 +84,7 @@ nav:
           - Testing Standards: articles/devs/development_processes/testing_standards.md
       - Implementation Guides:
           - Overview: articles/devs/implementation_guides/index.md
+          - Adding CLI Commands: articles/devs/implementation_guides/adding_cli_commands.md
           - Adding Installers: articles/devs/implementation_guides/adding_installers.md
           - Installation Orchestration: articles/devs/implementation_guides/installation_orchestration.md
           - Package Loader Extensions: articles/devs/implementation_guides/package_loader_extensions.md
@@ -91,12 +93,19 @@ nav:
   - API Reference:
       - Overview: articles/api/index.md
       - Core Modules:
-          - CLI: articles/api/cli.md
           - Environment Manager: articles/api/environment_manager.md
           - Package Loader: articles/api/package_loader.md
           - Python Environment Manager: articles/api/python_environment_manager.md
           - Registry Explorer: articles/api/registry_explorer.md
           - Template Generator: articles/api/template_generator.md
+      - CLI Package:
+          - Overview: articles/api/cli/index.md
+          - Entry Point: articles/api/cli/main.md
+          - Utilities: articles/api/cli/utils.md
+          - Environment Handlers: articles/api/cli/env.md
+          - Package Handlers: articles/api/cli/package.md
+          - MCP Handlers: articles/api/cli/mcp.md
+          - System Handlers: articles/api/cli/system.md
       - Installers:
           - Base Installer: articles/api/installers/base.md
           - Docker Installer: articles/api/installers/docker.md
