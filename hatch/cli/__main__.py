@@ -937,7 +937,7 @@ def _route_mcp_command(args):
         return 1
 
 
-def main():
+def main() -> int:
     """Main entry point for Hatch CLI.
 
     Parses command-line arguments and routes to appropriate handlers for:

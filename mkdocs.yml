@@ -25,7 +25,7 @@ plugins:
             show_labels: true
             show_symbol_type_heading: true
             show_symbol_type_toc: true
-  - print-site
+  - print-site  # Must be last to ensure print page has all plugin changes
 
 markdown_extensions:
   - admonition
