@@ -108,6 +108,71 @@ This article is about:
 - Multiple registry source support
 - Package relationship analysis
 
+### CLI Components
+
+#### Entry Point (`hatch/cli/__main__.py`)
+
+**Responsibilities:**
+
+- Command-line argument parsing and validation
+- Manager initialization and dependency injection
+- Command routing to appropriate handler modules
+- Top-level error handling and exit code management
+
+**Key Features:**
+
+- Custom `HatchArgumentParser` with formatted error messages
+- Shared manager instances (HatchEnvironmentManager, MCPHostConfigurationManager)
+- Modular command routing to handler modules
+- Consistent argument structure across all commands
+
+#### Handler Modules (`hatch/cli/cli_*.py`)
+
+**Responsibilities:**
+
+- Domain-specific command implementation
+- Business logic orchestration using managers
+- User interaction and confirmation prompts
+- Output formatting using shared utilities
+
+**Handler Modules:**
+
+- **cli_env.py** - Environment lifecycle and Python environment operations
+- **cli_package.py** - Package installation, removal, and synchronization
+- **cli_mcp.py** - MCP host configuration, discovery, and backup
+- **cli_system.py** - System-level operations (package creation, validation)
+
+**Key Features:**
+
+- Consistent handler signature: `(args: Namespace) -> int`
+- Unified output formatting via ResultReporter
+- Dry-run mode support for mutation commands
+- Confirmation prompts for destructive operations
+
+#### Shared Utilities (`hatch/cli/cli_utils.py`)
+
+**Responsibilities:**
+
+- Unified output formatting infrastructure
+- Color system with true color support and TTY detection
+- Table formatting for list commands
+- Error formatting and validation utilities
+
+**Key Components:**
+
+- **Color System** - HCL color palette with semantic mapping
+- **ConsequenceType** - Dual-tense action labels (prompt/result)
+- **ResultReporter** - Unified rendering for mutation commands
+- **TableFormatter** - Aligned table output for list commands
+- **Error Formatting** - Structured validation and error messages
+
+**Key Features:**
+
+- Respects NO_COLOR environment variable
+- True color (24-bit) with 16-color fallback
+- Consistent output across all commands
+- Nested consequence support (resource → field level)
+
 ### Installation System Components
 
 #### DependencyInstallerOrchestrator (`hatch/installers/dependency_installation_orchestrator.py`)
@@ -156,6 +221,18 @@ This article is about:
 - **HatchInstaller** - Hatch package dependency installation
 
 ## Component Data Flow
+
+### CLI Command Flow
+
+`User Input → __main__.py (Argument Parsing) → Handler Module → Manager(s) → Business Logic → ResultReporter → User Output`
+
+1. User executes CLI command with arguments
+2. `__main__.py` parses arguments using argparse
+3. Managers (HatchEnvironmentManager, MCPHostConfigurationManager) are initialized
+4. Command is routed to appropriate handler module
+5. Handler orchestrates business logic using manager methods
+6. ResultReporter formats output with consistent styling
+7. Exit code returned to shell
 
 ### Environment Creation Flow
 
@@ -287,5 +364,6 @@ This article is about:
 ## Related Documentation
 
 - [System Overview](./system_overview.md) - High-level architecture introduction
+- [CLI Architecture](./cli_architecture.md) - Detailed CLI design and patterns
 - [Implementation Guides](../implementation_guides/index.md) - Technical implementation guidance for specific components
 - [Development Processes](../development_processes/index.md) - Development workflow and testing standards
