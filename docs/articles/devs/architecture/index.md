@@ -12,6 +12,7 @@ Hatch is a sophisticated package management system designed for the CrackingShel
 
 - **[System Overview](./system_overview.md)** - High-level introduction to Hatch's architecture and core concepts
 - **[Component Architecture](./component_architecture.md)** - Detailed breakdown of major system components and their relationships
+- **[CLI Architecture](./cli_architecture.md)** - Command-line interface design, patterns, and output formatting
 
 ### Design Patterns
 

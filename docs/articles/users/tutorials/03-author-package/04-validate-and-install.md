@@ -39,7 +39,8 @@ The validation process checks:
 ### Successful Validation
 
 ```txt
-Package validation SUCCESSFUL: /path/to/my_package
+[SUCCESS] Operation completed:
+  [VALIDATED] Package 'my_package'
 ```
 
 The command will exit with status code 0 when validation succeeds.

@@ -1,6 +1,6 @@
 # CLI Reference
 
-This document is a compact reference of all Hatch CLI commands and options implemented in `hatch/cli_hatch.py` presented as tables for quick lookup.
+This document is a compact reference of all Hatch CLI commands and options implemented in the `hatch/cli/` package, presented as tables for quick lookup.
 
 ## Table of Contents
 
@@ -135,11 +135,136 @@ Syntax:
 
 #### `hatch env list`
 
+List all environments with package counts.
+
 Syntax:
 
-`hatch env list`
+`hatch env list [--pattern PATTERN] [--json]`
 
-Description: Lists all environments. When a Python manager (conda/mamba) is available additional status and manager info are displayed.
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--pattern` | string | Filter environments by name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch env list
+Environments:
+  Name             Python        Packages
+  ───────────────────────────────────────
+  * default        3.14.2               0
+    test-env       3.11.5               3
+```
+
+**Key Details**:
+- Header: `"Environments:"` only
+- Columns: Name (width 15), Python (width 10), Packages (width 10, right-aligned)
+- Current environment marked with `"* "` prefix
+- Packages column shows COUNT only
+- Separator: `"─"` character (U+2500)
+
+#### `hatch env list hosts`
+
+List environment/host/server deployments from environment data.
+
+Syntax:
+
+`hatch env list hosts [--env PATTERN] [--server PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env`, `-e` | string | Filter by environment name using regex pattern | none |
+| `--server` | string | Filter by server name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch env list hosts
+Environment Host Deployments:
+  Environment      Host                Server              Version
+  ─────────────────────────────────────────────────────────────────
+  default          claude-desktop      weather-server      1.0.0
+  default          cursor              weather-server      1.0.0
+```
+
+**Description**:
+Lists environment/host/server deployments from environment data. Shows only Hatch-managed packages and their host deployments.
+
+#### `hatch env list servers`
+
+List environment/server/host deployments from environment data.
+
+Syntax:
+
+`hatch env list servers [--env PATTERN] [--host PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--env`, `-e` | string | Filter by environment name using regex pattern | none |
+| `--host` | string | Filter by host name using regex pattern (use '-' for undeployed) | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch env list servers
+Environment Servers:
+  Environment      Server              Host                Version
+  ─────────────────────────────────────────────────────────────────
+  default          weather-server      claude-desktop      1.0.0
+  default          weather-server      cursor              1.0.0
+  test-env         utility-pkg         -                   2.1.0
+```
+
+**Description**:
+Lists environment/server/host deployments from environment data. Shows only Hatch-managed packages. Undeployed packages show '-' in Host column.
+
+#### `hatch env show`
+
+Display detailed hierarchical view of a specific environment.
+
+Syntax:
+
+`hatch env show <name>`
+
+| Argument | Type | Description |
+|---:|---|---|
+| `name` | string (positional) | Environment name to show (required) |
+
+**Example Output**:
+
+```bash
+$ hatch env show default
+Environment: default (active)
+  Description: My development environment
+  Created: 2026-01-15 10:30:00
+
+  Python Environment:
+    Version: 3.14.2
+    Executable: /path/to/python
+    Conda env: N/A
+    Status: Active
+
+  Packages (2):
+    weather-server
+      Version: 1.0.0
+      Source: registry (https://registry.example.com)
+      Deployed to: claude-desktop, cursor
+
+    utility-pkg
+      Version: 2.1.0
+      Source: local (/path/to/package)
+      Deployed to: (none)
+```
+
+**Key Details**:
+- Header shows `"(active)"` suffix if current environment
+- Hierarchical structure with 2-space indentation
+- No separator lines between sections
+- Packages section shows count in header
+- Each package shows version, source, and deployed hosts
 
 #### `hatch env use`
 
@@ -300,6 +425,8 @@ Syntax:
 
 #### `hatch package list`
 
+**⚠️ DEPRECATED**: This command is deprecated. Use `hatch env list` to see packages inline with environment information, or `hatch env show <name>` for detailed package information.
+
 List packages installed in a Hatch environment.
 
 Syntax:
@@ -310,7 +437,19 @@ Syntax:
 |---:|---|---|---|
 | `--env`, `-e` | string | Hatch environment name (defaults to current) | current environment |
 
-Output: each package row includes name, version, hatch compliance flag, source URI and installation location.
+**Example Output**:
+
+```bash
+$ hatch package list
+Warning: 'hatch package list' is deprecated. Use 'hatch env list' instead, which shows packages inline.
+Packages in environment 'default':
+weather-server (1.0.0)	Hatch compliant: True	source: https://registry.example.com	location: /path/to/package
+```
+
+**Migration Guide**:
+- For package counts: Use `hatch env list` (shows package count per environment)
+- For detailed package info: Use `hatch env show <name>` (shows full package details)
+- For deployment info: Use `hatch env list hosts` or `hatch env list servers`
 
 #### `hatch package sync`
 
@@ -434,17 +573,17 @@ The conversion report shows:
 - **UNSUPPORTED** fields: Fields not supported by the target host (automatically filtered out)
 - **UNCHANGED** fields: Fields that already have the specified value (update operations only)
 
+Note: Internal metadata fields (like `name`) are not shown in the field operations list, as they are used for internal bookkeeping and are not written to host configuration files. The server name is displayed in the report header for context.
+
 **Example - Local Server Configuration**:
 
 ```bash
 $ hatch mcp configure my-server --host claude-desktop --command python --args server.py --env API_KEY=secret
 
 Server 'my-server' created for host 'claude-desktop':
-  name: UPDATED None --> 'my-server'
   command: UPDATED None --> 'python'
   args: UPDATED None --> ['server.py']
   env: UPDATED None --> {'API_KEY': 'secret'}
-  url: UPDATED None --> None
 
 Configure MCP server 'my-server' on host 'claude-desktop'? [y/N]: y
 [SUCCESS] Successfully configured MCP server 'my-server' on host 'claude-desktop'
@@ -575,11 +714,8 @@ $ hatch mcp configure my-server --host gemini --command python --args server.py 
 [DRY RUN] Args: ['server.py']
 [DRY RUN] Backup: Enabled
 [DRY RUN] Preview of changes for server 'my-server':
-  name: UPDATED None --> 'my-server'
   command: UPDATED None --> 'python'
   args: UPDATED None --> ['server.py']
-  env: UPDATED None --> {}
-  url: UPDATED None --> None
 
 No changes were made.
 ```
@@ -649,83 +785,221 @@ Syntax:
 
 #### `hatch mcp list hosts`
 
-List MCP hosts configured in the current environment.
+List host/server pairs from host configuration files.
 
-**Purpose**: Shows hosts that have MCP servers configured in the specified environment, with package-level details.
+**Purpose**: Shows ALL servers on hosts (both Hatch-managed and third-party) with Hatch management status.
 
 Syntax:
 
-`hatch mcp list hosts [--env ENV] [--detailed]`
+`hatch mcp list hosts [--server PATTERN] [--json]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
-| `--env` | string | Environment to list hosts from | current environment |
-| `--detailed` | flag | Show detailed configuration information | false |
+| `--server` | string | Filter by server name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
 
 **Example Output**:
 
-```text
-Configured hosts for environment 'my-project':
-  claude-desktop (2 packages)
-  cursor (1 package)
+```bash
+$ hatch mcp list hosts
+MCP Hosts:
+  Host                Server              Hatch     Environment
+  ─────────────────────────────────────────────────────────────────
+  claude-desktop      weather-server      ✅        default
+  claude-desktop      third-party-tool    ❌        -
+  cursor              weather-server      ✅        default
 ```
 
-**Detailed Output** (`--detailed`):
-
-```text
-Configured hosts for environment 'my-project':
-  claude-desktop (2 packages):
-    - weather-toolkit: ~/.claude/config.json (configured: 2025-09-25T10:00:00)
-    - news-aggregator: ~/.claude/config.json (configured: 2025-09-25T11:30:00)
-  cursor (1 package):
-    - weather-toolkit: ~/.cursor/config.json (configured: 2025-09-25T10:15:00)
-```
-
-**Example Output**:
-
-```text
-Available MCP Host Platforms:
-✓ claude-desktop    Available    /Users/user/.claude/config.json
-✓ cursor           Available    /Users/user/.cursor/config.json
-✗ vscode           Not Found    /Users/user/.vscode/settings.json
-✗ lmstudio         Not Found    /Users/user/.lmstudio/config.json
-```
+**Key Details**:
+- Header: `"MCP Hosts:"`
+- Columns: Host (width 18), Server (width 18), Hatch (width 8), Environment (width 15)
+- Hatch column: `"✅"` for Hatch-managed, `"❌"` for third-party
+- Shows ALL servers on hosts (both Hatch-managed and third-party)
+- Environment column: environment name if Hatch-managed, `"-"` otherwise
+- Sorted by: host (alphabetically), then server
 
 #### `hatch mcp list servers`
 
-List MCP servers from environment with host configuration tracking information.
+List server/host pairs from host configuration files.
 
-**Purpose**: Shows servers from environment packages with detailed host configuration tracking, including which hosts each server is configured on and last sync timestamps.
+**Purpose**: Shows ALL servers on hosts (both Hatch-managed and third-party) with Hatch management status.
 
 Syntax:
 
-`hatch mcp list servers [--env ENV]`
+`hatch mcp list servers [--host PATTERN] [--json]`
 
 | Flag | Type | Description | Default |
 |---:|---|---|---|
-| `--env`, `-e` | string | Environment name (defaults to current) | current environment |
+| `--host` | string | Filter by host name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
 
 **Example Output**:
 
-```text
-MCP servers in environment 'default':
-Server Name          Package              Version    Command
---------------------------------------------------------------------------------
-weather-server       weather-toolkit      1.0.0      python weather.py
-                     Configured on hosts:
-                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
-                       cursor: /Users/user/.cursor/config.json (last synced: 2025-09-24T09:30:00)
-
-news-aggregator      news-toolkit         2.1.0      python news.py
-                     Configured on hosts:
-                       claude-desktop: /Users/user/.claude/config.json (last synced: 2025-09-24T10:00:00)
+```bash
+$ hatch mcp list servers
+MCP Servers:
+  Server              Host                Hatch     Environment
+  ─────────────────────────────────────────────────────────────────
+  third-party-tool    claude-desktop      ❌        -
+  weather-server      claude-desktop      ✅        default
+  weather-server      cursor              ✅        default
 ```
+
+**Key Details**:
+- Header: `"MCP Servers:"`
+- Columns: Server (width 18), Host (width 18), Hatch (width 8), Environment (width 15)
+- Hatch column: `"✅"` for Hatch-managed, `"❌"` for third-party
+- Shows ALL servers on hosts (both Hatch-managed and third-party)
+- Environment column: environment name if Hatch-managed, `"-"` otherwise
+- Sorted by: server (alphabetically), then host
+
+#### `hatch mcp show hosts`
+
+Show detailed hierarchical view of all MCP host configurations.
+
+**Purpose**: Displays comprehensive configuration details for all hosts with their servers.
+
+Syntax:
+
+`hatch mcp show hosts [--server PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--server` | string | Filter by server name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch mcp show hosts
+═══════════════════════════════════════════════════════════════════════════════
+MCP Host: claude-desktop
+  Config Path: /Users/user/.config/claude/claude_desktop_config.json
+  Last Modified: 2026-02-01 15:30:00
+  Backup Available: Yes (3 backups)
+
+  Configured Servers (2):
+    weather-server (Hatch-managed: default)
+      Command: python
+      Args: ['-m', 'weather_server']
+      Environment Variables:
+        API_KEY: ****** (hidden)
+        DEBUG: true
+      Last Synced: 2026-02-01 15:30:00
+      Package Version: 1.0.0
+
+    third-party-tool (Not Hatch-managed)
+      Command: node
+      Args: ['server.js']
+
+═══════════════════════════════════════════════════════════════════════════════
+MCP Host: cursor
+  Config Path: /Users/user/.cursor/mcp.json
+  Last Modified: 2026-02-01 14:20:00
+  Backup Available: No
+
+  Configured Servers (1):
+    weather-server (Hatch-managed: default)
+      Command: python
+      Args: ['-m', 'weather_server']
+      Last Synced: 2026-02-01 14:20:00
+      Package Version: 1.0.0
+```
+
+**Key Details**:
+- Separator: `"═" * 79` (U+2550) between hosts
+- Host and server names highlighted (bold + amber when colors enabled)
+- Hatch-managed servers show: `"(Hatch-managed: {environment})"`
+- Third-party servers show: `"(Not Hatch-managed)"`
+- Sensitive environment variables shown as `"****** (hidden)"`
+- Hierarchical structure with 2-space indentation per level
+
+#### `hatch mcp show servers`
+
+Show detailed hierarchical view of all MCP server configurations across hosts.
+
+**Purpose**: Displays comprehensive configuration details for all servers across their host deployments.
+
+Syntax:
+
+`hatch mcp show servers [--host PATTERN] [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--host` | string | Filter by host name using regex pattern | none |
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch mcp show servers
+═══════════════════════════════════════════════════════════════════════════════
+MCP Server: weather-server
+  Hatch Managed: Yes (default)
+  Package Version: 1.0.0
+
+  Host Configurations (2):
+    claude-desktop:
+      Command: python
+      Args: ['-m', 'weather_server']
+      Environment Variables:
+        API_KEY: ****** (hidden)
+        DEBUG: true
+      Last Synced: 2026-02-01 15:30:00
+
+    cursor:
+      Command: python
+      Args: ['-m', 'weather_server']
+      Last Synced: 2026-02-01 14:20:00
+
+═══════════════════════════════════════════════════════════════════════════════
+MCP Server: third-party-tool
+  Hatch Managed: No
+
+  Host Configurations (1):
+    claude-desktop:
+      Command: node
+      Args: ['server.js']
+```
+
+**Key Details**:
+- Separator: `"═" * 79` between servers
+- Server and host names highlighted (bold + amber when colors enabled)
+- Hatch-managed servers show: `"Hatch Managed: Yes ({environment})"`
+- Third-party servers show: `"Hatch Managed: No"`
+- Hierarchical structure with 2-space indentation per level
 
 #### `hatch mcp discover hosts`
 
 Discover available MCP host platforms on the system.
 
 **Purpose**: Shows ALL host platforms (both available and unavailable) with system detection status.
+
+Syntax:
+
+`hatch mcp discover hosts [--json]`
+
+| Flag | Type | Description | Default |
+|---:|---|---|---|
+| `--json` | flag | Output in JSON format | false |
+
+**Example Output**:
+
+```bash
+$ hatch mcp discover hosts
+Available MCP Host Platforms:
+  Host                Status           Config Path
+  ─────────────────────────────────────────────────────────────────
+  claude-desktop      ✓ Available      /Users/user/.config/claude/...
+  cursor              ✓ Available      /Users/user/.cursor/mcp.json
+  vscode              ✗ Not Found      -
+```
+
+**Key Details**:
+- Header: `"Available MCP Host Platforms:"`
+- Columns: Host (width 18), Status (width 15), Config Path (width "auto")
+- Status: `"✓ Available"` or `"✗ Not Found"`
+- Shows ALL host types (MCPHostType enum), not just available ones
 
 Syntax:
 
@@ -812,5 +1086,5 @@ Syntax:
 
 ## Notes
 
-- The implementation in `hatch/cli_hatch.py` does not provide a `--version` flag or a top-level `version` command. Use `hatch --help` to inspect available commands and options.
-- This reference mirrors the command names and option names implemented in `hatch/cli_hatch.py`. If you change CLI arguments in code, update this file to keep documentation in sync.
+- The CLI is implemented in the `hatch/cli/` package with modular handler modules. Use `hatch --help` to inspect available commands and options.
+- This reference mirrors the command names and option names implemented in the CLI handlers. If you change CLI arguments in code, update this file to keep documentation in sync.

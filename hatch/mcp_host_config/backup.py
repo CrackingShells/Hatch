@@ -355,10 +355,12 @@ class MCPHostConfigBackupManager:
         
         backups = []
 
-        # Search for both correct format and legacy incorrect format for backward compatibility
+        # Search for backups with flexible filename matching
+        # Different hosts use different config filenames (mcp.json, settings.json, config.toml)
+        # Backup format: {original_filename}.{hostname}.{timestamp}
         patterns = [
-            f"mcp.json.{hostname}.*",  # Correct format: mcp.json.gemini.*
-            f"mcp.json.MCPHostType.{hostname.upper()}.*"  # Legacy incorrect format: mcp.json.MCPHostType.GEMINI.*
+            f"*.{hostname}.*",  # Flexible: settings.json.gemini.*, mcp.json.claude-desktop.*, etc.
+            f"mcp.json.MCPHostType.{hostname.upper()}.*"  # Legacy incorrect format for backward compatibility
         ]
 
         for pattern in patterns:

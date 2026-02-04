@@ -73,7 +73,7 @@ if __name__ == \"__main__\":
 """
 
 
-def generate_metadata_json(package_name: str, description: str = ""):
+def generate_metadata_json(package_name: str, description: str = "") -> dict:
     """Generate the metadata JSON content for a template package.
 
     Args:
