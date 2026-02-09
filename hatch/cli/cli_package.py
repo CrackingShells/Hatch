@@ -331,7 +331,10 @@ def _configure_packages_on_hosts(
                         )
 
                 except Exception as e:
-                    print(f"✗ Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
+                    format_warning(
+                        f"Error configuring {server_config.name} ({pkg_name}) on {host}",
+                        suggestion=f"Exception: {e}"
+                    )
 
         except ValueError as e:
             print(f"✗ Invalid host '{host}': {e}")
