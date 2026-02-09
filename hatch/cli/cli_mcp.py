@@ -1627,8 +1627,10 @@ def handle_mcp_remove(args: Namespace) -> int:
             reporter.report_result()
             return EXIT_SUCCESS
         else:
-            print(
-                f"[ERROR] Failed to remove MCP server '{server_name}' from host '{host}': {result.error_message}"
+            reporter = ResultReporter("hatch mcp remove")
+            reporter.report_error(
+                f"Failed to remove MCP server '{server_name}'",
+                details=[f"Host: {host}", f"Reason: {result.error_message}"]
             )
             return EXIT_ERROR
 
