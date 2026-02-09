@@ -1962,10 +1962,10 @@ def handle_mcp_sync(args: Namespace) -> int:
 
             return EXIT_SUCCESS
         else:
-            print(f"[ERROR] Synchronization failed")
-            for res in result.results:
-                if not res.success:
-                    print(f"  ✗ {res.hostname}: {res.error_message}")
+            result_reporter = ResultReporter("hatch mcp sync")
+            details = [f"{res.hostname}: {res.error_message}"
+                       for res in result.results if not res.success]
+            result_reporter.report_error("Synchronization failed", details=details)
             return EXIT_ERROR
 
     except ValueError as e:
