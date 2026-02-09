@@ -1063,7 +1063,11 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
 
             return EXIT_SUCCESS
         else:
-            print(f"[ERROR] Failed to restore backup '{backup_file}' for host '{host}'")
+            reporter = ResultReporter("hatch mcp backup restore")
+            reporter.report_error(
+                f"Failed to restore backup '{backup_file}'",
+                details=[f"Host: {host}"]
+            )
             return EXIT_ERROR
 
     except Exception as e:
