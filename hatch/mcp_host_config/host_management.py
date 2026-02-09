@@ -380,6 +380,75 @@ class MCPHostConfigurationManager:
                 error_message=str(e)
             )
 
+    def preview_sync(self,
+                     from_env: Optional[str] = None,
+                     from_host: Optional[str] = None,
+                     servers: Optional[List[str]] = None,
+                     pattern: Optional[str] = None) -> List[str]:
+        """Preview which servers would be synced without performing actual sync.
+
+        Reuses the source resolution and filtering logic from sync_configurations()
+        to return the list of server names that match the given source and filters.
+
+        Args:
+            from_env: Source environment name.
+            from_host: Source host name.
+            servers: Specific server names to filter by.
+            pattern: Regex pattern for server name selection.
+
+        Returns:
+            List[str]: Server names matching the source and filters.
+
+        Raises:
+            ValueError: If source specification is invalid.
+        """
+        import re
+        from hatch.environment_manager import HatchEnvironmentManager
+
+        if not from_env and not from_host:
+            raise ValueError("Must specify either from_env or from_host as source")
+        if from_env and from_host:
+            raise ValueError("Cannot specify both from_env and from_host as source")
+
+        try:
+            # Resolve source data
+            if from_env:
+                env_manager = HatchEnvironmentManager()
+                env_data = env_manager.get_environment_data(from_env)
+                if not env_data:
+                    return []
+
+                source_servers = {}
+                for package in env_data.get_mcp_packages():
+                    source_servers[package.name] = package.configured_hosts
+            else:
+                try:
+                    host_type = MCPHostType(from_host)
+                    strategy = self.host_registry.get_strategy(host_type)
+                    host_config = strategy.read_configuration()
+
+                    source_servers = {}
+                    for server_name, server_config in host_config.servers.items():
+                        source_servers[server_name] = {
+                            from_host: {"server_config": server_config}
+                        }
+                except ValueError:
+                    return []
+
+            # Apply server filtering
+            if servers:
+                source_servers = {name: config for name, config in source_servers.items()
+                                  if name in servers}
+            elif pattern:
+                regex = re.compile(pattern)
+                source_servers = {name: config for name, config in source_servers.items()
+                                  if regex.match(name)}
+
+            return sorted(source_servers.keys())
+
+        except Exception:
+            return []
+
     def sync_configurations(self,
                            from_env: Optional[str] = None,
                            from_host: Optional[str] = None,
