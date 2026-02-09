@@ -1896,7 +1896,24 @@ def handle_mcp_sync(args: Namespace) -> int:
 
         # Create ResultReporter for unified output
         reporter = ResultReporter("hatch mcp sync", dry_run=dry_run)
-        
+
+        # Resolve server names for pre-prompt display
+        mcp_manager = MCPHostConfigurationManager()
+        server_names = mcp_manager.preview_sync(
+            from_env=from_env,
+            from_host=from_host,
+            servers=server_list,
+            pattern=pattern,
+        )
+
+        if server_names:
+            count = len(server_names)
+            if count > 3:
+                server_list_str = f"{', '.join(server_names[:3])}, ... ({count} total)"
+            else:
+                server_list_str = f"{', '.join(server_names)} ({count} total)"
+            reporter.add(ConsequenceType.INFO, f"Servers: {server_list_str}")
+
         # Build source description
         source_desc = f"environment '{from_env}'" if from_env else f"host '{from_host}'"
         
@@ -1906,10 +1923,6 @@ def handle_mcp_sync(args: Namespace) -> int:
 
         if dry_run:
             reporter.report_result()
-            if server_list:
-                print(f"  Server filter: {', '.join(server_list)}")
-            elif pattern:
-                print(f"  Pattern filter: {pattern}")
             return EXIT_SUCCESS
 
         # Show prompt for confirmation
@@ -1922,8 +1935,7 @@ def handle_mcp_sync(args: Namespace) -> int:
             format_info("Operation cancelled")
             return EXIT_SUCCESS
 
-        # Perform synchronization
-        mcp_manager = MCPHostConfigurationManager()
+        # Perform synchronization (mcp_manager already created for preview)
         result = mcp_manager.sync_configurations(
             from_env=from_env,
             from_host=from_host,

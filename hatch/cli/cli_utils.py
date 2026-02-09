@@ -322,6 +322,7 @@ class ConsequenceType(Enum):
     
     # Informational actions (Cyan)
     VALIDATE = ("VALIDATE", "VALIDATED", Color.CYAN_DIM, Color.CYAN)
+    INFO = ("INFO", "INFO", Color.CYAN_DIM, Color.CYAN)
     
     # No-op actions (Gray) - same color for prompt and result
     SKIP = ("SKIP", "SKIPPED", Color.GRAY, Color.GRAY)

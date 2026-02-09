@@ -85,14 +85,14 @@ class TestConsequenceTypeEnum(unittest.TestCase):
             )
 
     def test_consequence_type_total_count(self):
-        """ConsequenceType should have exactly 16 members."""
+        """ConsequenceType should have exactly 17 members."""
         from hatch.cli.cli_utils import ConsequenceType
         
         # 5 constructive + 1 recovery + 3 destructive + 2 modification + 
-        # 1 transfer + 1 informational + 3 noop = 16
+        # 1 transfer + 2 informational + 3 noop = 17
         self.assertEqual(
-            len(ConsequenceType), 16,
-            f"Expected 16 consequence types, got {len(ConsequenceType)}"
+            len(ConsequenceType), 17,
+            f"Expected 17 consequence types, got {len(ConsequenceType)}"
         )
 
 
@@ -162,6 +162,7 @@ class TestConsequenceTypeProperties(unittest.TestCase):
             ConsequenceType.SET,
             ConsequenceType.EXISTS,
             ConsequenceType.UNCHANGED,
+            ConsequenceType.INFO,
         ]
         
         for ct in irregular_verbs:
@@ -175,7 +176,7 @@ class TestConsequenceTypeProperties(unittest.TestCase):
         from hatch.cli.cli_utils import ConsequenceType
         
         # Irregular verbs that don't follow -ED pattern
-        irregular = {'SET', 'EXISTS', 'UNCHANGED'}
+        irregular = {'SET', 'EXISTS', 'UNCHANGED', 'INFO'}
         
         for ct in ConsequenceType:
             if ct.name not in irregular:
@@ -267,11 +268,13 @@ class TestConsequenceTypeColorSemantics(unittest.TestCase):
         self.assertEqual(ConsequenceType.SYNC.result_color, Color.MAGENTA)
 
     def test_informational_type_uses_cyan(self):
-        """VALIDATE should use cyan colors."""
+        """VALIDATE and INFO should use cyan colors."""
         from hatch.cli.cli_utils import ConsequenceType, Color
         
         self.assertEqual(ConsequenceType.VALIDATE.prompt_color, Color.CYAN_DIM)
         self.assertEqual(ConsequenceType.VALIDATE.result_color, Color.CYAN)
+        self.assertEqual(ConsequenceType.INFO.prompt_color, Color.CYAN_DIM)
+        self.assertEqual(ConsequenceType.INFO.result_color, Color.CYAN)
 
     def test_noop_types_use_gray(self):
         """No-op types should use gray colors (same for prompt and result)."""
