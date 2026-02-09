@@ -337,7 +337,11 @@ def _configure_packages_on_hosts(
                     )
 
         except ValueError as e:
-            print(f"✗ Invalid host '{host}': {e}")
+            format_validation_error(ValidationError(
+                f"Invalid host '{host}'",
+                field="--host",
+                suggestion=str(e)
+            ))
             continue
 
     return success_count, total_operations
