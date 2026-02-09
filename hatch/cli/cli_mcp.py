@@ -1843,8 +1843,10 @@ def handle_mcp_remove_host(args: Namespace) -> int:
             reporter.report_result()
             return EXIT_SUCCESS
         else:
-            print(
-                f"[ERROR] Failed to remove host configuration for '{host_name}': {result.error_message}"
+            reporter = ResultReporter("hatch mcp remove-host")
+            reporter.report_error(
+                f"Failed to remove host configuration for '{host_name}'",
+                details=[f"Reason: {result.error_message}"]
             )
             return EXIT_ERROR
 
