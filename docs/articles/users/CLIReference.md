@@ -736,6 +736,8 @@ When configuring a server with fields not supported by the target host, those fi
 
 Synchronize MCP configurations across environments and hosts.
 
+The sync command displays a preview of servers to be synced before requesting confirmation, giving visibility into which servers will be affected.
+
 Syntax:
 
 `hatch mcp sync [--from-env ENV | --from-host HOST] --to-host HOSTS [--servers SERVERS | --pattern PATTERN] [--dry-run] [--auto-approve] [--no-backup]`
@@ -750,6 +752,27 @@ Syntax:
 | `--dry-run` | flag | Preview synchronization without executing changes | false |
 | `--auto-approve` | flag | Skip confirmation prompts | false |
 | `--no-backup` | flag | Skip backup creation before synchronization | false |
+
+**Example Output (pre-prompt)**:
+
+```
+hatch mcp sync:
+  [INFO] Servers: weather-server, my-tool (2 total)
+  [SYNC] environment 'dev' → 'claude-desktop'
+  [SYNC] environment 'dev' → 'cursor'
+  Proceed? [y/N]:
+```
+
+When more than 3 servers match, the list is truncated: `Servers: srv1, srv2, srv3, ... (7 total)`
+
+**Error Output**:
+
+Sync failures use standardized error formatting with structured details:
+
+```
+[ERROR] Synchronization failed
+  claude-desktop: Config file not found
+```
 
 #### `hatch mcp remove server`
 
