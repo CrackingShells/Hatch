@@ -253,6 +253,20 @@ The system validates host names against available MCP host types:
 - `gemini`
 - Additional hosts as configured
 
-Invalid host names result in clear error messages with available options listed.
+All error messages use standardized formatting with structured details:
+
+```
+[ERROR] Failed to configure MCP server 'my-server'
+  Host: claude-desktop
+  Reason: Server configuration invalid for claude-desktop
+```
+
+Invalid host names result in clear error messages with available options listed:
+
+```
+[ERROR] Invalid host 'vsc'
+  Field: --host
+  Suggestion: Supported hosts: claude-desktop, vscode, cursor, kiro, lmstudio, gemini
+```
 
 For complete command syntax and all available options, see [CLI Reference](CLIReference.md).
