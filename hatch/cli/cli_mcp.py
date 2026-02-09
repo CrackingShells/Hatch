@@ -1544,8 +1544,10 @@ def handle_mcp_configure(args: Namespace) -> int:
             reporter.report_result()
             return EXIT_SUCCESS
         else:
-            print(
-                f"[ERROR] Failed to configure MCP server '{server_name}' on host '{host}': {result.error_message}"
+            reporter = ResultReporter("hatch mcp configure")
+            reporter.report_error(
+                f"Failed to configure MCP server '{server_name}'",
+                details=[f"Host: {host}", f"Reason: {result.error_message}"]
             )
             return EXIT_ERROR
 
