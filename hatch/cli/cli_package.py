@@ -46,6 +46,8 @@ from hatch.cli.cli_utils import (
     ConsequenceType,
     format_warning,
     format_info,
+    format_validation_error,
+    ValidationError,
 )
 from hatch.mcp_host_config import (
     MCPHostConfigurationManager,
@@ -323,7 +325,10 @@ def _configure_packages_on_hosts(
                         except Exception as e:
                             format_warning(f"Failed to update package metadata for {pkg_name}: {e}")
                     else:
-                        print(f"✗ Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+                        format_warning(
+                            f"Failed to configure {server_config.name} ({pkg_name}) on {host}",
+                            suggestion=f"Reason: {result.error_message}"
+                        )
 
                 except Exception as e:
                     print(f"✗ Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
