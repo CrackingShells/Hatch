@@ -1750,7 +1750,11 @@ def handle_mcp_remove_server(args: Namespace) -> int:
             result_reporter.report_result()
             return EXIT_ERROR
         else:
-            print(f"[ERROR] Failed to remove '{server_name}' from any hosts")
+            reporter = ResultReporter("hatch mcp remove-server")
+            reporter.report_error(
+                f"Failed to remove '{server_name}' from any hosts",
+                details=[f"Attempted hosts: {', '.join(target_hosts)}"]
+            )
             return EXIT_ERROR
 
     except Exception as e:
