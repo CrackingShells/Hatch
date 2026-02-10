@@ -1,10 +1,17 @@
 """Integration tests for adapter serialization.
 
+DEPRECATED: This test file is deprecated and will be removed in v0.9.0.
+Replaced by: tests/integration/mcp/test_host_configuration.py (per-host)
+             tests/integration/mcp/test_cross_host_sync.py (cross-host)
+Reason: Migrating to data-driven test architecture (see 01-test-definition_v0.md)
+
 Test IDs: AS-01 to AS-10 (per 02-test_architecture_rebuild_v0.md)
 Scope: Full serialization flow for each adapter with realistic configs.
 """
 
 import unittest
+
+import pytest
 
 from hatch.mcp_host_config.models import MCPServerConfig
 from hatch.mcp_host_config.adapters import (
@@ -15,7 +22,10 @@ from hatch.mcp_host_config.adapters import (
     VSCodeAdapter,
 )
 
+DEPRECATION_REASON = "Deprecated - replaced by data-driven tests (test_host_configuration.py, test_cross_host_sync.py)"
 
+
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestClaudeAdapterSerialization(unittest.TestCase):
     """Integration tests for Claude adapter serialization."""
 
@@ -57,6 +67,7 @@ class TestClaudeAdapterSerialization(unittest.TestCase):
         self.assertNotIn("command", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestGeminiAdapterSerialization(unittest.TestCase):
     """Integration tests for Gemini adapter serialization."""
 
@@ -97,6 +108,7 @@ class TestGeminiAdapterSerialization(unittest.TestCase):
         self.assertNotIn("type", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestVSCodeAdapterSerialization(unittest.TestCase):
     """Integration tests for VS Code adapter serialization."""
 
@@ -119,6 +131,7 @@ class TestVSCodeAdapterSerialization(unittest.TestCase):
         self.assertNotIn("name", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestCodexAdapterSerialization(unittest.TestCase):
     """Integration tests for Codex adapter serialization."""
 
@@ -146,6 +159,7 @@ class TestCodexAdapterSerialization(unittest.TestCase):
         self.assertNotIn("type", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestKiroAdapterSerialization(unittest.TestCase):
     """Integration tests for Kiro adapter serialization."""
 

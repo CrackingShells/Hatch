@@ -1,10 +1,16 @@
 """Regression tests for field filtering (name/type exclusion).
 
+DEPRECATED: This test file is deprecated and will be removed in v0.9.0.
+Replaced by: tests/regression/mcp/test_field_filtering_v2.py
+Reason: Migrating to data-driven test architecture (see 01-test-definition_v0.md)
+
 Test IDs: RF-01 to RF-07 (per 02-test_architecture_rebuild_v0.md)
 Scope: Prevent `name` and `type` field leakage in serialized output.
 """
 
 import unittest
+
+import pytest
 
 from hatch.mcp_host_config.models import MCPServerConfig
 from hatch.mcp_host_config.adapters import (
@@ -16,7 +22,12 @@ from hatch.mcp_host_config.adapters import (
     VSCodeAdapter,
 )
 
+DEPRECATION_REASON = (
+    "Deprecated - replaced by data-driven tests (test_field_filtering_v2.py)"
+)
 
+
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestFieldFiltering(unittest.TestCase):
     """Regression tests for field filtering (RF-01 to RF-07).
 
