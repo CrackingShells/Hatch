@@ -53,14 +53,6 @@ class GeminiAdapter(BaseAdapter):
                 host_name=self.host_name,
             )
 
-        # 'type' field is not supported by Gemini
-        if config.type is not None:
-            raise AdapterValidationError(
-                "'type' field is not supported by Gemini CLI",
-                field="type",
-                host_name=self.host_name,
-            )
-
         # Validate includeTools and excludeTools are mutually exclusive
         if config.includeTools is not None and config.excludeTools is not None:
             raise AdapterValidationError(
