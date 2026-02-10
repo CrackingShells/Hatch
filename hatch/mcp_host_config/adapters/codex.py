@@ -76,13 +76,6 @@ class CodexAdapter(BaseAdapter):
                 host_name=self.host_name,
             )
 
-        # Validate enabled_tools and disabled_tools mutual exclusion
-        if config.enabled_tools is not None and config.disabled_tools is not None:
-            raise AdapterValidationError(
-                "Cannot specify both 'enabled_tools' and 'disabled_tools'",
-                host_name=self.host_name,
-            )
-
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Serialize configuration for Codex format.
 
