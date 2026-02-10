@@ -9,7 +9,7 @@ Codex CLI has unique features:
 from typing import Any, Dict, FrozenSet
 
 from hatch.mcp_host_config.adapters.base import AdapterValidationError, BaseAdapter
-from hatch.mcp_host_config.fields import CODEX_FIELDS
+from hatch.mcp_host_config.fields import CODEX_FIELDS, CODEX_FIELD_MAPPINGS
 from hatch.mcp_host_config.models import MCPServerConfig
 
 
@@ -99,6 +99,30 @@ class CodexAdapter(BaseAdapter):
                 "Cannot specify both 'command' and 'url' - choose one transport",
                 host_name=self.host_name,
             )
+
+    def apply_transformations(self, filtered: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply Codex-specific field transformations.
+
+        Codex uses different field names than the universal schema:
+        - args → arguments
+        - headers → http_headers
+        - includeTools → enabled_tools (for cross-host sync from Gemini)
+        - excludeTools → disabled_tools (for cross-host sync from Gemini)
+
+        Args:
+            filtered: Dictionary of validated, filtered fields
+
+        Returns:
+            Transformed dictionary with Codex field names
+        """
+        result = filtered.copy()
+
+        # Apply field mappings
+        for universal_name, codex_name in CODEX_FIELD_MAPPINGS.items():
+            if universal_name in result:
+                result[codex_name] = result.pop(universal_name)
+
+        return result
 
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Serialize configuration for Codex format.
