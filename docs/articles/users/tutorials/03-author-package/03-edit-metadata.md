@@ -33,7 +33,7 @@ Every package must include these fields:
 {
   "package_schema_version": "1.2.1",
   "name": "package_name",
-  "version": "0.1.0", 
+  "version": "0.1.0",
   "entry_point": "hatch_mcp_server_entry.py",
   "description": "Package description",
   "tags": [],
@@ -63,7 +63,7 @@ Edit the basic package information:
   },
   "contributors": [
     {
-      "name": "Contributor Name", 
+      "name": "Contributor Name",
       "email": "contributor@example.com"
     }
   ],
@@ -151,7 +151,7 @@ Configure dependencies based on your implementation. For our arithmetic server t
 
 - `==1.0.0` - Exact version
 - `>=1.0.0` - Minimum version
-- `<=2.0.0` - Maximum version  
+- `<=2.0.0` - Maximum version
 - `!=1.5.0` - Exclude specific version
 
 ## Step 4: Set Compatibility Requirements

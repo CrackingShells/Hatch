@@ -10,10 +10,10 @@ hatch.cli_hatch directly.
 
 Migration Note:
     New code should import from hatch.cli instead:
-    
+
     # Old (deprecated):
     from hatch.cli_hatch import main, handle_mcp_configure
-    
+
     # New (preferred):
     from hatch.cli import main
     from hatch.cli.cli_mcp import handle_mcp_configure
@@ -41,7 +41,7 @@ warnings.warn(
     "Import from hatch.cli instead. "
     "This module will be removed in version 0.9.0.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Re-export main entry point
@@ -117,56 +117,56 @@ from hatch.mcp_host_config import (
 
 __all__ = [
     # Entry point
-    'main',
+    "main",
     # Exit codes
-    'EXIT_SUCCESS',
-    'EXIT_ERROR',
+    "EXIT_SUCCESS",
+    "EXIT_ERROR",
     # Utilities
-    'get_hatch_version',
-    'request_confirmation',
-    'parse_env_vars',
-    'parse_header',
-    'parse_input',
-    'parse_host_list',
-    'get_package_mcp_server_config',
+    "get_hatch_version",
+    "request_confirmation",
+    "parse_env_vars",
+    "parse_header",
+    "parse_input",
+    "parse_host_list",
+    "get_package_mcp_server_config",
     # MCP handlers
-    'handle_mcp_discover_hosts',
-    'handle_mcp_discover_servers',
-    'handle_mcp_list_hosts',
-    'handle_mcp_list_servers',
-    'handle_mcp_show',
-    'handle_mcp_backup_restore',
-    'handle_mcp_backup_list',
-    'handle_mcp_backup_clean',
-    'handle_mcp_configure',
-    'handle_mcp_remove',
-    'handle_mcp_remove_server',
-    'handle_mcp_remove_host',
-    'handle_mcp_sync',
+    "handle_mcp_discover_hosts",
+    "handle_mcp_discover_servers",
+    "handle_mcp_list_hosts",
+    "handle_mcp_list_servers",
+    "handle_mcp_show",
+    "handle_mcp_backup_restore",
+    "handle_mcp_backup_list",
+    "handle_mcp_backup_clean",
+    "handle_mcp_configure",
+    "handle_mcp_remove",
+    "handle_mcp_remove_server",
+    "handle_mcp_remove_host",
+    "handle_mcp_sync",
     # Environment handlers
-    'handle_env_create',
-    'handle_env_remove',
-    'handle_env_list',
-    'handle_env_use',
-    'handle_env_current',
-    'handle_env_show',
-    'handle_env_python_init',
-    'handle_env_python_info',
-    'handle_env_python_remove',
-    'handle_env_python_shell',
-    'handle_env_python_add_hatch_mcp',
+    "handle_env_create",
+    "handle_env_remove",
+    "handle_env_list",
+    "handle_env_use",
+    "handle_env_current",
+    "handle_env_show",
+    "handle_env_python_init",
+    "handle_env_python_info",
+    "handle_env_python_remove",
+    "handle_env_python_shell",
+    "handle_env_python_add_hatch_mcp",
     # Package handlers
-    'handle_package_add',
-    'handle_package_remove',
-    'handle_package_list',
-    'handle_package_sync',
+    "handle_package_add",
+    "handle_package_remove",
+    "handle_package_list",
+    "handle_package_sync",
     # System handlers
-    'handle_create',
-    'handle_validate',
+    "handle_create",
+    "handle_validate",
     # Types
-    'HatchEnvironmentManager',
-    'MCPHostConfigurationManager',
-    'MCPHostRegistry',
-    'MCPHostType',
-    'MCPServerConfig',
+    "HatchEnvironmentManager",
+    "MCPHostConfigurationManager",
+    "MCPHostRegistry",
+    "MCPHostType",
+    "MCPServerConfig",
 ]

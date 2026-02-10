@@ -127,7 +127,7 @@ hatch env create project_b --description "Environment for Project B" --python-ve
 hatch env use project_a
 # Work on project A...
 
-hatch env use project_b  
+hatch env use project_b
 # Work on project B...
 ```
 
@@ -140,7 +140,7 @@ Create three environments with different Python versions, switch between them, a
 ```bash
 # Create environments
 hatch env create env_311 --python-version 3.11 --description "Python 3.11 environment"
-hatch env create env_312 --python-version 3.12 --description "Python 3.12 environment" 
+hatch env create env_312 --python-version 3.12 --description "Python 3.12 environment"
 hatch env create env_313 --python-version 3.13 --description "Python 3.13 environment"
 
 # Switch between them
@@ -159,5 +159,5 @@ hatch env remove env_313
 
 </details>
 
-> Previous: [Getting Started Checkpoint](../01-getting-started/04-checkpoint.md)  
+> Previous: [Getting Started Checkpoint](../01-getting-started/04-checkpoint.md)
 > Next: [Python Environment Management](02-python-env.md)

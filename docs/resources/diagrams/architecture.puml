@@ -30,7 +30,7 @@ Container_Boundary(installation, "Installation System") {
     Component(orchestrator, "Dependency Orchestrator", "Python", "Multi-type dependency coordination\nInstallation planning\nProgress reporting")
     Component(installation_context, "Installation Context", "Python", "Installation state management\nEnvironment isolation\nProgress tracking")
     Component(installer_base, "Installer Base", "Python", "Common installer interface\nError handling patterns\nResult aggregation")
-    
+
     Component(python_installer, "Python Installer", "Python", "Pip package installation\nConda environment integration")
     Component(system_installer, "System Installer", "Python", "System package installation\nPrivilege management\nAPT/package manager integration")
     Component(docker_installer, "Docker Installer", "Python", "Docker image management\nRegistry authentication\nImage version handling")

@@ -36,7 +36,6 @@ Example:
 from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
 
-
 # =============================================================================
 # Color Infrastructure for CLI Output
 # =============================================================================
@@ -46,22 +45,22 @@ import os as _os
 
 def _supports_truecolor() -> bool:
     """Detect if terminal supports 24-bit true color.
-    
+
     Checks environment variables and terminal identifiers to determine
     if the terminal supports true color (24-bit RGB) output.
-    
+
     Reference: R12 §3.1 (12-enhancing_colors_v0.md)
-    
+
     Detection Logic:
         1. COLORTERM='truecolor' or '24bit' → True
         2. TERM contains 'truecolor' or '24bit' → True
         3. TERM_PROGRAM in known true color terminals → True
         4. WT_SESSION set (Windows Terminal) → True
         5. Otherwise → False (fallback to 16-color)
-    
+
     Returns:
         bool: True if terminal supports true color, False otherwise.
-    
+
     Example:
         >>> if _supports_truecolor():
         ...     # Use 24-bit RGB color codes
@@ -71,24 +70,24 @@ def _supports_truecolor() -> bool:
         ...     color = "\\033[92m"
     """
     # Check COLORTERM for 'truecolor' or '24bit'
-    colorterm = _os.environ.get('COLORTERM', '')
-    if colorterm in ('truecolor', '24bit'):
+    colorterm = _os.environ.get("COLORTERM", "")
+    if colorterm in ("truecolor", "24bit"):
         return True
-    
+
     # Check TERM for truecolor indicators
-    term = _os.environ.get('TERM', '')
-    if 'truecolor' in term or '24bit' in term:
+    term = _os.environ.get("TERM", "")
+    if "truecolor" in term or "24bit" in term:
         return True
-    
+
     # Check TERM_PROGRAM for known true color terminals
-    term_program = _os.environ.get('TERM_PROGRAM', '')
-    if term_program in ('iTerm.app', 'Apple_Terminal', 'vscode', 'Hyper'):
+    term_program = _os.environ.get("TERM_PROGRAM", "")
+    if term_program in ("iTerm.app", "Apple_Terminal", "vscode", "Hyper"):
         return True
-    
+
     # Check WT_SESSION for Windows Terminal
-    if _os.environ.get('WT_SESSION'):
+    if _os.environ.get("WT_SESSION"):
         return True
-    
+
     return False
 
 
@@ -99,15 +98,15 @@ TRUECOLOR = _supports_truecolor()
 
 class Color(Enum):
     """HCL color palette with true color support and 16-color fallback.
-    
+
     Uses a qualitative HCL palette with equal perceived brightness
     for accessibility and visual harmony. True color (24-bit) is used
     when supported, falling back to standard 16-color ANSI codes.
-    
+
     Reference: R12 §3.2 (12-enhancing_colors_v0.md)
     Reference: R06 §3.1 (06-dependency_analysis_v0.md)
     Reference: R03 §4 (03-mutation_output_specification_v0.md)
-    
+
     HCL Palette Values:
         GREEN   #80C990 → rgb(128, 201, 144)
         RED     #EFA6A2 → rgb(239, 166, 162)
@@ -117,7 +116,7 @@ class Color(Enum):
         CYAN    #50CACD → rgb(80, 202, 205)
         GRAY    #808080 → rgb(128, 128, 128)
         AMBER   #A69460 → rgb(166, 148, 96)
-    
+
     Color Semantics:
         Green   → Constructive (CREATE, ADD, CONFIGURE, INSTALL, INITIALIZE)
         Blue    → Recovery (RESTORE)
@@ -127,7 +126,7 @@ class Color(Enum):
         Cyan    → Informational (VALIDATE)
         Gray    → No-op (SKIP, EXISTS, UNCHANGED)
         Amber   → Entity highlighting (show commands)
-    
+
     Example:
         >>> from hatch.cli.cli_utils import Color, _colors_enabled
         >>> if _colors_enabled():
@@ -135,70 +134,70 @@ class Color(Enum):
         ... else:
         ...     print("Success")
     """
-    
+
     # === Bright colors (execution results - past tense) ===
-    
+
     # Green #80C990 - CREATE, ADD, CONFIGURE, INSTALL, INITIALIZE
     GREEN = "\033[38;2;128;201;144m" if TRUECOLOR else "\033[92m"
-    
+
     # Red #EFA6A2 - REMOVE, DELETE, CLEAN
     RED = "\033[38;2;239;166;162m" if TRUECOLOR else "\033[91m"
-    
+
     # Yellow #C8C874 - SET, UPDATE
     YELLOW = "\033[38;2;200;200;116m" if TRUECOLOR else "\033[93m"
-    
+
     # Blue #A3B8EF - RESTORE
     BLUE = "\033[38;2;163;184;239m" if TRUECOLOR else "\033[94m"
-    
+
     # Magenta #E6A3DC - SYNC
     MAGENTA = "\033[38;2;230;163;220m" if TRUECOLOR else "\033[95m"
-    
+
     # Cyan #50CACD - VALIDATE
     CYAN = "\033[38;2;80;202;205m" if TRUECOLOR else "\033[96m"
-    
+
     # === Dim colors (confirmation prompts - present tense) ===
-    
+
     # Aquamarine #5ACCAF (green shifted)
     GREEN_DIM = "\033[38;2;90;204;175m" if TRUECOLOR else "\033[2;32m"
-    
+
     # Orange #E0AF85 (red shifted)
     RED_DIM = "\033[38;2;224;175;133m" if TRUECOLOR else "\033[2;31m"
-    
+
     # Amber #A69460 (yellow shifted)
     YELLOW_DIM = "\033[38;2;166;148;96m" if TRUECOLOR else "\033[2;33m"
-    
+
     # Violet #CCACED (blue shifted)
     BLUE_DIM = "\033[38;2;204;172;237m" if TRUECOLOR else "\033[2;34m"
-    
+
     # Rose #F2A1C2 (magenta shifted)
     MAGENTA_DIM = "\033[38;2;242;161;194m" if TRUECOLOR else "\033[2;35m"
-    
+
     # Azure #74C3E4 (cyan shifted)
     CYAN_DIM = "\033[38;2;116;195;228m" if TRUECOLOR else "\033[2;36m"
-    
+
     # === Utility colors ===
-    
+
     # Gray #808080 - SKIP, EXISTS, UNCHANGED
     GRAY = "\033[38;2;128;128;128m" if TRUECOLOR else "\033[90m"
-    
+
     # Amber #A69460 - Entity name highlighting (NEW)
     AMBER = "\033[38;2;166;148;96m" if TRUECOLOR else "\033[33m"
-    
+
     # Reset
     RESET = "\033[0m"
 
 
 def _supports_unicode() -> bool:
     """Check if terminal supports UTF-8 for unicode symbols.
-    
+
     Used to determine whether to use ✓/✗ symbols or ASCII fallback (+/x)
     in partial success reporting.
-    
+
     Reference: R13 §12.3 (13-error_message_formatting_v0.md)
-    
+
     Returns:
         bool: True if terminal supports UTF-8, False otherwise.
-    
+
     Example:
         >>> if _supports_unicode():
         ...     success_symbol = "✓"
@@ -206,22 +205,23 @@ def _supports_unicode() -> bool:
         ...     success_symbol = "+"
     """
     import locale
+
     encoding = locale.getpreferredencoding(False)
-    return encoding.lower() in ('utf-8', 'utf8')
+    return encoding.lower() in ("utf-8", "utf8")
 
 
 def _colors_enabled() -> bool:
     """Check if color output should be enabled.
-    
+
     Colors are disabled when:
     - NO_COLOR environment variable is set to a non-empty value
     - stdout is not a TTY (e.g., piped output, CI environment)
-    
+
     Reference: R05 §3.4 (05-test_definition_v0.md)
-    
+
     Returns:
         bool: True if colors should be enabled, False otherwise.
-    
+
     Example:
         >>> if _colors_enabled():
         ...     print(f"{Color.GREEN.value}colored{Color.RESET.value}")
@@ -230,35 +230,35 @@ def _colors_enabled() -> bool:
     """
     import os
     import sys
-    
+
     # Check NO_COLOR environment variable (https://no-color.org/)
-    no_color = os.environ.get('NO_COLOR', '')
+    no_color = os.environ.get("NO_COLOR", "")
     if no_color:  # Any non-empty value disables colors
         return False
-    
+
     # Check if stdout is a TTY
     if not sys.stdout.isatty():
         return False
-    
+
     return True
 
 
 def highlight(text: str) -> str:
     """Apply highlight formatting (bold + amber) to entity names.
-    
+
     Used in show commands to emphasize host and server names for
     quick visual scanning of detailed output.
-    
+
     Reference: R12 §3.3 (12-enhancing_colors_v0.md)
     Reference: R11 §3.2 (11-enhancing_show_command_v0.md)
-    
+
     Args:
         text: The entity name to highlight
-    
+
     Returns:
         str: Text with bold + amber formatting if colors enabled,
              otherwise plain text.
-    
+
     Example:
         >>> print(f"MCP Host: {highlight('claude-desktop')}")
         MCP Host: claude-desktop  # (bold + amber in TTY)
@@ -271,16 +271,16 @@ def highlight(text: str) -> str:
 
 class ConsequenceType(Enum):
     """Action types with dual-tense labels and semantic colors.
-    
+
     Each consequence type has:
     - prompt_label: Present tense for confirmation prompts (e.g., "CREATE")
     - result_label: Past tense for execution results (e.g., "CREATED")
     - prompt_color: Dim color for prompts
     - result_color: Bright color for results
-    
+
     Reference: R06 §3.2 (06-dependency_analysis_v0.md)
     Reference: R03 §2 (03-mutation_output_specification_v0.md)
-    
+
     Categories:
         Constructive (Green): CREATE, ADD, CONFIGURE, INSTALL, INITIALIZE
         Recovery (Blue): RESTORE
@@ -289,61 +289,66 @@ class ConsequenceType(Enum):
         Transfer (Magenta): SYNC
         Informational (Cyan): VALIDATE
         No-op (Gray): SKIP, EXISTS, UNCHANGED
-    
+
     Example:
         >>> ct = ConsequenceType.CREATE
         >>> print(f"[{ct.prompt_label}]")  # [CREATE]
         >>> print(f"[{ct.result_label}]")  # [CREATED]
     """
-    
+
     # Value format: (prompt_label, result_label, prompt_color, result_color)
-    
+
     # Constructive actions (Green)
     CREATE = ("CREATE", "CREATED", Color.GREEN_DIM, Color.GREEN)
     ADD = ("ADD", "ADDED", Color.GREEN_DIM, Color.GREEN)
     CONFIGURE = ("CONFIGURE", "CONFIGURED", Color.GREEN_DIM, Color.GREEN)
     INSTALL = ("INSTALL", "INSTALLED", Color.GREEN_DIM, Color.GREEN)
     INITIALIZE = ("INITIALIZE", "INITIALIZED", Color.GREEN_DIM, Color.GREEN)
-    
+
     # Recovery actions (Blue)
     RESTORE = ("RESTORE", "RESTORED", Color.BLUE_DIM, Color.BLUE)
-    
+
     # Destructive actions (Red)
     REMOVE = ("REMOVE", "REMOVED", Color.RED_DIM, Color.RED)
     DELETE = ("DELETE", "DELETED", Color.RED_DIM, Color.RED)
     CLEAN = ("CLEAN", "CLEANED", Color.RED_DIM, Color.RED)
-    
+
     # Modification actions (Yellow)
     SET = ("SET", "SET", Color.YELLOW_DIM, Color.YELLOW)  # Irregular: no change
     UPDATE = ("UPDATE", "UPDATED", Color.YELLOW_DIM, Color.YELLOW)
-    
+
     # Transfer actions (Magenta)
     SYNC = ("SYNC", "SYNCED", Color.MAGENTA_DIM, Color.MAGENTA)
-    
+
     # Informational actions (Cyan)
     VALIDATE = ("VALIDATE", "VALIDATED", Color.CYAN_DIM, Color.CYAN)
     INFO = ("INFO", "INFO", Color.CYAN_DIM, Color.CYAN)
-    
+
     # No-op actions (Gray) - same color for prompt and result
     SKIP = ("SKIP", "SKIPPED", Color.GRAY, Color.GRAY)
     EXISTS = ("EXISTS", "EXISTS", Color.GRAY, Color.GRAY)  # Irregular: no change
-    UNCHANGED = ("UNCHANGED", "UNCHANGED", Color.GRAY, Color.GRAY)  # Irregular: no change
-    
+    UNCHANGED = (
+        "UNCHANGED",
+        "UNCHANGED",
+        Color.GRAY,
+        Color.GRAY,
+    )  # Irregular: no change
+
     @property
     def prompt_label(self) -> str:
         """Present tense label for confirmation prompts."""
         return self.value[0]
-    
+
     @property
     def result_label(self) -> str:
         """Past tense label for execution results."""
         return self.value[1]
-    
+
     @property
     def prompt_color(self) -> Color:
         """Dim color for confirmation prompts."""
         return self.value[2]
-    
+
     @property
     def result_color(self) -> Color:
         """Bright color for execution results."""
@@ -357,17 +362,17 @@ class ConsequenceType(Enum):
 
 class ValidationError(Exception):
     """Validation error with structured context.
-    
+
     Provides structured error information for input validation failures,
     including optional field name and suggestion for resolution.
-    
+
     Reference: R13 §4.2.2 (13-error_message_formatting_v0.md)
-    
+
     Attributes:
         message: Human-readable error description
         field: Optional field/argument name that caused the error
         suggestion: Optional suggestion for resolving the error
-    
+
     Example:
         >>> raise ValidationError(
         ...     "Invalid host 'vsc'",
@@ -375,15 +380,10 @@ class ValidationError(Exception):
         ...     suggestion="Supported hosts: claude-desktop, vscode, cursor"
         ... )
     """
-    
-    def __init__(
-        self,
-        message: str,
-        field: str = None,
-        suggestion: str = None
-    ):
+
+    def __init__(self, message: str, field: str = None, suggestion: str = None):
         """Initialize ValidationError.
-        
+
         Args:
             message: Human-readable error description
             field: Optional field/argument name that caused the error
@@ -402,23 +402,23 @@ from typing import List
 @dataclass
 class Consequence:
     """Data model for a single consequence (resource or field level).
-    
+
     Consequences represent actions that will be or have been performed.
     They can be nested to show resource-level actions with field-level details.
-    
+
     Reference: R06 §3.3 (06-dependency_analysis_v0.md)
     Reference: R04 §5.1 (04-reporting_infrastructure_coexistence_v0.md)
-    
+
     Attributes:
         type: The ConsequenceType indicating the action category
         message: Human-readable description of the consequence
         children: Nested consequences (e.g., field-level details under resource)
-    
+
     Invariants:
         - children only populated for resource-level consequences
         - field-level consequences have empty children list
         - nesting limited to 2 levels (resource → field)
-    
+
     Example:
         >>> parent = Consequence(
         ...     type=ConsequenceType.CONFIGURE,
@@ -429,7 +429,7 @@ class Consequence:
         ...     ]
         ... )
     """
-    
+
     type: ConsequenceType
     message: str
     children: List["Consequence"] = field(default_factory=list)
@@ -440,25 +440,25 @@ from typing import Optional, Tuple
 
 class ResultReporter:
     """Unified rendering system for all CLI output.
-    
+
     Tracks consequences and renders them with tense-aware, color-coded output.
     Present tense (dim colors) for confirmation prompts, past tense (bright colors)
     for execution results.
-    
+
     Reference: R06 §3.4 (06-dependency_analysis_v0.md)
     Reference: R04 §5.2 (04-reporting_infrastructure_coexistence_v0.md)
     Reference: R01 §8.2 (01-cli_output_analysis_v2.md)
-    
+
     Attributes:
         command_name: Display name for the command (e.g., "hatch mcp configure")
         dry_run: If True, append "- DRY RUN" suffix to result labels
         consequences: List of tracked consequences in order of addition
-    
+
     Invariants:
         - consequences list is append-only
         - report_prompt() and report_result() are idempotent
         - Order of add() calls determines output order
-    
+
     Example:
         >>> reporter = ResultReporter("hatch env create", dry_run=False)
         >>> reporter.add(ConsequenceType.CREATE, "Environment 'dev'")
@@ -467,10 +467,10 @@ class ResultReporter:
         >>> # ... user confirms ...
         >>> reporter.report_result()  # Past tense, bright colors
     """
-    
+
     def __init__(self, command_name: str, dry_run: bool = False):
         """Initialize ResultReporter.
-        
+
         Args:
             command_name: Display name for the command
             dry_run: If True, results show "- DRY RUN" suffix
@@ -478,68 +478,65 @@ class ResultReporter:
         self._command_name = command_name
         self._dry_run = dry_run
         self._consequences: List[Consequence] = []
-    
+
     @property
     def command_name(self) -> str:
         """Display name for the command."""
         return self._command_name
-    
+
     @property
     def dry_run(self) -> bool:
         """Whether this is a dry-run preview."""
         return self._dry_run
-    
+
     @property
     def consequences(self) -> List[Consequence]:
         """List of tracked consequences in order of addition."""
         return self._consequences
-    
+
     def add(
         self,
         consequence_type: ConsequenceType,
         message: str,
-        children: Optional[List[Consequence]] = None
+        children: Optional[List[Consequence]] = None,
     ) -> None:
         """Add a consequence with optional nested children.
-        
+
         Args:
             consequence_type: The type of action
             message: Human-readable description
             children: Optional nested consequences (e.g., field-level details)
-        
+
         Invariants:
             - Order of add() calls determines output order
             - Children inherit parent's tense during rendering
         """
         consequence = Consequence(
-            type=consequence_type,
-            message=message,
-            children=children or []
+            type=consequence_type, message=message, children=children or []
         )
         self._consequences.append(consequence)
-    
+
     def add_from_conversion_report(self, report: "ConversionReport") -> None:
         """Convert ConversionReport field operations to nested consequences.
-        
+
         Maps ConversionReport data to the unified consequence model:
         - report.operation → resource ConsequenceType
         - field_op "UPDATED" → ConsequenceType.UPDATE
         - field_op "UNSUPPORTED" → ConsequenceType.SKIP
         - field_op "UNCHANGED" → ConsequenceType.UNCHANGED
-        
+
         Reference: R06 §3.5 (06-dependency_analysis_v0.md)
         Reference: R04 §1.2 (04-reporting_infrastructure_coexistence_v0.md)
-        
+
         Args:
             report: ConversionReport with field operations to convert
-        
+
         Invariants:
             - All field operations become children of resource consequence
             - UNSUPPORTED fields include "(unsupported by host)" suffix
         """
         # Import here to avoid circular dependency
-        from hatch.mcp_host_config.reporting import ConversionReport
-        
+
         # Map report.operation to resource ConsequenceType
         operation_map = {
             "create": ConsequenceType.CONFIGURE,
@@ -548,21 +545,23 @@ class ResultReporter:
             "migrate": ConsequenceType.CONFIGURE,
         }
         resource_type = operation_map.get(report.operation, ConsequenceType.CONFIGURE)
-        
+
         # Build resource message
-        resource_message = f"Server '{report.server_name}' on '{report.target_host.value}'"
-        
+        resource_message = (
+            f"Server '{report.server_name}' on '{report.target_host.value}'"
+        )
+
         # Map field operations to child consequences
         field_op_map = {
             "UPDATED": ConsequenceType.UPDATE,
             "UNSUPPORTED": ConsequenceType.SKIP,
             "UNCHANGED": ConsequenceType.UNCHANGED,
         }
-        
+
         children = []
         for field_op in report.field_operations:
             child_type = field_op_map.get(field_op.operation, ConsequenceType.UPDATE)
-            
+
             # Format field message based on operation type
             if field_op.operation == "UPDATED":
                 child_message = f"{field_op.field_name}: {repr(field_op.old_value)} → {repr(field_op.new_value)}"
@@ -570,81 +569,80 @@ class ResultReporter:
                 child_message = f"{field_op.field_name}: (unsupported by host)"
             else:  # UNCHANGED
                 child_message = f"{field_op.field_name}: {repr(field_op.new_value)}"
-            
+
             children.append(Consequence(type=child_type, message=child_message))
-        
+
         # Add the resource consequence with children
         self.add(resource_type, resource_message, children=children)
-    
+
     def _format_consequence(
-        self,
-        consequence: Consequence,
-        use_result_tense: bool,
-        indent: int = 2
+        self, consequence: Consequence, use_result_tense: bool, indent: int = 2
     ) -> str:
         """Format a single consequence with color and tense.
-        
+
         Args:
             consequence: The consequence to format
             use_result_tense: True for past tense (result), False for present (prompt)
             indent: Number of spaces for indentation
-        
+
         Returns:
             Formatted string with optional ANSI colors
         """
         ct = consequence.type
         label = ct.result_label if use_result_tense else ct.prompt_label
         color = ct.result_color if use_result_tense else ct.prompt_color
-        
+
         # Add dry-run suffix for results
         if use_result_tense and self._dry_run:
             label = f"{label} - DRY RUN"
-        
+
         # Format with or without colors
         indent_str = " " * indent
         if _colors_enabled():
             line = f"{indent_str}{color.value}[{label}]{Color.RESET.value} {consequence.message}"
         else:
             line = f"{indent_str}[{label}] {consequence.message}"
-        
+
         return line
-    
+
     def report_prompt(self) -> str:
         """Generate confirmation prompt (present tense, dim colors).
-        
+
         Output format:
             {command_name}:
               [VERB] resource message
                 [VERB] field message
                 [VERB] field message
-        
+
         Returns:
             Formatted prompt string, empty string if no consequences.
-        
+
         Invariants:
             - All consequences shown (including UNCHANGED, SKIP)
             - Empty string if no consequences
         """
         if not self._consequences:
             return ""
-        
+
         lines = [f"{self._command_name}:"]
-        
+
         for consequence in self._consequences:
             lines.append(self._format_consequence(consequence, use_result_tense=False))
             for child in consequence.children:
-                lines.append(self._format_consequence(child, use_result_tense=False, indent=4))
-        
+                lines.append(
+                    self._format_consequence(child, use_result_tense=False, indent=4)
+                )
+
         return "\n".join(lines)
-    
+
     def report_result(self) -> None:
         """Print execution results (past tense, bright colors).
-        
+
         Output format:
             [SUCCESS] summary (or [DRY RUN] for dry-run mode)
               [VERB-ED] resource message
                 [VERB-ED] field message (only changed fields)
-        
+
         Invariants:
             - UNCHANGED and SKIP fields may be omitted from result (noise reduction)
             - Dry-run appends "- DRY RUN" suffix
@@ -652,19 +650,23 @@ class ResultReporter:
         """
         if not self._consequences:
             return
-        
+
         # Print header
         if self._dry_run:
             if _colors_enabled():
-                print(f"{Color.CYAN.value}[DRY RUN]{Color.RESET.value} Preview of changes:")
+                print(
+                    f"{Color.CYAN.value}[DRY RUN]{Color.RESET.value} Preview of changes:"
+                )
             else:
                 print("[DRY RUN] Preview of changes:")
         else:
             if _colors_enabled():
-                print(f"{Color.GREEN.value}[SUCCESS]{Color.RESET.value} Operation completed:")
+                print(
+                    f"{Color.GREEN.value}[SUCCESS]{Color.RESET.value} Operation completed:"
+                )
             else:
                 print("[SUCCESS] Operation completed:")
-        
+
         # Print consequences
         for consequence in self._consequences:
             print(self._format_consequence(consequence, use_result_tense=True))
@@ -672,24 +674,24 @@ class ResultReporter:
                 # Optionally filter out UNCHANGED/SKIP in results for noise reduction
                 # For now, show all for transparency
                 print(self._format_consequence(child, use_result_tense=True, indent=4))
-    
+
     def report_error(self, summary: str, details: Optional[List[str]] = None) -> None:
         """Report execution failure with structured details.
-        
+
         Prints error message with [ERROR] prefix in bright red color (when colors enabled).
         Details are indented with 2 spaces for visual hierarchy.
-        
+
         Reference: R13 §4.2.3 (13-error_message_formatting_v0.md)
-        
+
         Args:
             summary: High-level error description
             details: Optional list of detail lines to print below summary
-        
+
         Output format:
             [ERROR] <summary>
               <detail_line_1>
               <detail_line_2>
-        
+
         Example:
             >>> reporter = ResultReporter("hatch env create")
             >>> reporter.report_error(
@@ -701,43 +703,40 @@ class ResultReporter:
         """
         if not summary:
             return
-        
+
         # Print error header with color
         if _colors_enabled():
             print(f"{Color.RED.value}[ERROR]{Color.RESET.value} {summary}")
         else:
             print(f"[ERROR] {summary}")
-        
+
         # Print details with indentation
         if details:
             for detail in details:
                 print(f"  {detail}")
-    
+
     def report_partial_success(
-        self,
-        summary: str,
-        successes: List[str],
-        failures: List[Tuple[str, str]]
+        self, summary: str, successes: List[str], failures: List[Tuple[str, str]]
     ) -> None:
         """Report mixed success/failure results with ✓/✗ symbols.
-        
+
         Prints warning message with [WARNING] prefix in bright yellow color.
         Uses ✓/✗ symbols for success/failure items (with ASCII fallback).
         Includes summary line showing success ratio.
-        
+
         Reference: R13 §4.2.3 (13-error_message_formatting_v0.md)
-        
+
         Args:
             summary: High-level summary description
             successes: List of successful item descriptions
             failures: List of (item, reason) tuples for failed items
-        
+
         Output format:
             [WARNING] <summary>
               ✓ <success_item>
               ✗ <failure_item>: <reason>
               Summary: X/Y succeeded
-        
+
         Example:
             >>> reporter = ResultReporter("hatch mcp sync")
             >>> reporter.report_partial_success(
@@ -753,27 +752,31 @@ class ResultReporter:
         # Determine symbols based on unicode support
         success_symbol = "✓" if _supports_unicode() else "+"
         failure_symbol = "✗" if _supports_unicode() else "x"
-        
+
         # Print warning header with color
         if _colors_enabled():
             print(f"{Color.YELLOW.value}[WARNING]{Color.RESET.value} {summary}")
         else:
             print(f"[WARNING] {summary}")
-        
+
         # Print success items
         for item in successes:
             if _colors_enabled():
-                print(f"  {Color.GREEN.value}{success_symbol}{Color.RESET.value} {item}")
+                print(
+                    f"  {Color.GREEN.value}{success_symbol}{Color.RESET.value} {item}"
+                )
             else:
                 print(f"  {success_symbol} {item}")
-        
+
         # Print failure items
         for item, reason in failures:
             if _colors_enabled():
-                print(f"  {Color.RED.value}{failure_symbol}{Color.RESET.value} {item}: {reason}")
+                print(
+                    f"  {Color.RED.value}{failure_symbol}{Color.RESET.value} {item}: {reason}"
+                )
             else:
                 print(f"  {failure_symbol} {item}: {reason}")
-        
+
         # Print summary line
         total = len(successes) + len(failures)
         succeeded = len(successes)
@@ -787,20 +790,20 @@ class ResultReporter:
 
 def format_validation_error(error: "ValidationError") -> None:
     """Print formatted validation error with color.
-    
+
     Prints error message with [ERROR] prefix in bright red color.
     Optionally includes field name and suggestion if provided.
-    
+
     Reference: R13 §4.3 (13-error_message_formatting_v0.md)
-    
+
     Args:
         error: ValidationError instance with message, field, and suggestion
-    
+
     Output format:
         [ERROR] <message>
           Field: <field> (if provided)
           Suggestion: <suggestion> (if provided)
-    
+
     Example:
         >>> from hatch.cli.cli_utils import ValidationError, format_validation_error
         >>> format_validation_error(ValidationError(
@@ -817,11 +820,11 @@ def format_validation_error(error: "ValidationError") -> None:
         print(f"{Color.RED.value}[ERROR]{Color.RESET.value} {error.message}")
     else:
         print(f"[ERROR] {error.message}")
-    
+
     # Print field if provided
     if error.field:
         print(f"  Field: {error.field}")
-    
+
     # Print suggestion if provided
     if error.suggestion:
         print(f"  Suggestion: {error.suggestion}")
@@ -829,18 +832,18 @@ def format_validation_error(error: "ValidationError") -> None:
 
 def format_info(message: str) -> None:
     """Print formatted info message with color.
-    
+
     Prints message with [INFO] prefix in bright blue color.
     Used for informational messages like "Operation cancelled".
-    
+
     Reference: R13-B §B.6.2 (13-error_message_formatting_appendix_b_v0.md)
-    
+
     Args:
         message: Info message to display
-    
+
     Output format:
         [INFO] <message>
-    
+
     Example:
         >>> from hatch.cli.cli_utils import format_info
         >>> format_info("Operation cancelled")
@@ -854,20 +857,20 @@ def format_info(message: str) -> None:
 
 def format_warning(message: str, suggestion: str = None) -> None:
     """Print formatted warning message with color.
-    
+
     Prints message with [WARNING] prefix in bright yellow color.
     Used for non-fatal warnings that don't prevent operation completion.
-    
+
     Reference: R13-A §A.5 P3 (13-error_message_formatting_appendix_a_v0.md)
-    
+
     Args:
         message: Warning message to display
         suggestion: Optional suggestion for resolution
-    
+
     Output format:
         [WARNING] <message>
           Suggestion: <suggestion> (if provided)
-    
+
     Example:
         >>> from hatch.cli.cli_utils import format_warning
         >>> format_warning("Invalid header format 'foo'", suggestion="Expected KEY=VALUE")
@@ -878,7 +881,7 @@ def format_warning(message: str, suggestion: str = None) -> None:
         print(f"{Color.YELLOW.value}[WARNING]{Color.RESET.value} {message}")
     else:
         print(f"[WARNING] {message}")
-    
+
     if suggestion:
         print(f"  Suggestion: {suggestion}")
 
@@ -893,20 +896,20 @@ from typing import Union, Literal
 @dataclass
 class ColumnDef:
     """Column definition for TableFormatter.
-    
+
     Reference: R06 §3.6 (06-dependency_analysis_v0.md)
     Reference: R02 §5 (02-list_output_format_specification_v2.md)
-    
+
     Attributes:
         name: Column header text
         width: Fixed width (int) or "auto" for auto-calculation
         align: Text alignment ("left", "right", "center")
-    
+
     Example:
         >>> col = ColumnDef(name="Name", width=20, align="left")
         >>> col_auto = ColumnDef(name="Count", width="auto", align="right")
     """
-    
+
     name: str
     width: Union[int, Literal["auto"]]
     align: Literal["left", "right", "center"] = "left"
@@ -914,16 +917,16 @@ class ColumnDef:
 
 class TableFormatter:
     """Aligned table output for list commands.
-    
+
     Renders data as aligned columns with headers and separator line.
     Supports fixed and auto-calculated column widths.
-    
+
     Reference: R06 §3.6 (06-dependency_analysis_v0.md)
     Reference: R02 §5 (02-list_output_format_specification_v2.md)
-    
+
     Attributes:
         columns: List of column definitions
-    
+
     Example:
         >>> columns = [
         ...     ColumnDef(name="Name", width=20),
@@ -936,27 +939,27 @@ class TableFormatter:
         ─────────────────────────────────
         my-server            active
     """
-    
+
     def __init__(self, columns: List[ColumnDef]):
         """Initialize TableFormatter with column definitions.
-        
+
         Args:
             columns: List of ColumnDef specifying table structure
         """
         self._columns = columns
         self._rows: List[List[str]] = []
-    
+
     def add_row(self, values: List[str]) -> None:
         """Add a data row to the table.
-        
+
         Args:
             values: List of string values, one per column
         """
         self._rows.append(values)
-    
+
     def _calculate_widths(self) -> List[int]:
         """Calculate actual column widths, resolving 'auto' widths.
-        
+
         Returns:
             List of integer widths for each column
         """
@@ -972,24 +975,24 @@ class TableFormatter:
             else:
                 widths.append(col.width)
         return widths
-    
+
     def _align_value(self, value: str, width: int, align: str) -> str:
         """Align a value within the specified width.
-        
+
         Args:
             value: The string value to align
             width: Target width
             align: Alignment type ("left", "right", "center")
-        
+
         Returns:
             Aligned string, truncated with ellipsis if too long
         """
         # Truncate if too long
         if len(value) > width:
             if width > 1:
-                return value[:width - 1] + "…"
+                return value[: width - 1] + "…"
             return value[:width]
-        
+
         # Apply alignment
         if align == "right":
             return value.rjust(width)
@@ -997,26 +1000,28 @@ class TableFormatter:
             return value.center(width)
         else:  # left (default)
             return value.ljust(width)
-    
+
     def render(self) -> str:
         """Render the table as a formatted string.
-        
+
         Returns:
             Multi-line string with headers, separator, and data rows
         """
         widths = self._calculate_widths()
         lines = []
-        
+
         # Header row
         header_parts = []
         for i, col in enumerate(self._columns):
             header_parts.append(self._align_value(col.name, widths[i], col.align))
         lines.append("  " + "  ".join(header_parts))
-        
+
         # Separator line
-        total_width = sum(widths) + (len(widths) - 1) * 2 + 2  # columns + separators + indent
+        total_width = (
+            sum(widths) + (len(widths) - 1) * 2 + 2
+        )  # columns + separators + indent
         lines.append("  " + "─" * (total_width - 2))
-        
+
         # Data rows
         for row in self._rows:
             row_parts = []
@@ -1024,7 +1029,7 @@ class TableFormatter:
                 value = row[i] if i < len(row) else ""
                 row_parts.append(self._align_value(value, widths[i], col.align))
             lines.append("  " + "  ".join(row_parts))
-        
+
         return "\n".join(lines)
 
 
@@ -1103,7 +1108,7 @@ def parse_env_vars(env_list: Optional[list]) -> dict:
         if "=" not in env_var:
             format_warning(
                 f"Invalid environment variable format '{env_var}'",
-                suggestion="Expected KEY=VALUE"
+                suggestion="Expected KEY=VALUE",
             )
             continue
         key, value = env_var.split("=", 1)
@@ -1128,8 +1133,7 @@ def parse_header(header_list: Optional[list]) -> dict:
     for header in header_list:
         if "=" not in header:
             format_warning(
-                f"Invalid header format '{header}'",
-                suggestion="Expected KEY=VALUE"
+                f"Invalid header format '{header}'", suggestion="Expected KEY=VALUE"
             )
             continue
         key, value = header.split("=", 1)
@@ -1159,7 +1163,7 @@ def parse_input(input_list: Optional[list]) -> Optional[list]:
         if len(parts) < 3:
             format_warning(
                 f"Invalid input format '{input_str}'",
-                suggestion="Expected: type,id,description[,password=true]"
+                suggestion="Expected: type,id,description[,password=true]",
             )
             continue
 

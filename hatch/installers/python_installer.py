@@ -9,13 +9,16 @@ import subprocess
 import logging
 import os
 import json
-from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 import os
-from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 
-from .installer_base import DependencyInstaller, InstallationContext, InstallationResult, InstallationError
+from .installer_base import (
+    DependencyInstaller,
+    InstallationContext,
+    InstallationResult,
+    InstallationError,
+)
 from .installation_context import InstallationStatus
 
 
@@ -65,7 +68,7 @@ class PythonInstaller(DependencyInstaller):
             bool: True if this installer can handle the dependency, False otherwise.
         """
         return dependency.get("type") == self.installer_type
-    
+
     def validate_dependency(self, dependency: Dict[str, Any]) -> bool:
         """Validate that a dependency object has required fields for Python packages.
 
@@ -78,15 +81,17 @@ class PythonInstaller(DependencyInstaller):
         required_fields = ["name", "version_constraint"]
         if not all(field in dependency for field in required_fields):
             return False
-        
+
         # Check for valid package manager if specified
         package_manager = dependency.get("package_manager", "pip")
         if package_manager not in ["pip"]:
             return False
-            
+
         return True
 
-    def _run_pip_subprocess(self, cmd: List[str], env_vars: Dict[str, str] = None) -> int:
+    def _run_pip_subprocess(
+        self, cmd: List[str], env_vars: Dict[str, str] = None
+    ) -> int:
         """Run a pip subprocess and return the exit code.
 
         Args:
@@ -102,33 +107,41 @@ class PythonInstaller(DependencyInstaller):
         """
 
         env = os.environ.copy()
-        env['PYTHONUNBUFFERED'] = '1'
+        env["PYTHONUNBUFFERED"] = "1"
         env.update(env_vars or {})  # Merge in any additional environment variables
 
-        self.logger.debug(f"Running pip command: {' '.join(cmd)} with env: {json.dumps(env, indent=2)}")
+        self.logger.debug(
+            f"Running pip command: {' '.join(cmd)} with env: {json.dumps(env, indent=2)}"
+        )
 
         try:
             result = subprocess.run(
                 cmd,
                 env=env,
                 check=False,  # Don't raise on non-zero exit codes
-                timeout=300   # 5 minute timeout
+                timeout=300,  # 5 minute timeout
             )
-            
+
             return result.returncode
 
         except subprocess.TimeoutExpired:
-            raise InstallationError("Pip subprocess timed out", error_code="TIMEOUT", cause=None)
+            raise InstallationError(
+                "Pip subprocess timed out", error_code="TIMEOUT", cause=None
+            )
 
         except Exception as e:
             raise InstallationError(
                 f"Unexpected error running pip command: {e}",
                 error_code="PIP_SUBPROCESS_ERROR",
-                cause=e
+                cause=e,
             )
 
-    def install(self, dependency: Dict[str, Any], context: InstallationContext,
-                progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def install(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Install a Python package dependency using pip.
 
         This method uses subprocess to call pip with the appropriate Python executable,
@@ -147,7 +160,7 @@ class PythonInstaller(DependencyInstaller):
         """
         name = dependency["name"]
         version_constraint = dependency["version_constraint"]
-        
+
         if progress_callback:
             progress_callback("validate", 0.0, f"Validating Python package {name}")
 
@@ -156,14 +169,14 @@ class PythonInstaller(DependencyInstaller):
         self.logger.debug(f"Using Python environment variables: {python_env_vars}")
         python_exec = python_env_vars.get("PYTHON", sys.executable)
         self.logger.debug(f"Using Python executable: {python_exec}")
-        
+
         # Build package specification with version constraint
         # Let pip resolve the actual version based on the constraint
         if version_constraint and version_constraint != "*":
             package_spec = f"{name}{version_constraint}"
         else:
             package_spec = name
-        
+
         # Handle extras if specified
         extras = dependency.get("extras", [])
         if extras:
@@ -177,12 +190,14 @@ class PythonInstaller(DependencyInstaller):
                 package_spec = f"{name}[{extras_str}]"
 
         # Build pip command
-        self.logger.debug(f"Installing Python package: {package_spec} using {python_exec}")
+        self.logger.debug(
+            f"Installing Python package: {package_spec} using {python_exec}"
+        )
         cmd = [str(python_exec), "-m", "pip", "install", package_spec]
-        
+
         # Add additional pip options
         cmd.extend(["--no-cache-dir"])  # Avoid cache issues in different environments
-        
+
         if context.simulation_mode:
             # In simulation mode, just return success without actually installing
             self.logger.info(f"Simulation mode: would install {package_spec}")
@@ -190,7 +205,7 @@ class PythonInstaller(DependencyInstaller):
                 dependency_name=name,
                 status=InstallationStatus.COMPLETED,
                 installed_version=version_constraint,
-                metadata={"simulation": True, "command": cmd}
+                metadata={"simulation": True, "command": cmd},
             )
 
         try:
@@ -199,42 +214,41 @@ class PythonInstaller(DependencyInstaller):
 
             returncode = self._run_pip_subprocess(cmd, env_vars=python_env_vars)
             self.logger.debug(f"pip command: {' '.join(cmd)}\nreturncode: {returncode}")
-            
-            if returncode == 0:
 
+            if returncode == 0:
                 if progress_callback:
                     progress_callback("install", 1.0, f"Successfully installed {name}")
 
                 return InstallationResult(
                     dependency_name=name,
                     status=InstallationStatus.COMPLETED,
-                    metadata={
-                        "command": cmd,
-                        "version_constraint": version_constraint
-                    }
+                    metadata={"command": cmd, "version_constraint": version_constraint},
                 )
-            
+
             else:
                 error_msg = f"Failed to install {name} (exit code: {returncode})"
                 self.logger.error(error_msg)
                 raise InstallationError(
-                    error_msg, 
-                    dependency_name=name, 
-                    error_code="PIP_FAILED",
-                    cause=None
+                    error_msg, dependency_name=name, error_code="PIP_FAILED", cause=None
                 )
         except subprocess.TimeoutExpired:
             error_msg = f"Installation of {name} timed out after 5 minutes"
             self.logger.error(error_msg)
-            raise InstallationError(error_msg, dependency_name=name, error_code="TIMEOUT")
-        
+            raise InstallationError(
+                error_msg, dependency_name=name, error_code="TIMEOUT"
+            )
+
         except Exception as e:
             error_msg = f"Unexpected error installing {name}: {repr(e)}"
             self.logger.error(error_msg)
             raise InstallationError(error_msg, dependency_name=name, cause=e)
 
-    def uninstall(self, dependency: Dict[str, Any], context: InstallationContext,
-                  progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def uninstall(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Uninstall a Python package dependency using pip.
 
         Args:
@@ -249,7 +263,7 @@ class PythonInstaller(DependencyInstaller):
             InstallationError: If uninstall fails for any reason.
         """
         name = dependency["name"]
-        
+
         if progress_callback:
             progress_callback("uninstall", 0.0, f"Uninstalling Python package {name}")
 
@@ -266,7 +280,7 @@ class PythonInstaller(DependencyInstaller):
             return InstallationResult(
                 dependency_name=name,
                 status=InstallationStatus.COMPLETED,
-                metadata={"simulation": True, "command": cmd}
+                metadata={"simulation": True, "command": cmd},
             )
 
         try:
@@ -276,38 +290,41 @@ class PythonInstaller(DependencyInstaller):
             returncode = self._run_pip_subprocess(cmd, env_vars=python_env_vars)
 
             if returncode == 0:
-
                 if progress_callback:
-                    progress_callback("uninstall", 1.0, f"Successfully uninstalled {name}")
+                    progress_callback(
+                        "uninstall", 1.0, f"Successfully uninstalled {name}"
+                    )
                 self.logger.info(f"Successfully uninstalled Python package {name}")
 
                 return InstallationResult(
                     dependency_name=name,
                     status=InstallationStatus.COMPLETED,
-                    metadata={
-                        "command": cmd
-                    }
+                    metadata={"command": cmd},
                 )
             else:
                 error_msg = f"Failed to uninstall {name} (exit code: {returncode})"
                 self.logger.error(error_msg)
-                
+
                 raise InstallationError(
                     error_msg,
                     dependency_name=name,
                     error_code="PIP_UNINSTALL_FAILED",
-                    cause=None
+                    cause=None,
                 )
         except subprocess.TimeoutExpired:
             error_msg = f"Uninstallation of {name} timed out after 1 minute"
             self.logger.error(error_msg)
-            raise InstallationError(error_msg, dependency_name=name, error_code="TIMEOUT")
+            raise InstallationError(
+                error_msg, dependency_name=name, error_code="TIMEOUT"
+            )
         except Exception as e:
             error_msg = f"Unexpected error uninstalling {name}: {e}"
             self.logger.error(error_msg)
             raise InstallationError(error_msg, dependency_name=name, cause=e)
-    
-    def get_installation_info(self, dependency: Dict[str, Any], context: InstallationContext) -> Dict[str, Any]:
+
+    def get_installation_info(
+        self, dependency: Dict[str, Any], context: InstallationContext
+    ) -> Dict[str, Any]:
         """Get information about what would be installed without actually installing.
 
         Args:
@@ -319,24 +336,28 @@ class PythonInstaller(DependencyInstaller):
         """
         python_exec = context.get_config("python_executable", sys.executable)
         version_constraint = dependency.get("version_constraint", "*")
-        
+
         # Build package spec for display
         if version_constraint and version_constraint != "*":
             package_spec = f"{dependency['name']}{version_constraint}"
         else:
-            package_spec = dependency['name']
-        
+            package_spec = dependency["name"]
+
         info = super().get_installation_info(dependency, context)
-        info.update({
-            "python_executable": str(python_exec),
-            "package_manager": dependency.get("package_manager", "pip"),
-            "package_spec": package_spec,
-            "version_constraint": version_constraint,
-            "extras": dependency.get("extras", []),
-        })
-        
+        info.update(
+            {
+                "python_executable": str(python_exec),
+                "package_manager": dependency.get("package_manager", "pip"),
+                "package_spec": package_spec,
+                "version_constraint": version_constraint,
+                "extras": dependency.get("extras", []),
+            }
+        )
+
         return info
+
 
 # Register this installer with the global registry
 from .registry import installer_registry
+
 installer_registry.register_installer("python", PythonInstaller)

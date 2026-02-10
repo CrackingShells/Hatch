@@ -12,7 +12,7 @@ The complete package metadata schema is defined in `Hatch-Schemas/package/v1.2.0
 {
   "package_schema_version": "1.2.0",
   "name": "package_name",
-  "version": "1.0.0", 
+  "version": "1.0.0",
   "entry_point": "hatch_mcp_server_entry.py",
   "description": "Package description",
   "tags": ["tag1", "tag2"],

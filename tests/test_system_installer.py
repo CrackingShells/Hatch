@@ -10,17 +10,22 @@ import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
-from typing import Dict, Any
 
 from wobble.decorators import regression_test, integration_test, slow_test
 
 from hatch.installers.system_installer import SystemInstaller
 from hatch.installers.installer_base import InstallationError
-from hatch.installers.installation_context import InstallationContext, InstallationResult, InstallationStatus
+from hatch.installers.installation_context import (
+    InstallationContext,
+    InstallationResult,
+    InstallationStatus,
+)
 
 
 class DummyContext(InstallationContext):
-    def __init__(self, env_path=None, env_name=None, simulation_mode=False, extra_config=None):
+    def __init__(
+        self, env_path=None, env_name=None, simulation_mode=False, extra_config=None
+    ):
         self.simulation_mode = simulation_mode
         self.extra_config = extra_config or {}
         self.environment_path = env_path
@@ -39,7 +44,7 @@ class TestSystemInstaller(unittest.TestCase):
             env_path=Path("/test/env"),
             env_name="test_env",
             simulation_mode=False,
-            extra_config={}
+            extra_config={},
         )
 
     @regression_test
@@ -56,11 +61,13 @@ class TestSystemInstaller(unittest.TestCase):
             "type": "system",
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
-        
-        with patch.object(self.installer, '_is_platform_supported', return_value=True), \
-             patch.object(self.installer, '_is_apt_available', return_value=True):
+
+        with (
+            patch.object(self.installer, "_is_platform_supported", return_value=True),
+            patch.object(self.installer, "_is_apt_available", return_value=True),
+        ):
             self.assertTrue(self.installer.can_install(dependency))
 
     @regression_test
@@ -68,7 +75,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "type": "python",
             "name": "requests",
-            "version_constraint": ">=2.0.0"
+            "version_constraint": ">=2.0.0",
         }
 
         self.assertFalse(self.installer.can_install(dependency))
@@ -79,10 +86,10 @@ class TestSystemInstaller(unittest.TestCase):
             "type": "system",
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
-        with patch.object(self.installer, '_is_platform_supported', return_value=False):
+        with patch.object(self.installer, "_is_platform_supported", return_value=False):
             self.assertFalse(self.installer.can_install(dependency))
 
     @regression_test
@@ -91,11 +98,13 @@ class TestSystemInstaller(unittest.TestCase):
             "type": "system",
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
-        with patch.object(self.installer, '_is_platform_supported', return_value=True), \
-             patch.object(self.installer, '_is_apt_available', return_value=False):
+        with (
+            patch.object(self.installer, "_is_platform_supported", return_value=True),
+            patch.object(self.installer, "_is_apt_available", return_value=False),
+        ):
             self.assertFalse(self.installer.can_install(dependency))
 
     @regression_test
@@ -103,26 +112,20 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         self.assertTrue(self.installer.validate_dependency(dependency))
 
     @regression_test
     def test_validate_dependency_missing_name(self):
-        dependency = {
-            "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
-        }
-        
+        dependency = {"version_constraint": ">=7.0.0", "package_manager": "apt"}
+
         self.assertFalse(self.installer.validate_dependency(dependency))
 
     @regression_test
     def test_validate_dependency_missing_version_constraint(self):
-        dependency = {
-            "name": "curl",
-            "package_manager": "apt"
-        }
+        dependency = {"name": "curl", "package_manager": "apt"}
 
         self.assertFalse(self.installer.validate_dependency(dependency))
 
@@ -131,7 +134,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "yum"
+            "package_manager": "yum",
         }
 
         self.assertFalse(self.installer.validate_dependency(dependency))
@@ -141,14 +144,14 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": "invalid_version",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         self.assertFalse(self.installer.validate_dependency(dependency))
 
     @regression_test
-    @patch('platform.system')
-    @patch('pathlib.Path.exists')
+    @patch("platform.system")
+    @patch("pathlib.Path.exists")
     def test_is_platform_supported_debian(self, mock_exists, mock_system):
         """Test platform support detection for Debian."""
         mock_system.return_value = "Linux"
@@ -158,9 +161,9 @@ class TestSystemInstaller(unittest.TestCase):
         mock_exists.assert_called_with()
 
     @regression_test
-    @patch('platform.system')
-    @patch('pathlib.Path.exists')
-    @patch('builtins.open')
+    @patch("platform.system")
+    @patch("pathlib.Path.exists")
+    @patch("builtins.open")
     def test_is_platform_supported_ubuntu(self, mock_open, mock_exists, mock_system):
         """Test platform support detection for Ubuntu."""
         mock_system.return_value = "Linux"
@@ -168,14 +171,14 @@ class TestSystemInstaller(unittest.TestCase):
 
         # Mock os-release file content
         mock_file = MagicMock()
-        mock_file.read.return_value = "NAME=\"Ubuntu\"\nVERSION=\"20.04\""
+        mock_file.read.return_value = 'NAME="Ubuntu"\nVERSION="20.04"'
         mock_open.return_value.__enter__.return_value = mock_file
 
         self.assertTrue(self.installer._is_platform_supported())
 
     @regression_test
-    @patch('platform.system')
-    @patch('pathlib.Path.exists')
+    @patch("platform.system")
+    @patch("pathlib.Path.exists")
     def test_is_platform_supported_unsupported(self, mock_exists, mock_system):
         """Test platform support detection for unsupported systems."""
         mock_system.return_value = "Windows"
@@ -184,7 +187,7 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertFalse(self.installer._is_platform_supported())
 
     @regression_test
-    @patch('shutil.which')
+    @patch("shutil.which")
     def test_is_apt_available_true(self, mock_which):
         """Test apt availability detection when apt is available."""
         mock_which.return_value = "/usr/bin/apt"
@@ -193,7 +196,7 @@ class TestSystemInstaller(unittest.TestCase):
         mock_which.assert_called_once_with("apt")
 
     @regression_test
-    @patch('shutil.which')
+    @patch("shutil.which")
     def test_is_apt_available_false(self, mock_which):
         """Test apt availability detection when apt is not available."""
         mock_which.return_value = None
@@ -206,7 +209,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         command = self.installer._build_apt_command(dependency, self.mock_context)
@@ -218,7 +221,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": "==7.68.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         command = self.installer._build_apt_command(dependency, self.mock_context)
@@ -230,7 +233,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         self.mock_context.extra_config = {"automated": True}
@@ -238,22 +241,27 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertEqual(command, ["sudo", "apt", "install", "-y", "curl"])
 
     @regression_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
-    @patch('subprocess.run')
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
+    @patch("subprocess.run")
     def test_verify_installation_success(self, mock_run):
         """Test successful installation verification."""
         mock_run.return_value = subprocess.CompletedProcess(
             args=["apt-cache", "policy", "curl"],
             returncode=0,
             stdout="curl:\n  Installed: 7.68.0-1ubuntu2.7\n  Candidate: 7.68.0-1ubuntu2.7\n  Version table:\n *** 7.68.0-1ubuntu2.7 500\n        500 http://archive.ubuntu.com/ubuntu focal-updates/main amd64 Packages\n        100 /var/lib/dpkg/status",
-            stderr=""
+            stderr="",
         )
 
         version = self.installer._verify_installation("curl")
-        self.assertTrue(isinstance(version, str) and len(version) > 0, f"Expected a non-empty version string, got: {version}")
+        self.assertTrue(
+            isinstance(version, str) and len(version) > 0,
+            f"Expected a non-empty version string, got: {version}",
+        )
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_verify_installation_failure(self, mock_run):
         """Test installation verification when package not found."""
         mock_run.side_effect = subprocess.CalledProcessError(1, ["dpkg-query"])
@@ -265,14 +273,15 @@ class TestSystemInstaller(unittest.TestCase):
     def test_parse_apt_error_permission_denied(self):
         """Test parsing permission denied error."""
         error = subprocess.CalledProcessError(
-            1, ["apt", "install", "curl"],
-            stderr="E: Could not open lock file - permission denied"
+            1,
+            ["apt", "install", "curl"],
+            stderr="E: Could not open lock file - permission denied",
         )
         wrapped_error = InstallationError(
             str(error.stderr),
             dependency_name="curl",
             error_code="APT_INSTALL_FAILED",
-            cause=error
+            cause=error,
         )
         message = self.installer._parse_apt_error(wrapped_error)
         self.assertIn("permission denied", message.lower())
@@ -282,14 +291,15 @@ class TestSystemInstaller(unittest.TestCase):
     def test_parse_apt_error_package_not_found(self):
         """Test parsing package not found error."""
         error = subprocess.CalledProcessError(
-            100, ["apt", "install", "nonexistent"],
-            stderr="E: Unable to locate package nonexistent"
+            100,
+            ["apt", "install", "nonexistent"],
+            stderr="E: Unable to locate package nonexistent",
         )
         wrapped_error = InstallationError(
             str(error.stderr),
             dependency_name="nonexistent",
             error_code="APT_INSTALL_FAILED",
-            cause=error
+            cause=error,
         )
         message = self.installer._parse_apt_error(wrapped_error)
         self.assertIn("package not found", message.lower())
@@ -299,25 +309,26 @@ class TestSystemInstaller(unittest.TestCase):
     def test_parse_apt_error_generic(self):
         """Test parsing generic apt error."""
         error = subprocess.CalledProcessError(
-            1, ["apt", "install", "curl"],
-            stderr="Some unknown error occurred"
+            1, ["apt", "install", "curl"], stderr="Some unknown error occurred"
         )
         wrapped_error = InstallationError(
             str(error.stderr),
             dependency_name="curl",
             error_code="APT_INSTALL_FAILED",
-            cause=error
+            cause=error,
         )
         message = self.installer._parse_apt_error(wrapped_error)
         self.assertIn("apt command failed", message.lower())
         self.assertIn("unknown error", message.lower())
 
     @regression_test
-    @patch.object(SystemInstaller, 'validate_dependency')
-    @patch.object(SystemInstaller, '_build_apt_command')
-    @patch.object(SystemInstaller, '_run_apt_subprocess')
-    @patch.object(SystemInstaller, '_verify_installation')
-    def test_install_success(self, mock_verify, mock_execute, mock_build, mock_validate):
+    @patch.object(SystemInstaller, "validate_dependency")
+    @patch.object(SystemInstaller, "_build_apt_command")
+    @patch.object(SystemInstaller, "_run_apt_subprocess")
+    @patch.object(SystemInstaller, "_verify_installation")
+    def test_install_success(
+        self, mock_verify, mock_execute, mock_build, mock_validate
+    ):
         """Test successful installation."""
         # Setup mocks
         mock_validate.return_value = True
@@ -328,15 +339,18 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         # Test with progress callback
         progress_calls = []
+
         def progress_callback(operation, progress, message):
             progress_calls.append((operation, progress, message))
 
-        result = self.installer.install(dependency, self.mock_context, progress_callback)
+        result = self.installer.install(
+            dependency, self.mock_context, progress_callback
+        )
 
         # Verify result
         self.assertEqual(result.dependency_name, "curl")
@@ -350,15 +364,12 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertEqual(progress_calls[-1][1], 100.0)  # Complete
 
     @regression_test
-    @patch.object(SystemInstaller, 'validate_dependency')
+    @patch.object(SystemInstaller, "validate_dependency")
     def test_install_invalid_dependency(self, mock_validate):
         """Test installation with invalid dependency."""
         mock_validate.return_value = False
 
-        dependency = {
-            "name": "curl",
-            "version_constraint": "invalid"
-        }
+        dependency = {"name": "curl", "version_constraint": "invalid"}
 
         with self.assertRaises(InstallationError) as exc_info:
             self.installer.install(dependency, self.mock_context)
@@ -367,9 +378,9 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertIn("Invalid dependency", str(exc_info.exception))
 
     @regression_test
-    @patch.object(SystemInstaller, 'validate_dependency')
-    @patch.object(SystemInstaller, '_build_apt_command')
-    @patch.object(SystemInstaller, '_run_apt_subprocess')
+    @patch.object(SystemInstaller, "validate_dependency")
+    @patch.object(SystemInstaller, "_build_apt_command")
+    @patch.object(SystemInstaller, "_run_apt_subprocess")
     def test_install_apt_failure(self, mock_execute, mock_build, mock_validate):
         """Test installation failure due to apt command error."""
         mock_validate.return_value = True
@@ -380,7 +391,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         with self.assertRaises(InstallationError) as exc_info:
@@ -398,34 +409,36 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertEqual(exc_info2.exception.dependency_name, "curl")
 
     @regression_test
-    @patch.object(SystemInstaller, 'validate_dependency')
-    @patch.object(SystemInstaller, '_simulate_installation')
+    @patch.object(SystemInstaller, "validate_dependency")
+    @patch.object(SystemInstaller, "_simulate_installation")
     def test_install_simulation_mode(self, mock_simulate, mock_validate):
         """Test installation in simulation mode."""
         mock_validate.return_value = True
         mock_simulate.return_value = InstallationResult(
             dependency_name="curl",
             status=InstallationStatus.COMPLETED,
-            metadata={"simulation": True}
+            metadata={"simulation": True},
         )
 
         self.mock_context.simulation_mode = True
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
-        
+
         result = self.installer.install(dependency, self.mock_context)
-        
+
         self.assertEqual(result.dependency_name, "curl")
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
         self.assertTrue(result.metadata["simulation"])
         mock_simulate.assert_called_once()
 
     @regression_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
-    @patch.object(SystemInstaller, '_run_apt_subprocess')
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
+    @patch.object(SystemInstaller, "_run_apt_subprocess")
     def test_simulate_installation_success(self, mock_run):
         """Test successful installation simulation."""
         mock_run.return_value = 0
@@ -433,7 +446,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         result = self.installer._simulate_installation(dependency, self.mock_context)
@@ -443,20 +456,20 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertTrue(result.metadata["simulation"])
 
     @regression_test
-    @patch.object(SystemInstaller, '_run_apt_subprocess')
+    @patch.object(SystemInstaller, "_run_apt_subprocess")
     def test_simulate_installation_failure(self, mock_run):
         """Test installation simulation failure."""
         mock_run.return_value = 1
         mock_run.side_effect = InstallationError(
             "Simulation failed",
             dependency_name="nonexistent",
-            error_code="APT_SIMULATION_FAILED"
+            error_code="APT_SIMULATION_FAILED",
         )
 
         dependency = {
             "name": "nonexistent",
             "version_constraint": ">=1.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         with self.assertRaises(InstallationError) as exc_info:
@@ -466,24 +479,24 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertEqual(exc_info.exception.error_code, "APT_SIMULATION_FAILED")
 
     @regression_test
-    @patch.object(SystemInstaller, '_run_apt_subprocess', return_value=0)
+    @patch.object(SystemInstaller, "_run_apt_subprocess", return_value=0)
     def test_uninstall_success(self, mock_execute):
         """Test successful uninstall."""
 
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
-        
+
         result = self.installer.uninstall(dependency, self.mock_context)
-        
+
         self.assertEqual(result.dependency_name, "curl")
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
         self.assertEqual(result.metadata["operation"], "uninstall")
 
     @regression_test
-    @patch.object(SystemInstaller, '_run_apt_subprocess', return_value=0)
+    @patch.object(SystemInstaller, "_run_apt_subprocess", return_value=0)
     def test_uninstall_automated(self, mock_execute):
         """Test uninstall in automated mode."""
 
@@ -491,7 +504,7 @@ class TestSystemInstaller(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         result = self.installer.uninstall(dependency, self.mock_context)
@@ -501,20 +514,20 @@ class TestSystemInstaller(unittest.TestCase):
         self.assertIn("-y", result.metadata.get("command_executed", []))
 
     @regression_test
-    @patch.object(SystemInstaller, '_simulate_uninstall')
+    @patch.object(SystemInstaller, "_simulate_uninstall")
     def test_uninstall_simulation_mode(self, mock_simulate):
         """Test uninstall in simulation mode."""
         mock_simulate.return_value = InstallationResult(
             dependency_name="curl",
             status=InstallationStatus.COMPLETED,
-            metadata={"operation": "uninstall", "simulation": True}
+            metadata={"operation": "uninstall", "simulation": True},
         )
 
         self.mock_context.simulation_mode = True
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         result = self.installer.uninstall(dependency, self.mock_context)
@@ -527,7 +540,7 @@ class TestSystemInstaller(unittest.TestCase):
 
 class TestSystemInstallerIntegration(unittest.TestCase):
     """Integration tests for SystemInstaller using actual system dependencies."""
-    
+
     def setUp(self):
         """Set up integration test fixtures."""
         self.installer = SystemInstaller()
@@ -535,10 +548,8 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             environment_path=Path("/tmp/test_env"),
             environment_name="integration_test",
             simulation_mode=True,  # Always use simulation for integration tests
-            extra_config={"automated": True}
+            extra_config={"automated": True},
         )
-
-        
 
     @integration_test(scope="system")
     @slow_test
@@ -548,16 +559,18 @@ class TestSystemInstallerIntegration(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         self.assertTrue(self.installer.validate_dependency(dependency))
 
     @integration_test(scope="system")
     @slow_test
-    @patch.object(SystemInstaller, '_is_platform_supported')
-    @patch.object(SystemInstaller, '_is_apt_available')
-    def test_can_install_real_dependency(self, mock_apt_available, mock_platform_supported):
+    @patch.object(SystemInstaller, "_is_platform_supported")
+    @patch.object(SystemInstaller, "_is_apt_available")
+    def test_can_install_real_dependency(
+        self, mock_apt_available, mock_platform_supported
+    ):
         """Test can_install with real system dependency."""
         mock_platform_supported.return_value = True
         mock_apt_available.return_value = True
@@ -566,27 +579,31 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             "type": "system",
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         self.assertTrue(self.installer.can_install(dependency))
 
     @integration_test(scope="system")
     @slow_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
     def test_simulate_curl_installation(self):
         """Test simulating installation of curl package."""
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         # Mock subprocess for simulation
-        with patch.object(self.installer, '_run_apt_subprocess') as mock_run:
+        with patch.object(self.installer, "_run_apt_subprocess") as mock_run:
             mock_run.return_value = 0
 
-            result = self.installer._simulate_installation(dependency, self.test_context)
+            result = self.installer._simulate_installation(
+                dependency, self.test_context
+            )
 
             self.assertEqual(result.dependency_name, "curl")
             self.assertEqual(result.status, InstallationStatus.COMPLETED)
@@ -600,25 +617,27 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             "type": "system",
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
-        
-        with patch.object(self.installer, 'can_install', return_value=True):
+
+        with patch.object(self.installer, "can_install", return_value=True):
             info = self.installer.get_installation_info(dependency, self.test_context)
-            
+
             self.assertEqual(info["installer_type"], "system")
             self.assertEqual(info["dependency_name"], "curl")
             self.assertTrue(info["supported"])
 
     @integration_test(scope="system")
     @slow_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
     def test_install_real_dependency(self):
         """Test installing a real system dependency."""
         dependency = {
             "name": "sl",  # Use a rarer package than 'curl'
             "version_constraint": ">=5.02",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         # real installation
@@ -629,7 +648,9 @@ class TestSystemInstallerIntegration(unittest.TestCase):
 
     @integration_test(scope="system")
     @slow_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
     def test_install_integration_with_real_subprocess(self):
         """Test install method with real _run_apt_subprocess execution.
 
@@ -639,7 +660,7 @@ class TestSystemInstallerIntegration(unittest.TestCase):
         dependency = {
             "name": "curl",
             "version_constraint": ">=7.0.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         # Create a test context that uses simulation mode for safety
@@ -647,13 +668,13 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             environment_path=Path("/tmp/test_env"),
             environment_name="integration_test",
             simulation_mode=True,
-            extra_config={"automated": True}
+            extra_config={"automated": True},
         )
 
         # This will call _run_apt_subprocess with real subprocess execution
         # but in simulation mode, so it's safe
         result = self.installer.install(dependency, test_context)
-        
+
         self.assertEqual(result.dependency_name, "curl")
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
         self.assertTrue(result.metadata["simulation"])
@@ -662,7 +683,9 @@ class TestSystemInstallerIntegration(unittest.TestCase):
 
     @integration_test(scope="system")
     @slow_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
     def test_run_apt_subprocess_direct_integration(self):
         """Test _run_apt_subprocess directly with real system commands.
 
@@ -692,21 +715,23 @@ class TestSystemInstallerIntegration(unittest.TestCase):
 
     @integration_test(scope="system")
     @slow_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
     def test_install_with_version_constraint_integration(self):
         """Test install method with version constraints and real subprocess calls."""
         # Test with exact version constraint
         dependency = {
             "name": "curl",
             "version_constraint": "==7.68.0",
-            "package_manager": "apt"
+            "package_manager": "apt",
         }
 
         test_context = InstallationContext(
             environment_path=Path("/tmp/test_env"),
             environment_name="integration_test",
             simulation_mode=True,
-            extra_config={"automated": True}
+            extra_config={"automated": True},
         )
 
         result = self.installer.install(dependency, test_context)
@@ -719,7 +744,9 @@ class TestSystemInstallerIntegration(unittest.TestCase):
 
     @integration_test(scope="system")
     @slow_test
-    @unittest.skipIf(sys.platform.startswith("win"), "System dependency test skipped on Windows")
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
     def test_error_handling_in_run_apt_subprocess(self):
         """Test error handling in _run_apt_subprocess with real commands."""
         # Test with completely invalid command
@@ -729,5 +756,6 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             self.installer._run_apt_subprocess(cmd)
 
         self.assertEqual(exc_info.exception.error_code, "APT_SUBPROCESS_ERROR")
-        self.assertIn("Unexpected error running apt command", exc_info.exception.message)
-
+        self.assertIn(
+            "Unexpected error running apt command", exc_info.exception.message
+        )

@@ -94,7 +94,7 @@ Paste the following to [report an issue](https://github.com/CrackingShells/Hatch
 ### Environment:
 
 - OS: Windows 10/11 / macOS / Linux (include distro and version)
-- Hatch version: 
+- Hatch version:
 
 ### Command:
 

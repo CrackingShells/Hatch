@@ -45,20 +45,20 @@ from hatch.template_generator import create_package_template
 
 def handle_create(args: Namespace) -> int:
     """Handle 'hatch create' command.
-    
+
     Args:
         args: Namespace with:
             - name: Package name
             - dir: Target directory (default: current directory)
             - description: Package description (optional)
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
     """
     target_dir = Path(args.dir).resolve()
     description = getattr(args, "description", "")
     dry_run = getattr(args, "dry_run", False)
-    
+
     # Create reporter for unified output
     reporter = ResultReporter("hatch create", dry_run=dry_run)
     reporter.add(ConsequenceType.CREATE, f"Package '{args.name}' at {target_dir}")
@@ -77,25 +77,24 @@ def handle_create(args: Namespace) -> int:
         return EXIT_SUCCESS
     except Exception as e:
         reporter.report_error(
-            f"Failed to create package template",
-            details=[f"Reason: {e}"]
+            "Failed to create package template", details=[f"Reason: {e}"]
         )
         return EXIT_ERROR
 
 
 def handle_validate(args: Namespace) -> int:
     """Handle 'hatch validate' command.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
             - package_dir: Path to package directory
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
     """
     from hatch.environment_manager import HatchEnvironmentManager
-    
+
     env_manager: HatchEnvironmentManager = args.env_manager
     package_path = Path(args.package_dir).resolve()
 
@@ -119,7 +118,7 @@ def handle_validate(args: Namespace) -> int:
     else:
         # Collect detailed validation errors
         error_details = [f"Package: {package_path}"]
-        
+
         if validation_results and isinstance(validation_results, dict):
             for category, result in validation_results.items():
                 if (
@@ -128,9 +127,11 @@ def handle_validate(args: Namespace) -> int:
                     and isinstance(result, dict)
                 ):
                     if not result.get("valid", True) and result.get("errors"):
-                        error_details.append(f"{category.replace('_', ' ').title()} errors:")
+                        error_details.append(
+                            f"{category.replace('_', ' ').title()} errors:"
+                        )
                         for error in result["errors"]:
                             error_details.append(f"  - {error}")
-        
+
         reporter.report_error("Package validation failed", details=error_details)
         return EXIT_ERROR

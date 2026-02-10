@@ -10,10 +10,8 @@ from hatch.mcp_host_config.models import MCPServerConfig
 from hatch.mcp_host_config.adapters import (
     ClaudeAdapter,
     CodexAdapter,
-    CursorAdapter,
     GeminiAdapter,
     KiroAdapter,
-    LMStudioAdapter,
     VSCodeAdapter,
 )
 
@@ -30,10 +28,10 @@ class TestClaudeAdapterSerialization(unittest.TestCase):
             env={"API_KEY": "secret"},
             type="stdio",
         )
-        
+
         adapter = ClaudeAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "python")
         self.assertEqual(result["args"], ["-m", "mcp_server"])
         self.assertEqual(result["env"], {"API_KEY": "secret"})
@@ -48,10 +46,10 @@ class TestClaudeAdapterSerialization(unittest.TestCase):
             headers={"Authorization": "Bearer token"},
             type="sse",
         )
-        
+
         adapter = ClaudeAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["url"], "https://api.example.com/mcp")
         self.assertEqual(result["headers"], {"Authorization": "Bearer token"})
         self.assertEqual(result["type"], "sse")
@@ -71,10 +69,10 @@ class TestGeminiAdapterSerialization(unittest.TestCase):
             cwd="/workspace",
             timeout=30000,
         )
-        
+
         adapter = GeminiAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "npx")
         self.assertEqual(result["args"], ["mcp-server"])
         self.assertEqual(result["cwd"], "/workspace")
@@ -89,10 +87,10 @@ class TestGeminiAdapterSerialization(unittest.TestCase):
             httpUrl="https://api.example.com/http",
             trust=True,
         )
-        
+
         adapter = GeminiAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["httpUrl"], "https://api.example.com/http")
         self.assertEqual(result["trust"], True)
         self.assertNotIn("name", result)
@@ -111,10 +109,10 @@ class TestVSCodeAdapterSerialization(unittest.TestCase):
             envFile=".env",
             type="stdio",
         )
-        
+
         adapter = VSCodeAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "node")
         self.assertEqual(result["envFile"], ".env")
         self.assertEqual(result["type"], "stdio")
@@ -158,10 +156,10 @@ class TestKiroAdapterSerialization(unittest.TestCase):
             command="npx",
             args=["@modelcontextprotocol/server"],
         )
-        
+
         adapter = KiroAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "npx")
         self.assertEqual(result["args"], ["@modelcontextprotocol/server"])
         self.assertNotIn("name", result)
@@ -170,4 +168,3 @@ class TestKiroAdapterSerialization(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

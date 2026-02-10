@@ -9,10 +9,16 @@ import shutil
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 
-from hatch.installers.installer_base import DependencyInstaller, InstallationContext, InstallationResult, InstallationError
+from hatch.installers.installer_base import (
+    DependencyInstaller,
+    InstallationContext,
+    InstallationResult,
+    InstallationError,
+)
 from hatch.installers.installation_context import InstallationStatus
 from hatch.package_loader import HatchPackageLoader, PackageLoaderError
 from hatch_validator.package_validator import HatchPackageValidator
+
 
 class HatchInstaller(DependencyInstaller):
     """Installer for Hatch package dependencies.
@@ -75,8 +81,12 @@ class HatchInstaller(DependencyInstaller):
         # Optionally, perform further validation using the validator if a path is provided
         return True
 
-    def install(self, dependency: Dict[str, Any], context: InstallationContext,
-                progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def install(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Install a Hatch package dependency.
 
         Args:
@@ -94,10 +104,11 @@ class HatchInstaller(DependencyInstaller):
         self.logger.debug(f"Installing Hatch dependency: {dependency}")
         if not self.validate_dependency(dependency):
             self.logger.error(f"Invalid dependency format: {dependency}")
-            raise InstallationError("Invalid dependency object",
-                                    dependency_name=dependency.get("name"),
-                                    error_code="INVALID_HATCH_DEPENDENCY_FORMAT",
-                                    )
+            raise InstallationError(
+                "Invalid dependency object",
+                dependency_name=dependency.get("name"),
+                error_code="INVALID_HATCH_DEPENDENCY_FORMAT",
+            )
 
         name = dependency["name"]
         version = dependency["resolved_version"]
@@ -105,19 +116,27 @@ class HatchInstaller(DependencyInstaller):
         target_dir = Path(context.environment_path)
         try:
             if progress_callback:
-                progress_callback("install", 0.0, f"Installing {name}-{version} from {uri}")
+                progress_callback(
+                    "install", 0.0, f"Installing {name}-{version} from {uri}"
+                )
             # Download/install the package
             if uri and uri.startswith("file://"):
                 pkg_path = Path(uri[7:])
-                result_path = self.package_loader.install_local_package(pkg_path, target_dir, name)
+                result_path = self.package_loader.install_local_package(
+                    pkg_path, target_dir, name
+                )
             elif uri:
-                result_path = self.package_loader.install_remote_package(uri, name, version, target_dir)
+                result_path = self.package_loader.install_remote_package(
+                    uri, name, version, target_dir
+                )
             else:
-                raise InstallationError(f"No URI provided for dependency {name}", dependency_name=name)
-            
+                raise InstallationError(
+                    f"No URI provided for dependency {name}", dependency_name=name
+                )
+
             if progress_callback:
                 progress_callback("install", 1.0, f"Installed {name} to {result_path}")
-            
+
             return InstallationResult(
                 dependency_name=name,
                 status=InstallationStatus.COMPLETED,
@@ -125,15 +144,21 @@ class HatchInstaller(DependencyInstaller):
                 installed_version=version,
                 error_message=None,
                 artifacts=result_path,
-                metadata={"name": name, "version": version}
+                metadata={"name": name, "version": version},
             )
-            
+
         except (PackageLoaderError, Exception) as e:
             self.logger.error(f"Failed to install {name}: {e}")
-            raise InstallationError(f"Failed to install {name}: {e}", dependency_name=name, cause=e)
+            raise InstallationError(
+                f"Failed to install {name}: {e}", dependency_name=name, cause=e
+            )
 
-    def uninstall(self, dependency: Dict[str, Any], context: InstallationContext,
-                  progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def uninstall(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Uninstall a Hatch package dependency.
 
         Args:
@@ -148,10 +173,11 @@ class HatchInstaller(DependencyInstaller):
             InstallationError: If uninstall fails for any reason.
         """
         if not self.validate_dependency(dependency):
-            raise InstallationError("Invalid dependency object",
-                                    dependency_name=dependency.get("name"),
-                                    error_code="INVALID_HATCH_DEPENDENCY_FORMAT",
-                                    )
+            raise InstallationError(
+                "Invalid dependency object",
+                dependency_name=dependency.get("name"),
+                error_code="INVALID_HATCH_DEPENDENCY_FORMAT",
+            )
 
         name = dependency["name"]
         target_dir = Path(context.environment_path) / name
@@ -167,14 +193,20 @@ class HatchInstaller(DependencyInstaller):
                 installed_version=dependency.get("resolved_version"),
                 error_message=None,
                 artifacts=None,
-                metadata={"name": name}
+                metadata={"name": name},
             )
         except Exception as e:
             self.logger.error(f"Failed to uninstall {name}: {e}")
-            raise InstallationError(f"Failed to uninstall {name}: {e}", dependency_name=name, cause=e)
+            raise InstallationError(
+                f"Failed to uninstall {name}: {e}", dependency_name=name, cause=e
+            )
 
-    def cleanup_failed_installation(self, dependency: Dict[str, Any], context: InstallationContext,
-                                   artifacts: Optional[List[Path]] = None) -> None:
+    def cleanup_failed_installation(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        artifacts: Optional[List[Path]] = None,
+    ) -> None:
         """Clean up artifacts from a failed installation.
 
         Args:
@@ -193,6 +225,8 @@ class HatchInstaller(DependencyInstaller):
                 except Exception:
                     pass
 
+
 # Register this installer with the global registry
 from .registry import installer_registry
+
 installer_registry.register_installer("hatch", HatchInstaller)

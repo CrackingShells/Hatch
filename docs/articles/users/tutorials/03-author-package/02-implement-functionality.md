@@ -43,11 +43,11 @@ mcp = FastMCP("ArithmeticTools", log_level="WARNING")
 @mcp.tool()
 def add(a: float, b: float) -> float:
     """Add two numbers together.
-    
+
     Args:
         a (float): First number.
         b (float): Second number.
-        
+
     Returns:
         float: Sum of a and b.
     """
@@ -56,11 +56,11 @@ def add(a: float, b: float) -> float:
 @mcp.tool()
 def subtract(a: float, b: float) -> float:
     """Subtract second number from first number.
-    
+
     Args:
         a (float): First number.
         b (float): Second number.
-        
+
     Returns:
         float: Difference (a - b).
     """
@@ -69,11 +69,11 @@ def subtract(a: float, b: float) -> float:
 @mcp.tool()
 def multiply(a: float, b: float) -> float:
     """Multiply two numbers together.
-    
+
     Args:
         a (float): First number.
         b (float): Second number.
-        
+
     Returns:
         float: Product of a and b.
     """
@@ -82,27 +82,27 @@ def multiply(a: float, b: float) -> float:
 @mcp.tool()
 def divide(a: float, b: float) -> float:
     """Divide first number by second number.
-    
+
     Args:
         a (float): First number (dividend).
         b (float): Second number (divisor).
-        
+
     Returns:
         float: Quotient (a / b).
     """
     if b == 0:
         raise ValueError("Cannot divide by zero")
-    
+
     return a / b
 
 @mcp.tool()
 def power(base: float, exponent: float) -> float:
     """Raise a number to the power of another number.
-    
+
     Args:
         base (float): The base number.
         exponent (float): The exponent (power).
-        
+
     Returns:
         float: Result of raising base to the power of exponent.
     """

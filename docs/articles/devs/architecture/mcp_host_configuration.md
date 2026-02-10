@@ -58,21 +58,21 @@ The architecture separates concerns into three layers:
 class MCPServerConfig(BaseModel):
     """Unified model containing ALL possible fields."""
     model_config = ConfigDict(extra="allow")
-    
+
     # Hatch metadata (never serialized)
     name: Optional[str] = None
-    
+
     # Transport fields
     command: Optional[str] = None      # stdio transport
     url: Optional[str] = None          # sse transport
     httpUrl: Optional[str] = None      # http transport (Gemini)
-    
+
     # Universal fields (all hosts)
     args: Optional[List[str]] = None
     env: Optional[Dict[str, str]] = None
     headers: Optional[Dict[str, str]] = None
     type: Optional[Literal["stdio", "sse", "http"]] = None
-    
+
     # Host-specific fields
     envFile: Optional[str] = None      # VSCode/Cursor
     disabled: Optional[bool] = None    # Kiro
@@ -124,17 +124,17 @@ class BaseAdapter(ABC):
     def host_name(self) -> str:
         """Return host identifier (e.g., 'claude-desktop')."""
         ...
-    
+
     @abstractmethod
     def get_supported_fields(self) -> FrozenSet[str]:
         """Return fields this host accepts."""
         ...
-    
+
     @abstractmethod
     def validate(self, config: MCPServerConfig) -> None:
         """Validate config, raise AdapterValidationError if invalid."""
         ...
-    
+
     @abstractmethod
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Convert config to host's expected format."""
@@ -379,4 +379,3 @@ The test architecture follows a three-tier structure:
 | Unit | `tests/unit/mcp/` | Adapter protocol, model validation, registry |
 | Integration | `tests/integration/mcp/` | CLI → Adapter → Strategy flow |
 | Regression | `tests/regression/mcp/` | Field filtering edge cases |
-

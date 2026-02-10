@@ -19,7 +19,7 @@ from hatch.mcp_host_config.adapters import (
 
 class TestFieldFiltering(unittest.TestCase):
     """Regression tests for field filtering (RF-01 to RF-07).
-    
+
     These tests ensure:
     - `name` is NEVER in serialized output (it's Hatch metadata, not host config)
     - `type` behavior varies by host (some include, some exclude)
@@ -159,4 +159,3 @@ class TestFieldFiltering(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

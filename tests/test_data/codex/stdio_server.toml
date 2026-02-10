@@ -4,4 +4,3 @@ args = ["server.js"]
 
 [mcp_servers.test-server.env]
 API_KEY = "test-key"
-

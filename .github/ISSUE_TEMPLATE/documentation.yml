@@ -46,7 +46,7 @@ body:
       label: Documentation Location
       description: Where is the documentation issue located?
       placeholder: |
-        e.g., README.md, docs/articles/users/CLIReference.md, 
+        e.g., README.md, docs/articles/users/CLIReference.md,
         docs/articles/users/GettingStarted.md, https://crackingshells.github.io/Hatch/
     validations:
       required: true

@@ -12,29 +12,54 @@ Architecture Notes (v2.0 - Unified Adapter Architecture):
 
 from .backup import MCPHostConfigBackupManager
 from .models import (
-    MCPHostType, MCPServerConfig, HostConfiguration, EnvironmentData,
-    PackageHostConfiguration, EnvironmentPackageEntry, ConfigurationResult, SyncResult,
+    MCPHostType,
+    MCPServerConfig,
+    HostConfiguration,
+    EnvironmentData,
+    PackageHostConfiguration,
+    EnvironmentPackageEntry,
+    ConfigurationResult,
+    SyncResult,
 )
 from .host_management import (
-    MCPHostRegistry, MCPHostStrategy, MCPHostConfigurationManager, register_host_strategy
+    MCPHostRegistry,
+    MCPHostStrategy,
+    MCPHostConfigurationManager,
+    register_host_strategy,
 )
 from .reporting import (
-    FieldOperation, ConversionReport, generate_conversion_report, display_report
+    FieldOperation,
+    ConversionReport,
+    generate_conversion_report,
+    display_report,
 )
 from .adapters import AdapterRegistry, get_adapter, get_default_registry
 
 # Import strategies to trigger decorator registration
-from . import strategies
 
 __all__ = [
-    'MCPHostConfigBackupManager',
+    "MCPHostConfigBackupManager",
     # Core models
-    'MCPHostType', 'MCPServerConfig', 'HostConfiguration', 'EnvironmentData',
-    'PackageHostConfiguration', 'EnvironmentPackageEntry', 'ConfigurationResult', 'SyncResult',
+    "MCPHostType",
+    "MCPServerConfig",
+    "HostConfiguration",
+    "EnvironmentData",
+    "PackageHostConfiguration",
+    "EnvironmentPackageEntry",
+    "ConfigurationResult",
+    "SyncResult",
     # Adapter architecture
-    'AdapterRegistry', 'get_adapter', 'get_default_registry',
+    "AdapterRegistry",
+    "get_adapter",
+    "get_default_registry",
     # User feedback reporting
-    'FieldOperation', 'ConversionReport', 'generate_conversion_report', 'display_report',
+    "FieldOperation",
+    "ConversionReport",
+    "generate_conversion_report",
+    "display_report",
     # Host management
-    'MCPHostRegistry', 'MCPHostStrategy', 'MCPHostConfigurationManager', 'register_host_strategy'
+    "MCPHostRegistry",
+    "MCPHostStrategy",
+    "MCPHostConfigurationManager",
+    "register_host_strategy",
 ]

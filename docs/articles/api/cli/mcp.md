@@ -61,13 +61,13 @@ All handlers follow the standard signature:
 ```python
 def handle_mcp_command(args: Namespace) -> int:
     """Handle 'hatch mcp command' command.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
             - mcp_manager: MCPHostConfigurationManager instance
             - <command-specific arguments>
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
     """
