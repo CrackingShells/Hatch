@@ -46,10 +46,19 @@ class GeminiAdapter(BaseAdapter):
         has_url = config.url is not None
         has_http_url = config.httpUrl is not None
 
-        # Must have at least one transport
-        if not has_command and not has_url and not has_http_url:
+        # Must have exactly one transport (mutual exclusion)
+        # Count how many transports are present
+        transport_count = sum([has_command, has_url, has_http_url])
+
+        if transport_count == 0:
             raise AdapterValidationError(
                 "At least one transport must be specified: 'command', 'url', or 'httpUrl'",
+                host_name=self.host_name,
+            )
+
+        if transport_count > 1:
+            raise AdapterValidationError(
+                "Only one transport allowed: command, url, or httpUrl (not multiple)",
                 host_name=self.host_name,
             )
 
