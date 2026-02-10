@@ -68,14 +68,6 @@ class CodexAdapter(BaseAdapter):
                 host_name=self.host_name,
             )
 
-        # 'type' field is not supported by Codex
-        if config.type is not None:
-            raise AdapterValidationError(
-                "'type' field is not supported by Codex CLI",
-                field="type",
-                host_name=self.host_name,
-            )
-
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Serialize configuration for Codex format.
 
