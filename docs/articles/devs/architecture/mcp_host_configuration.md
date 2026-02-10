@@ -132,14 +132,32 @@ class BaseAdapter(ABC):
 
     @abstractmethod
     def validate(self, config: MCPServerConfig) -> None:
-        """Validate config, raise AdapterValidationError if invalid."""
+        """DEPRECATED (v0.9.0): Use validate_filtered() instead."""
         ...
+
+    @abstractmethod
+    def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+        """Validate ONLY fields that survived filtering."""
+        ...
+
+    def apply_transformations(self, filtered: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply host-specific field name/value transformations (default: no-op)."""
+        return filtered
 
     @abstractmethod
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Convert config to host's expected format."""
         ...
 ```
+
+**Serialization pattern (validate-after-filter):**
+
+```
+filter_fields(config) → validate_filtered(filtered) → apply_transformations(filtered) → return
+```
+
+This pattern ensures validation only checks fields the host actually supports,
+preventing false rejections during cross-host sync operations.
 
 ### Field Constants
 
@@ -222,11 +240,16 @@ config = MCPServerConfig(
     env={"DEBUG": "true"},
 )
 
-# Validate and serialize for specific host
+# Serialize for specific host (filter → validate → transform)
 adapter = get_adapter("claude-desktop")
-adapter.validate(config)  # Raises AdapterValidationError if invalid
-data = adapter.serialize(config)  # Returns host-specific dict
+data = adapter.serialize(config)
 # Result: {"command": "python", "args": ["server.py"], "env": {"DEBUG": "true"}}
+
+# Cross-host sync: serialize for Codex (applies field mappings)
+codex = get_adapter("codex")
+codex_data = codex.serialize(config)
+# Result: {"command": "python", "arguments": ["server.py"], "env": {"DEBUG": "true"}}
+# Note: 'args' mapped to 'arguments', 'type' filtered out
 ```
 
 ### Backup System Integration
@@ -272,7 +295,7 @@ To add a new host, complete these steps:
 **Minimal adapter implementation:**
 
 ```python
-from hatch.mcp_host_config.adapters.base import BaseAdapter
+from hatch.mcp_host_config.adapters.base import BaseAdapter, AdapterValidationError
 from hatch.mcp_host_config.fields import UNIVERSAL_FIELDS
 
 class NewHostAdapter(BaseAdapter):
@@ -284,12 +307,21 @@ class NewHostAdapter(BaseAdapter):
         return UNIVERSAL_FIELDS | frozenset({"your_specific_field"})
 
     def validate(self, config: MCPServerConfig) -> None:
-        if not config.command and not config.url:
+        """DEPRECATED: Use validate_filtered() instead."""
+        pass
+
+    def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+        has_command = "command" in filtered
+        has_url = "url" in filtered
+        if not has_command and not has_url:
             raise AdapterValidationError("Need command or url")
+        if has_command and has_url:
+            raise AdapterValidationError("Only one transport allowed")
 
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
-        self.validate(config)
-        return self.filter_fields(config)
+        filtered = self.filter_fields(config)
+        self.validate_filtered(filtered)
+        return filtered
 ```
 
 See [Implementation Guide](../implementation_guides/mcp_host_configuration_extension.md) for complete instructions.
@@ -372,10 +404,18 @@ except AdapterValidationError as e:
 
 ## Testing Strategy
 
-The test architecture follows a three-tier structure:
+The test architecture uses a data-driven approach with property-based assertions:
 
-| Tier | Location | Purpose |
-|------|----------|---------|
-| Unit | `tests/unit/mcp/` | Adapter protocol, model validation, registry |
-| Integration | `tests/integration/mcp/` | CLI → Adapter → Strategy flow |
-| Regression | `tests/regression/mcp/` | Field filtering edge cases |
+| Tier | Location | Purpose | Approach |
+|------|----------|---------|----------|
+| Unit | `tests/unit/mcp/` | Adapter protocol, model validation, registry | Traditional |
+| Integration | `tests/integration/mcp/` | Cross-host sync (64 pairs), host config (8 hosts) | Data-driven |
+| Regression | `tests/regression/mcp/` | Validation bugs, field filtering (211+ tests) | Data-driven |
+
+**Data-driven infrastructure** (`tests/test_data/mcp_adapters/`):
+
+- `canonical_configs.json`: Canonical config values for all 8 hosts
+- `host_registry.py`: HostRegistry derives metadata from fields.py
+- `assertions.py`: Property-based assertions verify adapter contracts
+
+Adding a new host requires zero test code changes — only a fixture entry and fields.py update.
