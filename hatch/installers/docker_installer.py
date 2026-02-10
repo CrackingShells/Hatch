@@ -17,6 +17,7 @@ from .installer_base import (
     InstallationError,
 )
 from .installation_context import InstallationStatus
+from .registry import installer_registry
 
 logger = logging.getLogger("hatch.installers.docker_installer")
 logger.setLevel(logging.INFO)
@@ -24,6 +25,7 @@ logger.setLevel(logging.INFO)
 # Handle docker-py import with graceful fallback
 DOCKER_AVAILABLE = False
 DOCKER_DAEMON_AVAILABLE = False
+DOCKER_DAEMON_ERROR = None  # Store exception for error reporting
 try:
     import docker
     from docker.errors import DockerException, ImageNotFound, APIError
@@ -34,6 +36,7 @@ try:
         _docker_client.ping()
         DOCKER_DAEMON_AVAILABLE = True
     except DockerException as e:
+        DOCKER_DAEMON_ERROR = e
         logger.debug(
             f"docker-py library is available but Docker daemon is not running or not reachable: {e}"
         )
@@ -165,7 +168,7 @@ class DockerInstaller(DependencyInstaller):
 
         image_name = dependency["name"]
         version_constraint = dependency["version_constraint"]
-        registry = dependency.get("registry", "dockerhub")
+        # registry = dependency.get("registry", "dockerhub")  # Reserved for future use
 
         if progress_callback:
             progress_callback(
@@ -368,7 +371,7 @@ class DockerInstaller(DependencyInstaller):
             raise InstallationError(
                 "Docker daemon not available",
                 error_code="DOCKER_DAEMON_NOT_AVAILABLE",
-                cause=e,
+                cause=DOCKER_DAEMON_ERROR,
             )
         if self._docker_client is None:
             self._docker_client = docker.from_env()
@@ -609,6 +612,4 @@ class DockerInstaller(DependencyInstaller):
 
 
 # Register this installer with the global registry
-from .registry import installer_registry
-
 installer_registry.register_installer("docker", DockerInstaller)

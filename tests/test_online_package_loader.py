@@ -75,7 +75,6 @@ class OnlinePackageLoaderTests(unittest.TestCase):
         )
 
         # Verify package is in environment
-        current_env = self.env_manager.get_current_environment()
         env_data = self.env_manager.get_current_environment_data()
         installed_packages = {
             pkg["name"]: pkg["version"] for pkg in env_data.get("packages", [])
@@ -226,7 +225,7 @@ class OnlinePackageLoaderTests(unittest.TestCase):
 
         # Second install - should use cache
         start_time = time.time()
-        result_second = self.env_manager.add_package_to_environment(
+        self.env_manager.add_package_to_environment(
             package_name,
             env_name=second_env,
             version_constraint=version_constraint,

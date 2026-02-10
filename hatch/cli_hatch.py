@@ -34,16 +34,6 @@ Exported Symbols:
     - HatchEnvironmentManager (re-exported for convenience)
 """
 
-import warnings
-
-warnings.warn(
-    "hatch.cli_hatch is deprecated since version 0.7.2. "
-    "Import from hatch.cli instead. "
-    "This module will be removed in version 0.9.0.",
-    DeprecationWarning,
-    stacklevel=2,
-)
-
 # Re-export main entry point
 from hatch.cli import main
 
@@ -113,6 +103,17 @@ from hatch.mcp_host_config import (
     MCPHostRegistry,
     MCPHostType,
     MCPServerConfig,
+)
+
+# Issue deprecation warning after imports to avoid affecting import behavior
+import warnings
+
+warnings.warn(
+    "hatch.cli_hatch is deprecated since version 0.7.2. "
+    "Import from hatch.cli instead. "
+    "This module will be removed in version 0.9.0.",
+    DeprecationWarning,
+    stacklevel=2,
 )
 
 __all__ = [

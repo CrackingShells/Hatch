@@ -18,6 +18,7 @@ from hatch.installers.installer_base import (
 from hatch.installers.installation_context import InstallationStatus
 from hatch.package_loader import HatchPackageLoader, PackageLoaderError
 from hatch_validator.package_validator import HatchPackageValidator
+from .registry import installer_registry
 
 
 class HatchInstaller(DependencyInstaller):
@@ -227,6 +228,4 @@ class HatchInstaller(DependencyInstaller):
 
 
 # Register this installer with the global registry
-from .registry import installer_registry
-
 installer_registry.register_installer("hatch", HatchInstaller)

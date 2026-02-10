@@ -17,11 +17,12 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 from io import StringIO
 
-# Add parent directory to path
+# Add parent directory to path for test imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from hatch.cli_hatch import main
-from hatch.cli.cli_utils import get_hatch_version
+# Import after path setup (required for test environment)
+from hatch.cli_hatch import main  # noqa: E402
+from hatch.cli.cli_utils import get_hatch_version  # noqa: E402
 
 try:
     from wobble.decorators import regression_test, integration_test

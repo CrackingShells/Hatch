@@ -467,9 +467,9 @@ class DependencyInstallerOrchestrator:
                     # No constraint specified, any installed version satisfies
                     satisfied_dep = dep.copy()
                     satisfied_dep["installed_version"] = installed_version
-                    satisfied_dep["compatibility_status"] = (
-                        "No version constraint specified"
-                    )
+                    satisfied_dep[
+                        "compatibility_status"
+                    ] = "No version constraint specified"
                     satisfied_deps.append(satisfied_dep)
 
             missing_deps_by_type[dep_type] = missing_deps
@@ -661,7 +661,8 @@ class DependencyInstallerOrchestrator:
                     )
                     continue
 
-                installer = installer_registry.get_installer(dep_type)
+                # Verify installer exists (validation only)
+                installer_registry.get_installer(dep_type)
 
                 for dep in dependencies:
                     # Use the extracted install_single_dep method

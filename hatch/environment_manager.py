@@ -457,9 +457,7 @@ class HatchEnvironmentManager:
                 f"Installing hatch_mcp_server wrapper in environment {env_name}"
             )
             self.logger.info(f"Using python executable: {python_executable}")
-            installed_package = self.dependency_orchestrator.install_single_dep(
-                mcp_dep, context
-            )
+            self.dependency_orchestrator.install_single_dep(mcp_dep, context)
 
             self._save_environments()
             self.logger.info(

@@ -8,7 +8,6 @@ import platform
 import subprocess
 import logging
 import shutil
-import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 from packaging.specifiers import SpecifierSet
@@ -19,6 +18,7 @@ from .installation_context import (
     InstallationResult,
     InstallationStatus,
 )
+from .registry import installer_registry
 
 
 class SystemInstaller(DependencyInstaller):
@@ -416,7 +416,7 @@ class SystemInstaller(DependencyInstaller):
             subprocess.TimeoutExpired: If the process times out.
             InstallationError: For unexpected errors.
         """
-        env = os.environ.copy()
+        # env = os.environ.copy()  # Reserved for future environment customization
         try:
             process = subprocess.Popen(cmd, text=True, universal_newlines=True)
 
@@ -639,6 +639,4 @@ class SystemInstaller(DependencyInstaller):
 
 
 # Register this installer with the global registry
-from .registry import installer_registry
-
 installer_registry.register_installer("system", SystemInstaller)

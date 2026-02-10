@@ -99,10 +99,10 @@ def handle_env_create(args: Namespace) -> int:
         if create_python_env and env_manager.is_python_environment_available():
             python_exec = env_manager.python_env_manager.get_python_executable(name)
             if python_exec:
-                python_version_info = env_manager.python_env_manager.get_python_version(
-                    name
-                )
+                # Get Python version for potential future use
+                # python_version_info = env_manager.python_env_manager.get_python_version(name)
                 # Add details as child consequences would be ideal, but for now just report success
+                pass
 
         reporter.report_result()
         return EXIT_SUCCESS

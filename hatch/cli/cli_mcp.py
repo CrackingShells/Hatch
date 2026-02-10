@@ -1118,7 +1118,7 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
 
         # Validate host type
         try:
-            host_type = MCPHostType(host)
+            MCPHostType(host)  # Validate host type enum
         except ValueError:
             format_validation_error(
                 ValidationError(
@@ -1186,7 +1186,7 @@ def handle_mcp_backup_restore(args: Namespace) -> int:
             try:
                 # Import strategies to trigger registration
 
-                host_type = MCPHostType(host)
+                host_type = MCPHostType(host)  # Validate and get host type enum
                 strategy = MCPHostRegistry.get_strategy(host_type)
                 restored_config = strategy.read_configuration()
 
@@ -1249,7 +1249,7 @@ def handle_mcp_backup_list(args: Namespace) -> int:
 
         # Validate host type
         try:
-            host_type = MCPHostType(host)
+            MCPHostType(host)  # Validate host type enum
         except ValueError:
             format_validation_error(
                 ValidationError(
@@ -1346,7 +1346,7 @@ def handle_mcp_backup_clean(args: Namespace) -> int:
 
         # Validate host type
         try:
-            host_type = MCPHostType(host)
+            MCPHostType(host)  # Validate host type enum
         except ValueError:
             format_validation_error(
                 ValidationError(
@@ -1503,7 +1503,7 @@ def handle_mcp_configure(args: Namespace) -> int:
 
         # Validate host type
         try:
-            host_type = MCPHostType(host)
+            host_type = MCPHostType(host)  # Validate and get host type enum
         except ValueError:
             format_validation_error(
                 ValidationError(
@@ -1764,7 +1764,7 @@ def handle_mcp_remove(args: Namespace) -> int:
     try:
         # Validate host type
         try:
-            host_type = MCPHostType(host)
+            MCPHostType(host)  # Validate host type enum
         except ValueError:
             format_validation_error(
                 ValidationError(
@@ -1993,7 +1993,7 @@ def handle_mcp_remove_host(args: Namespace) -> int:
     try:
         # Validate host type
         try:
-            host_type = MCPHostType(host_name)
+            MCPHostType(host_name)  # Validate host type enum
         except ValueError:
             format_validation_error(
                 ValidationError(

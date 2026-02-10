@@ -16,6 +16,8 @@ from argparse import Namespace
 from unittest.mock import MagicMock, patch
 import io
 
+from hatch.cli.cli_utils import EXIT_SUCCESS, EXIT_ERROR
+
 
 def _handler_uses_result_reporter(handler_module_source: str) -> bool:
     """Check if handler module imports and uses ResultReporter.
@@ -165,6 +167,9 @@ class TestMCPConfigureHandlerIntegration:
 
             output = captured_output.getvalue()
 
+            # Verify exit code
+            assert result == EXIT_SUCCESS, "Dry-run should succeed"
+
             # Verify dry-run output format
             assert (
                 "[DRY RUN]" in output
@@ -227,6 +232,9 @@ class TestMCPConfigureHandlerIntegration:
 
             output = captured_output.getvalue()
 
+            # Verify exit code
+            assert result == EXIT_ERROR, "User declined confirmation"
+
             # Verify prompt was shown (should contain command name and CONFIGURE verb)
             assert (
                 "hatch mcp configure" in output or "[CONFIGURE]" in output
@@ -285,6 +293,9 @@ class TestMCPSyncHandlerIntegration:
 
             output = captured_output.getvalue()
 
+            # Verify exit code
+            assert result == EXIT_SUCCESS, "Operation should succeed"
+
             # Verify output uses ResultReporter format
             # ResultReporter uses [SYNC] for prompt and [SYNCED] for result, or [SUCCESS] header
             assert (
@@ -327,6 +338,9 @@ class TestMCPRemoveHandlerIntegration:
 
             output = captured_output.getvalue()
 
+            # Verify exit code
+            assert result == EXIT_SUCCESS, "Operation should succeed"
+
             # Verify output uses ResultReporter format
             assert (
                 "[SUCCESS]" in output or "[REMOVED]" in output
@@ -368,7 +382,8 @@ class TestMCPBackupHandlerIntegration:
             backup_file.write_text('{"mcpServers": {}}')
 
             # Mock the backup manager to use our temp directory
-            original_init = MCPHostConfigBackupManager.__init__
+            # Store original for potential restoration (currently unused)
+            # original_init = MCPHostConfigBackupManager.__init__
 
             def mock_init(self, backup_root=None):
                 self.backup_root = Path(tmpdir)
@@ -398,6 +413,9 @@ class TestMCPBackupHandlerIntegration:
                                 result = handle_mcp_backup_restore(args)
 
                             output = captured_output.getvalue()
+
+                            # Verify exit code
+                            assert result == EXIT_SUCCESS, "Operation should succeed"
 
                             # Verify output uses ResultReporter format
                             assert (
@@ -437,6 +455,9 @@ class TestMCPBackupHandlerIntegration:
                         result = handle_mcp_backup_clean(args)
 
                     output = captured_output.getvalue()
+
+                    # Verify exit code
+                    assert result == EXIT_SUCCESS, "Operation should succeed"
 
                     # Verify output uses ResultReporter format
                     assert (
@@ -525,6 +546,9 @@ class TestMCPListServersHostCentric:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # CRITICAL: Verify the command reads from host config (strategy.read_configuration called)
                 mock_strategy.read_configuration.assert_called_once()
 
@@ -587,6 +611,9 @@ class TestMCPListServersHostCentric:
                     result = handle_mcp_list_servers(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # 3rd party server should appear with ❌ status
                 assert (
@@ -658,6 +685,9 @@ class TestMCPListServersHostCentric:
                     result = handle_mcp_list_servers(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # Both servers from different hosts should appear
                 assert "server-a" in output, "Server from claude-desktop should appear"
@@ -732,6 +762,9 @@ class TestMCPListServersHostCentric:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Server from claude-desktop should appear (matches pattern)
                 assert (
                     "weather-server" in output
@@ -797,6 +830,9 @@ class TestMCPListServersHostCentric:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Parse JSON output
                 data = json.loads(output)
 
@@ -815,10 +851,10 @@ class TestMCPListServersHostCentric:
                         "hatch_managed" in row
                     ), "Each row should have hatch_managed field"
                     if row["server"] == "managed-server":
-                        assert row["hatch_managed"] == True
+                        assert row["hatch_managed"]
                         assert row["environment"] == "default"
                     elif row["server"] == "unmanaged-server":
-                        assert row["hatch_managed"] == False
+                        assert not row["hatch_managed"]
 
 
 class TestMCPListHostsHostCentric:
@@ -890,6 +926,9 @@ class TestMCPListHostsHostCentric:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Verify column headers present
                 assert "Host" in output, "Host column should be present"
                 assert "Server" in output, "Server column should be present"
@@ -950,6 +989,9 @@ class TestMCPListHostsHostCentric:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Matching server should appear
                 assert "weather-server" in output, "weather-server should match filter"
 
@@ -1004,6 +1046,9 @@ class TestMCPListHostsHostCentric:
                     result = handle_mcp_list_hosts(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # Matching servers should appear
                 assert "weather-server" in output, "weather-server should match pattern"
@@ -1075,6 +1120,9 @@ class TestMCPListHostsHostCentric:
                     result = handle_mcp_list_hosts(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # Find positions of hosts in output
                 claude_pos = output.find("claude-desktop")
@@ -1149,6 +1197,9 @@ class TestEnvListHostsCommand:
 
         output = captured_output.getvalue()
 
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
+
         # Verify column headers present
         assert "Environment" in output, "Environment column should be present"
         assert "Host" in output, "Host column should be present"
@@ -1206,6 +1257,9 @@ class TestEnvListHostsCommand:
             result = handle_env_list_hosts(args)
 
         output = captured_output.getvalue()
+
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
 
         # Matching environment should appear
         assert "server-a" in output, "server-a from default should appear"
@@ -1269,6 +1323,9 @@ class TestEnvListHostsCommand:
 
         output = captured_output.getvalue()
 
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
+
         # Matching environments should appear
         assert "server-b" in output, "server-b from dev should appear"
         assert "server-c" in output, "server-c from dev-staging should appear"
@@ -1317,6 +1374,9 @@ class TestEnvListHostsCommand:
             result = handle_env_list_hosts(args)
 
         output = captured_output.getvalue()
+
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
 
         # Matching servers should appear
         assert "weather-server" in output, "weather-server should match pattern"
@@ -1375,6 +1435,9 @@ class TestEnvListHostsCommand:
             result = handle_env_list_hosts(args)
 
         output = captured_output.getvalue()
+
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
 
         # Only weather-server from default should appear
         assert "weather-server" in output, "weather-server from default should appear"
@@ -1452,6 +1515,9 @@ class TestEnvListServersCommand:
 
         output = captured_output.getvalue()
 
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
+
         # Verify column headers present
         assert "Environment" in output, "Environment column should be present"
         assert "Server" in output, "Server column should be present"
@@ -1510,6 +1576,9 @@ class TestEnvListServersCommand:
             result = handle_env_list_servers(args)
 
         output = captured_output.getvalue()
+
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
 
         # Matching environment should appear
         assert "server-a" in output, "server-a from default should appear"
@@ -1573,6 +1642,9 @@ class TestEnvListServersCommand:
 
         output = captured_output.getvalue()
 
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
+
         # Matching environments should appear
         assert "server-b" in output, "server-b from dev should appear"
         assert "server-c" in output, "server-c from dev-staging should appear"
@@ -1616,6 +1688,9 @@ class TestEnvListServersCommand:
             result = handle_env_list_servers(args)
 
         output = captured_output.getvalue()
+
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
 
         # Matching host should appear
         assert "server-a" in output, "server-a on claude-desktop should appear"
@@ -1665,6 +1740,9 @@ class TestEnvListServersCommand:
 
         output = captured_output.getvalue()
 
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
+
         # Matching hosts should appear
         assert "server-a" in output, "server-a on claude-desktop should appear"
         assert "server-c" in output, "server-c on claude-code should appear"
@@ -1713,6 +1791,9 @@ class TestEnvListServersCommand:
             result = handle_env_list_servers(args)
 
         output = captured_output.getvalue()
+
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
 
         # Undeployed packages should appear
         assert "util-lib" in output, "util-lib (undeployed) should appear"
@@ -1771,6 +1852,9 @@ class TestEnvListServersCommand:
             result = handle_env_list_servers(args)
 
         output = captured_output.getvalue()
+
+        # Verify exit code
+        assert result == EXIT_SUCCESS, "Operation should succeed"
 
         # Only server-a from default on claude-desktop should appear
         assert "server-a" in output, "server-a should appear"
@@ -1852,6 +1936,9 @@ class TestMCPShowHostsCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Should show host header
                 assert "claude-desktop" in output, "Host name should appear"
 
@@ -1910,6 +1997,9 @@ class TestMCPShowHostsCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Should show matching server
                 assert "weather-server" in output, "weather-server should appear"
 
@@ -1964,6 +2054,9 @@ class TestMCPShowHostsCommand:
                     result = handle_mcp_show_hosts(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # Should show matching servers
                 assert "weather-server" in output, "weather-server should appear"
@@ -2036,6 +2129,9 @@ class TestMCPShowHostsCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # claude-desktop should appear (has matching server)
                 assert "claude-desktop" in output, "claude-desktop should appear"
 
@@ -2088,6 +2184,9 @@ class TestMCPShowHostsCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Find positions of host names
                 claude_pos = output.find("claude-desktop")
                 cursor_pos = output.find("cursor")
@@ -2138,6 +2237,9 @@ class TestMCPShowHostsCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Should have horizontal separator (═ character)
                 assert "═" in output, "Output should have horizontal separators"
 
@@ -2184,6 +2286,9 @@ class TestMCPShowHostsCommand:
                     result = handle_mcp_show_hosts(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # Should be valid JSON
                 try:
@@ -2292,6 +2397,9 @@ class TestMCPShowServersCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Should show both servers
                 assert "weather-server" in output, "weather-server should appear"
                 assert "fetch-server" in output, "fetch-server should appear"
@@ -2364,6 +2472,9 @@ class TestMCPShowServersCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Should show server from matching host
                 assert "weather-server" in output, "weather-server should appear"
 
@@ -2433,6 +2544,9 @@ class TestMCPShowServersCommand:
                     result = handle_mcp_show_servers(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # Should show server from matching host
                 assert "weather-server" in output, "weather-server should appear"
@@ -2514,6 +2628,9 @@ class TestMCPShowServersCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Should show servers from matching hosts
                 assert "weather-server" in output, "weather-server should appear"
                 assert "fetch-server" in output, "fetch-server should appear"
@@ -2585,6 +2702,9 @@ class TestMCPShowServersCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # weather-server should appear (has matching host)
                 assert "weather-server" in output, "weather-server should appear"
 
@@ -2638,6 +2758,9 @@ class TestMCPShowServersCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Find positions of server names
                 alpha_pos = output.find("alpha-server")
                 zebra_pos = output.find("zebra-server")
@@ -2688,6 +2811,9 @@ class TestMCPShowServersCommand:
 
                 output = captured_output.getvalue()
 
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
+
                 # Should have horizontal separator (═ character)
                 assert "═" in output, "Output should have horizontal separators"
 
@@ -2734,6 +2860,9 @@ class TestMCPShowServersCommand:
                     result = handle_mcp_show_servers(args)
 
                 output = captured_output.getvalue()
+
+                # Verify exit code
+                assert result == EXIT_SUCCESS, "Operation should succeed"
 
                 # Should be valid JSON
                 try:
@@ -2809,3 +2938,7 @@ class TestMCPShowCommandRemoval:
 
         # Should return error code
         assert result == 1, "Should return error code for invalid subcommand"
+        # Verify error message in output
+        assert (
+            "error" in output.lower() or "invalid" in output.lower()
+        ), "Should show error message"

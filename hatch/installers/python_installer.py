@@ -18,6 +18,7 @@ from .installer_base import (
     InstallationError,
 )
 from .installation_context import InstallationStatus
+from .registry import installer_registry
 
 
 class PythonInstaller(DependencyInstaller):
@@ -356,6 +357,4 @@ class PythonInstaller(DependencyInstaller):
 
 
 # Register this installer with the global registry
-from .registry import installer_registry
-
 installer_registry.register_installer("python", PythonInstaller)

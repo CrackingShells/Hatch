@@ -68,7 +68,7 @@ def handle_create(args: Namespace) -> int:
         return EXIT_SUCCESS
 
     try:
-        package_dir = create_package_template(
+        create_package_template(
             target_dir=target_dir,
             package_name=args.name,
             description=description,

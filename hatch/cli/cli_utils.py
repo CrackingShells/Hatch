@@ -36,11 +36,23 @@ Example:
 from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
 
+# Standard library imports
+import json
+import os
+import os as _os
+import sys
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Literal, Optional, Tuple, Union
+
+# Local imports
+from hatch.environment_manager import HatchEnvironmentManager
+from hatch.mcp_host_config import MCPHostRegistry, MCPHostType, MCPServerConfig
+from hatch.mcp_host_config.reporting import ConversionReport
+
 # =============================================================================
 # Color Infrastructure for CLI Output
 # =============================================================================
-
-import os as _os
 
 
 def _supports_truecolor() -> bool:
@@ -395,10 +407,6 @@ class ValidationError(Exception):
         super().__init__(message)
 
 
-from dataclasses import dataclass, field
-from typing import List
-
-
 @dataclass
 class Consequence:
     """Data model for a single consequence (resource or field level).
@@ -433,9 +441,6 @@ class Consequence:
     type: ConsequenceType
     message: str
     children: List["Consequence"] = field(default_factory=list)
-
-
-from typing import Optional, Tuple
 
 
 class ResultReporter:
@@ -890,8 +895,6 @@ def format_warning(message: str, suggestion: str = None) -> None:
 # TableFormatter Infrastructure for List Commands
 # =============================================================================
 
-from typing import Union, Literal
-
 
 @dataclass
 class ColumnDef:
@@ -1051,11 +1054,6 @@ def get_hatch_version() -> str:
         return "unknown (development mode)"
 
 
-import os
-import sys
-from typing import Optional
-
-
 def request_confirmation(message: str, auto_approve: bool = False) -> bool:
     """Request user confirmation with non-TTY support following Hatch patterns.
 
@@ -1178,11 +1176,6 @@ def parse_input(input_list: Optional[list]) -> Optional[list]:
     return parsed_inputs if parsed_inputs else None
 
 
-from typing import List
-
-from hatch.mcp_host_config import MCPHostRegistry, MCPHostType
-
-
 def parse_host_list(host_arg: str) -> List[str]:
     """Parse comma-separated host list or 'all'.
 
@@ -1213,13 +1206,6 @@ def parse_host_list(host_arg: str) -> List[str]:
             raise ValueError(f"Unknown host '{host_str}'. Available: {available}")
 
     return hosts
-
-
-import json
-from pathlib import Path
-
-from hatch.environment_manager import HatchEnvironmentManager
-from hatch.mcp_host_config import MCPServerConfig
 
 
 def get_package_mcp_server_config(

@@ -343,7 +343,6 @@ class LMStudioHostStrategy(CursorBasedHostStrategy):
 
     def is_host_available(self) -> bool:
         """Check if LM Studio is installed."""
-        config_path = self.get_config_path()
         return self.get_config_path().parent.exists()
 
 

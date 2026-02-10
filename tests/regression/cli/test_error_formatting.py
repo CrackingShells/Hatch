@@ -27,19 +27,11 @@ class TestHatchArgumentParser(unittest.TestCase):
     def test_argparse_error_has_error_prefix(self):
         """Argparse errors should have [ERROR] prefix."""
         from hatch.cli.__main__ import HatchArgumentParser
-        import io
 
-        parser = HatchArgumentParser(prog="test")
+        # Verify parser class exists
+        HatchArgumentParser(prog="test")
 
-        # Capture stderr
-        captured = io.StringIO()
-        try:
-            parser.error("test error message")
-        except SystemExit:
-            pass
-
-        # The error method writes to stderr and exits
-        # We need to test via subprocess for proper capture
+        # Test via subprocess for proper stderr capture
         result = subprocess.run(
             [
                 sys.executable,
@@ -98,7 +90,8 @@ class TestHatchArgumentParser(unittest.TestCase):
         from hatch.cli.__main__ import HatchArgumentParser
         import argparse
 
-        parser = HatchArgumentParser()
+        # Verify parser class exists
+        HatchArgumentParser()
 
         # Check that error method is overridden (not the same as base class)
         self.assertIsNot(HatchArgumentParser.error, argparse.ArgumentParser.error)
