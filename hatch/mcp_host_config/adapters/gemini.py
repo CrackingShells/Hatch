@@ -37,10 +37,10 @@ class GeminiAdapter(BaseAdapter):
     def validate(self, config: MCPServerConfig) -> None:
         """Validate configuration for Gemini.
 
-        Gemini is flexible:
-        - At least one transport is required (command, url, or httpUrl)
-        - Multiple transports are allowed
-        - 'type' field is not supported
+        DEPRECATED: This method is deprecated and will be removed in v0.9.0.
+        Use validate_filtered() instead.
+
+        Gemini requires exactly one transport (command, url, or httpUrl).
         """
         has_command = config.command is not None
         has_url = config.url is not None
@@ -62,7 +62,52 @@ class GeminiAdapter(BaseAdapter):
                 host_name=self.host_name,
             )
 
+    def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+        """Validate filtered configuration for Gemini.
+
+        Validates only fields that survived filtering (supported by Gemini).
+        Does NOT check for unsupported fields like type (already filtered).
+
+        Gemini requires exactly one transport: command, url, or httpUrl.
+
+        Args:
+            filtered: Dictionary of filtered fields
+
+        Raises:
+            AdapterValidationError: If validation fails
+        """
+        has_command = "command" in filtered
+        has_url = "url" in filtered
+        has_http_url = "httpUrl" in filtered
+
+        # Must have exactly one transport (mutual exclusion)
+        transport_count = sum([has_command, has_url, has_http_url])
+
+        if transport_count == 0:
+            raise AdapterValidationError(
+                "At least one transport must be specified: 'command', 'url', or 'httpUrl'",
+                host_name=self.host_name,
+            )
+
+        if transport_count > 1:
+            raise AdapterValidationError(
+                "Only one transport allowed: command, url, or httpUrl (not multiple)",
+                host_name=self.host_name,
+            )
+
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
-        """Serialize configuration for Gemini format."""
-        self.validate(config)
-        return self.filter_fields(config)
+        """Serialize configuration for Gemini format.
+
+        Follows the validate-after-filter pattern:
+        1. Filter to supported fields
+        2. Validate filtered fields
+        3. Return filtered (no transformations needed)
+        """
+        # Filter to supported fields
+        filtered = self.filter_fields(config)
+
+        # Validate filtered fields
+        self.validate_filtered(filtered)
+
+        # Return filtered (no transformations needed for Gemini)
+        return filtered
