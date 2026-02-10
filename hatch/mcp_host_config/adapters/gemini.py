@@ -62,13 +62,6 @@ class GeminiAdapter(BaseAdapter):
                 host_name=self.host_name,
             )
 
-        # Validate includeTools and excludeTools are mutually exclusive
-        if config.includeTools is not None and config.excludeTools is not None:
-            raise AdapterValidationError(
-                "Cannot specify both 'includeTools' and 'excludeTools'",
-                host_name=self.host_name,
-            )
-
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Serialize configuration for Gemini format."""
         self.validate(config)
