@@ -35,6 +35,9 @@ class KiroAdapter(BaseAdapter):
     def validate(self, config: MCPServerConfig) -> None:
         """Validate configuration for Kiro.
 
+        DEPRECATED: This method is deprecated and will be removed in v0.9.0.
+        Use validate_filtered() instead.
+
         Like Claude, requires exactly one transport.
         Does not support 'type' field.
         """
@@ -71,7 +74,49 @@ class KiroAdapter(BaseAdapter):
                 host_name=self.host_name,
             )
 
+    def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+        """Validate filtered configuration for Kiro.
+
+        Validates only fields that survived filtering (supported by Kiro).
+        Does NOT check for unsupported fields like httpUrl or type (already filtered).
+
+        Kiro requires exactly one transport (command XOR url).
+
+        Args:
+            filtered: Dictionary of filtered fields
+
+        Raises:
+            AdapterValidationError: If validation fails
+        """
+        has_command = "command" in filtered
+        has_url = "url" in filtered
+
+        # Must have exactly one transport
+        if not has_command and not has_url:
+            raise AdapterValidationError(
+                "Either 'command' (local) or 'url' (remote) must be specified",
+                host_name=self.host_name,
+            )
+
+        if has_command and has_url:
+            raise AdapterValidationError(
+                "Cannot specify both 'command' and 'url' - choose one transport",
+                host_name=self.host_name,
+            )
+
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
-        """Serialize configuration for Kiro format."""
-        self.validate(config)
-        return self.filter_fields(config)
+        """Serialize configuration for Kiro format.
+
+        Follows the validate-after-filter pattern:
+        1. Filter to supported fields
+        2. Validate filtered fields
+        3. Return filtered (no transformations needed)
+        """
+        # Filter to supported fields
+        filtered = self.filter_fields(config)
+
+        # Validate filtered fields
+        self.validate_filtered(filtered)
+
+        # Return filtered (no transformations needed for Kiro)
+        return filtered
