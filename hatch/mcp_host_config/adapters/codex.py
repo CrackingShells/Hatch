@@ -9,7 +9,7 @@ Codex CLI has unique features:
 from typing import Any, Dict, FrozenSet
 
 from hatch.mcp_host_config.adapters.base import AdapterValidationError, BaseAdapter
-from hatch.mcp_host_config.fields import CODEX_FIELDS, CODEX_FIELD_MAPPINGS
+from hatch.mcp_host_config.fields import CODEX_FIELDS
 from hatch.mcp_host_config.models import MCPServerConfig
 
 
@@ -40,8 +40,10 @@ class CodexAdapter(BaseAdapter):
     def validate(self, config: MCPServerConfig) -> None:
         """Validate configuration for Codex.
 
+        DEPRECATED: This method is deprecated and will be removed in v0.9.0.
+        Use validate_filtered() instead.
+
         Codex requires exactly one transport (command XOR url).
-        Does not support 'type' field.
         """
         has_command = config.command is not None
         has_url = config.url is not None
@@ -68,21 +70,56 @@ class CodexAdapter(BaseAdapter):
                 host_name=self.host_name,
             )
 
+    def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+        """Validate filtered configuration for Codex.
+
+        Validates only fields that survived filtering (supported by Codex).
+        Does NOT check for unsupported fields like httpUrl or type (already filtered).
+
+        Codex requires exactly one transport (command XOR url).
+
+        Args:
+            filtered: Dictionary of filtered fields
+
+        Raises:
+            AdapterValidationError: If validation fails
+        """
+        has_command = "command" in filtered
+        has_url = "url" in filtered
+
+        # Must have exactly one transport
+        if not has_command and not has_url:
+            raise AdapterValidationError(
+                "Either 'command' (local) or 'url' (remote) must be specified",
+                host_name=self.host_name,
+            )
+
+        if has_command and has_url:
+            raise AdapterValidationError(
+                "Cannot specify both 'command' and 'url' - choose one transport",
+                host_name=self.host_name,
+            )
+
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Serialize configuration for Codex format.
+
+        Follows the validate-after-filter pattern:
+        1. Filter to supported fields
+        2. Validate filtered fields
+        3. Transform fields (apply field mappings)
+        4. Return transformed
 
         Applies field mappings:
         - args → arguments
         - headers → http_headers
         """
-        self.validate(config)
+        # Filter to supported fields
+        filtered = self.filter_fields(config)
 
-        # Get base filtered fields
-        result = self.filter_fields(config)
+        # Validate filtered fields
+        self.validate_filtered(filtered)
 
-        # Apply field mappings
-        for universal_name, codex_name in CODEX_FIELD_MAPPINGS.items():
-            if universal_name in result:
-                result[codex_name] = result.pop(universal_name)
+        # Transform fields (apply field mappings)
+        transformed = self.apply_transformations(filtered)
 
-        return result
+        return transformed
