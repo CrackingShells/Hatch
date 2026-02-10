@@ -36,6 +36,7 @@ from .reporting import (
 from .adapters import AdapterRegistry, get_adapter, get_default_registry
 
 # Import strategies to trigger decorator registration
+from . import strategies  # noqa: F401
 
 __all__ = [
     "MCPHostConfigBackupManager",
