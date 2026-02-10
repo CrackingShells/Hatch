@@ -97,6 +97,9 @@ class TestAdapterRegistry(unittest.TestCase):
             def validate(self, config):
                 pass
 
+            def validate_filtered(self, filtered):
+                pass
+
             def serialize(self, config):
                 return {"command": config.command}
 
