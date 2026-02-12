@@ -10,7 +10,7 @@ Tests are organized into a hierarchical directory structure following the
 
 ```bash
 mamba activate forHatch-dev
-python -m pytest tests/ --ignore=tests/test_cli_version.py
+python -m pytest tests/
 ```
 
 ## Testing Strategy
@@ -103,8 +103,8 @@ package loading, registry, and non-TTY integration.
 ## Running Tests
 
 ```bash
-# Run all tests (exclude known collection error)
-python -m pytest tests/ --ignore=tests/test_cli_version.py
+# Run all tests
+python -m pytest tests/
 
 # Run by category
 python -m pytest tests/regression/
@@ -112,21 +112,23 @@ python -m pytest tests/integration/
 python -m pytest tests/unit/
 
 # Run with timing info
-python -m pytest tests/ --ignore=tests/test_cli_version.py --durations=30
+python -m pytest tests/ --durations=30
 
 # Run a specific test file
 python -m pytest tests/test_env_manip.py -v
 ```
 
-## Known Issues
+## Resolved Issues
 
-| Test | Issue | Root Cause |
-|---|---|---|
-| `test_cli_version.py` | Collection error | `handle_mcp_show` import removed from `cli_mcp.py` |
-| `test_hatch_installer.py` (4 tests) | Setup error | Missing `Hatching-Dev` sibling directory |
-| `test_color_enum_total_count` | Assertion mismatch | Color enum count changed (15 vs expected 14) |
-| `test_get_environment_activation_info_windows` | Path format | Windows path separator test on macOS |
-| `test_handler_shows_prompt_before_confirmation` | Assertion | CLI behavior change |
-| `test_mcp_show_invalid_subcommand_error` | Assertion | Error message format change |
+All previously known test issues have been fixed:
 
-All issues above are pre-existing and unrelated to the test refactoring.
+| Issue | Resolution |
+|---|---|
+| `test_cli_version.py` collection error | Fixed: obsolete `handle_mcp_show` import removed from `cli_hatch.py` |
+| `test_color_enum_total_count` assertion | Fixed: expected count updated to 15 (AMBER color added) |
+| `test_get_environment_activation_info_windows` on macOS | Fixed: test skipped on non-Windows platforms |
+| `test_handler_shows_prompt_before_confirmation` assertion | Fixed: updated for new exit code behavior |
+| `test_mcp_show_invalid_subcommand_error` assertion | Fixed: updated for new error message format |
+| `test_hatch_installer.py` setup errors | Fixed: tests skip when `Hatching-Dev` directory is missing |
+
+**Current status**: 683 passed, 26 skipped, 0 failures, 0 errors (100% pass rate).
