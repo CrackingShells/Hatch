@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest import mock
 
 # Import wobble decorators for test categorization
-from wobble.decorators import regression_test, integration_test, slow_test
+from wobble.decorators import regression_test, integration_test
 
 from hatch.installers.python_installer import PythonInstaller
 from hatch.installers.installation_context import (
@@ -296,31 +296,30 @@ class TestPythonInstallerIntegration(unittest.TestCase):
         self.assertIn("this-package-definitely-does-not-exist-12345", error_msg)
 
     @integration_test(scope="component")
-    @slow_test
     def test_get_installation_info_for_installed_package(self):
         """Test retrieval of installation info for an actually installed package.
 
-        This tests the get_installation_info method with a real package
-        that should be available in most Python environments.
+        Uses the shared venv from setUpClass. This tests the get_installation_info
+        method with a real package that should be available in the shared venv.
         """
         dep = {
-            "name": "pip",  # pip should be available in most environments
+            "name": "pip",  # pip should be available in the shared venv
             "version_constraint": "*",
             "type": "python",
         }
 
         context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={"python_executable": self.python_executable},
+            env_path=self.__class__.shared_env_path,
+            env_name="shared_test_env",
+            extra_config={
+                "python_executable": self.__class__.shared_python_executable,
+            },
         )
 
         info = self.installer.get_installation_info(dep, context)
         self.assertIsInstance(info, dict)
         # Basic checks for expected info structure
-        if (
-            info
-        ):  # Only check if info was returned (some implementations might return empty dict)
+        if info:
             self.assertIn("dependency_name", info)
 
 
