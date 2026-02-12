@@ -1,4 +1,3 @@
-import sys
 import json
 import unittest
 import logging
@@ -15,7 +14,8 @@ from wobble.decorators import regression_test, integration_test, slow_test
 
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch.python_environment_manager import PythonEnvironmentManager
-from hatch.installers.docker_installer import DOCKER_DAEMON_AVAILABLE
+from hatch.installers.docker_installer import DockerInstaller
+from hatch.installers.system_installer import SystemInstaller
 
 # Configure logging
 logging.basicConfig(
@@ -610,18 +610,25 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @integration_test(scope="system")
-    @slow_test
-    @unittest.skipIf(
-        sys.platform.startswith("win"), "System dependency test skipped on Windows"
-    )
-    def test_add_package_with_system_dependency(self):
+    @patch.object(SystemInstaller, "_verify_installation", return_value="7.0.0")
+    @patch.object(SystemInstaller, "_run_apt_subprocess", return_value=0)
+    @patch.object(SystemInstaller, "_is_apt_available", return_value=True)
+    @patch.object(SystemInstaller, "_is_platform_supported", return_value=True)
+    def test_add_package_with_system_dependency(
+        self, mock_platform, mock_apt_avail, mock_run, mock_verify
+    ):
         """Test adding a package with a system dependency."""
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
         )
         self.env_manager.set_current_environment("test_env")
         # Add a package that declares a system dependency (e.g., 'curl')
-        system_dep_pkg_path = self.hatch_dev_path / "system_dep_pkg"
+        from test_data_utils import TestDataLoader
+
+        test_loader = TestDataLoader()
+        system_dep_pkg_path = (
+            test_loader.packages_dir / "dependencies" / "system_dep_pkg"
+        )
         self.assertTrue(
             system_dep_pkg_path.exists(),
             f"System dependency package not found: {system_dep_pkg_path}",
@@ -642,21 +649,22 @@ class PackageEnvironmentTests(unittest.TestCase):
             "System dependency package missing from environment",
         )
 
-    # Skip if Docker is not available
     @integration_test(scope="service")
-    @slow_test
-    @unittest.skipUnless(
-        DOCKER_DAEMON_AVAILABLE,
-        "Docker dependency test skipped due to Docker not being available",
-    )
-    def test_add_package_with_docker_dependency(self):
+    @patch.object(DockerInstaller, "_pull_docker_image")
+    @patch.object(DockerInstaller, "_is_docker_available", return_value=True)
+    def test_add_package_with_docker_dependency(self, mock_docker_avail, mock_pull):
         """Test adding a package with a docker dependency."""
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
         )
         self.env_manager.set_current_environment("test_env")
-        # Add a package that declares a docker dependency (e.g., 'redis:latest')
-        docker_dep_pkg_path = self.hatch_dev_path / "docker_dep_pkg"
+        # Add a package that declares a docker dependency (e.g., 'nginx')
+        from test_data_utils import TestDataLoader
+
+        test_loader = TestDataLoader()
+        docker_dep_pkg_path = (
+            test_loader.packages_dir / "dependencies" / "docker_dep_pkg"
+        )
         self.assertTrue(
             docker_dep_pkg_path.exists(),
             f"Docker dependency package not found: {docker_dep_pkg_path}",
@@ -678,7 +686,6 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @slow_test
     def test_create_environment_with_mcp_server_default(self):
         """Test creating environment with default MCP server installation."""
         # Mock the MCP server installation to avoid actual network calls
@@ -755,7 +762,6 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
-    @slow_test
     def test_create_environment_with_mcp_server_opt_out(self):
         """Test creating environment with MCP server installation opted out."""
         # Mock the MCP server installation to track calls
@@ -809,7 +815,6 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
-    @slow_test
     def test_create_environment_with_mcp_server_custom_tag(self):
         """Test creating environment with custom MCP server tag."""
         # Mock the MCP server installation to avoid actual network calls
