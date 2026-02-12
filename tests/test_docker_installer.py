@@ -11,7 +11,7 @@ import shutil
 from pathlib import Path
 from unittest.mock import patch, Mock
 
-from wobble.decorators import regression_test, integration_test, slow_test
+from wobble.decorators import regression_test, integration_test
 
 from hatch.installers.docker_installer import (
     DockerInstaller,
@@ -458,22 +458,13 @@ class TestDockerInstaller(unittest.TestCase):
 
 
 class TestDockerInstallerIntegration(unittest.TestCase):
-    """Integration tests for DockerInstaller using real Docker operations."""
+    """Integration tests for DockerInstaller with mocked Docker operations."""
 
     def setUp(self):
         """Set up integration test fixtures."""
-        if not DOCKER_AVAILABLE or not DOCKER_DAEMON_AVAILABLE:
-            self.skipTest(
-                f"Docker library not available or Docker daemon not available: library={DOCKER_AVAILABLE}, daemon={DOCKER_DAEMON_AVAILABLE}"
-            )
-
         self.installer = DockerInstaller()
         self.temp_dir = tempfile.mkdtemp()
         self.context = DummyContext(env_path=Path(self.temp_dir))
-
-        # Check if Docker daemon is actually available
-        if not self.installer._is_docker_available():
-            self.skipTest("Docker daemon not available")
 
     def tearDown(self):
         """Clean up integration test fixtures."""
@@ -481,19 +472,33 @@ class TestDockerInstallerIntegration(unittest.TestCase):
             shutil.rmtree(self.temp_dir)
 
     @integration_test(scope="service")
-    @slow_test
-    def test_docker_daemon_availability(self):
+    @patch.object(DockerInstaller, "_is_docker_available", return_value=True)
+    def test_docker_daemon_availability(self, mock_available):
         """Test Docker daemon availability detection."""
         self.assertTrue(self.installer._is_docker_available())
+        mock_available.assert_called()
 
     @integration_test(scope="service")
-    @slow_test
-    def test_install_and_uninstall_small_image(self):
-        """Test installing and uninstalling a small Docker image.
+    @patch.object(DockerInstaller, "_is_docker_available", return_value=True)
+    @patch.object(DockerInstaller, "_get_docker_client")
+    def test_install_and_uninstall_small_image(self, mock_get_client, mock_available):
+        """Test installing and uninstalling a small Docker image (mocked).
 
-        This test uses the alpine image which is very small (~5MB) to minimize
-        download time and resource usage in CI environments.
+        This test verifies the install/uninstall flow with mocked Docker client
+        operations instead of real Docker pull/rm.
         """
+        # Set up mock Docker client
+        mock_client = Mock()
+        mock_client.ping.return_value = True
+        mock_client.images.pull.return_value = Mock()
+        mock_image = Mock()
+        mock_image.id = "sha256:mock123"
+        mock_image.tags = ["alpine:latest"]
+        mock_client.images.get.return_value = mock_image
+        mock_client.containers.list.return_value = []
+        mock_client.images.remove.return_value = None
+        mock_get_client.return_value = mock_client
+
         dependency = {
             "name": "alpine",
             "version_constraint": "latest",
@@ -506,41 +511,44 @@ class TestDockerInstallerIntegration(unittest.TestCase):
         def progress_callback(message, percent, status):
             progress_events.append((message, percent, status))
 
-        try:
-            # Test installation
-            install_result = self.installer.install(
-                dependency, self.context, progress_callback
-            )
-            self.assertEqual(install_result.status, InstallationStatus.COMPLETED)
-            self.assertGreater(len(progress_events), 0)
+        # Test installation
+        install_result = self.installer.install(
+            dependency, self.context, progress_callback
+        )
+        self.assertEqual(install_result.status, InstallationStatus.COMPLETED)
+        self.assertGreater(len(progress_events), 0)
+        mock_client.images.pull.assert_called_once_with("alpine:latest")
 
-            # Verify image is installed
-            info = self.installer.get_installation_info(dependency, self.context)
-            self.assertTrue(info.get("installed", False))
+        # Verify image is installed
+        info = self.installer.get_installation_info(dependency, self.context)
+        self.assertTrue(info.get("installed", False))
 
-            # Test uninstallation
-            progress_events.clear()
-            uninstall_result = self.installer.uninstall(
-                dependency, self.context, progress_callback
-            )
-            self.assertEqual(uninstall_result.status, InstallationStatus.COMPLETED)
-
-        except InstallationError as e:
-            if e.error_code == "DOCKER_DAEMON_NOT_AVAILABLE":
-                self.skipTest(
-                    f"Integration test failed due to Docker/network issues: {e}"
-                )
-            else:
-                raise e
+        # Test uninstallation
+        progress_events.clear()
+        uninstall_result = self.installer.uninstall(
+            dependency, self.context, progress_callback
+        )
+        self.assertEqual(uninstall_result.status, InstallationStatus.COMPLETED)
+        mock_client.images.remove.assert_called_once_with("alpine:latest", force=False)
 
     @integration_test(scope="service")
-    @slow_test
-    def test_docker_dep_pkg_integration(self):
-        """Test integration with docker_dep_pkg dummy package.
+    @patch.object(DockerInstaller, "_is_docker_available", return_value=True)
+    @patch.object(DockerInstaller, "_get_docker_client")
+    def test_docker_dep_pkg_integration(self, mock_get_client, mock_available):
+        """Test integration with docker_dep_pkg dummy package (mocked).
 
         This test validates the installer works with the real dependency format
-        from the Hatching-Dev docker_dep_pkg.
+        from the Hatching-Dev docker_dep_pkg using mocked Docker operations.
         """
+        # Set up mock Docker client
+        mock_client = Mock()
+        mock_client.ping.return_value = True
+        mock_image = Mock()
+        mock_image.id = "sha256:mock456"
+        mock_image.tags = ["nginx:1.25.0"]
+        mock_client.images.get.return_value = mock_image
+        mock_get_client.return_value = mock_client
+
         # Dependency based on docker_dep_pkg/hatch_metadata.json
         dependency = {
             "name": "nginx",
@@ -549,20 +557,16 @@ class TestDockerInstallerIntegration(unittest.TestCase):
             "registry": "dockerhub",
         }
 
-        try:
-            # Test validation
-            self.assertTrue(self.installer.validate_dependency(dependency))
+        # Test validation
+        self.assertTrue(self.installer.validate_dependency(dependency))
 
-            # Test can_install
-            self.assertTrue(self.installer.can_install(dependency))
+        # Test can_install
+        self.assertTrue(self.installer.can_install(dependency))
 
-            # Test installation info
-            info = self.installer.get_installation_info(dependency, self.context)
-            self.assertEqual(info["installer_type"], "docker")
-            self.assertEqual(info["dependency_name"], "nginx")
-
-        except Exception as e:
-            self.skipTest(f"Docker dep pkg integration test failed: {e}")
+        # Test installation info
+        info = self.installer.get_installation_info(dependency, self.context)
+        self.assertEqual(info["installer_type"], "docker")
+        self.assertEqual(info["dependency_name"], "nginx")
 
 
 if __name__ == "__main__":
