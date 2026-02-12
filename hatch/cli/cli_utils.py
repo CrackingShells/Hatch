@@ -1049,7 +1049,7 @@ def get_hatch_version() -> str:
              if package is not installed.
     """
     try:
-        return version("hatch")
+        return version("hatch-xclam")
     except PackageNotFoundError:
         return "unknown (development mode)"
 

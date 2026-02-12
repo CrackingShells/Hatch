@@ -50,7 +50,7 @@ class TestVersionCommand(unittest.TestCase):
             result = get_hatch_version()
 
             self.assertEqual(result, "0.7.0-dev.3")
-            mock_version.assert_called_once_with("hatch")
+            mock_version.assert_called_once_with("hatch-xclam")
 
     @regression_test
     def test_get_hatch_version_handles_package_not_found(self):
