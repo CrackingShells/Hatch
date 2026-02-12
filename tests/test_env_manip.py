@@ -390,7 +390,6 @@ class PackageEnvironmentTests(unittest.TestCase):
             )
 
     @regression_test
-    @slow_test
     def test_add_package_with_all_dependencies_already_present(self):
         """Test adding a package where all dependencies are already present."""
         # Create an environment
@@ -450,7 +449,6 @@ class PackageEnvironmentTests(unittest.TestCase):
             )
 
     @regression_test
-    @slow_test
     def test_add_package_with_version_constraint_satisfaction(self):
         """Test adding a package with version constraints where dependencies are satisfied."""
         # Create an environment
@@ -507,9 +505,30 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @integration_test(scope="component")
-    @slow_test
-    def test_add_package_with_mixed_dependency_types(self):
+    @patch.object(PythonEnvironmentManager, "get_environment_info")
+    @patch.object(
+        PythonEnvironmentManager, "create_python_environment", return_value=True
+    )
+    @patch.object(PythonEnvironmentManager, "is_available", return_value=True)
+    def test_add_package_with_mixed_dependency_types(
+        self, mock_is_available, mock_create_env, mock_get_info
+    ):
         """Test adding a package with mixed hatch and python dependencies."""
+        # Mock get_environment_info to return fake python env data with "requests"
+        mock_get_info.return_value = {
+            "conda_env_name": "hatch_test_env",
+            "python_executable": "/usr/bin/python3",
+            "python_version": "3.12",
+            "manager": "mamba",
+            "environment_path": "/fake/path",
+            "package_count": 3,
+            "packages": [
+                {"name": "numpy", "version": "1.26.0"},
+                {"name": "requests", "version": "2.31.0"},
+                {"name": "pip", "version": "23.0"},
+            ],
+        }
+
         # Create an environment
         self.env_manager.create_environment("test_env", "Test environment")
         self.env_manager.set_current_environment("test_env")
