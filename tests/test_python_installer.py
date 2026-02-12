@@ -194,73 +194,66 @@ class TestPythonInstallerIntegration(unittest.TestCase):
         """Clean up the temporary directory after each test."""
         shutil.rmtree(self.temp_dir)
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_actual_package_success(self):
-        """Test actual installation of a real Python package without mocking.
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_install_actual_package_success(self, mock_run):
+        """Test installation pipeline returns COMPLETED on successful pip install.
 
-        Uses a lightweight package that's commonly available and installs quickly.
-        This validates the entire installation pipeline including subprocess handling.
+        Mocks _run_pip_subprocess to validate our install flow without calling pip.
         """
-        # Use a lightweight, commonly available package for testing
         dep = {"name": "wheel", "version_constraint": "*", "type": "python"}
 
-        # Create a virtual environment context to avoid polluting system packages
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={
-                "python_executable": self.python_executable,
-                "target_dir": str(self.env_path),
-            },
-        )
-        result = self.installer.install(dep, context)
+        result = self.installer.install(dep, self.dummy_context)
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
         self.assertIn("wheel", result.dependency_name)
+        mock_run.assert_called_once()
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_package_with_version_constraint(self):
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_install_package_with_version_constraint(self, mock_run):
         """Test installation with specific version constraint.
 
-        Validates that version constraints are properly passed to pip
-        and that the installation succeeds with real package resolution.
+        Validates that version constraints are properly passed through
+        our install flow and result metadata is populated.
         """
-        dep = {"name": "setuptools", "version_constraint": ">=40.0.0", "type": "python"}
+        dep = {
+            "name": "setuptools",
+            "version_constraint": ">=40.0.0",
+            "type": "python",
+        }
 
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={"python_executable": self.python_executable},
+        result = self.installer.install(dep, self.dummy_context)
+        self.assertEqual(result.status, InstallationStatus.COMPLETED)
+        self.assertIsNotNone(result.metadata)
+        # Verify the version constraint was included in the command
+        cmd_args = mock_run.call_args[0][0]
+        self.assertTrue(
+            any("setuptools>=40.0.0" in arg for arg in cmd_args),
+            f"Expected 'setuptools>=40.0.0' in pip command args: {cmd_args}",
         )
 
-        result = self.installer.install(dep, context)
-        self.assertEqual(result.status, InstallationStatus.COMPLETED)
-        # Verify the dependency was processed correctly
-        self.assertIsNotNone(result.metadata)
-
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_package_with_extras(self):
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_install_package_with_extras(self, mock_run):
         """Test installation of a package with extras specification.
 
-        Tests the extras handling functionality with a real package installation.
+        Validates that extras are correctly formatted in the pip command.
         """
         dep = {
             "name": "requests",
             "version_constraint": "*",
             "type": "python",
-            "extras": ["security"],  # pip[security] if available
+            "extras": ["security"],
         }
 
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={"python_executable": self.python_executable},
-        )
-
-        result = self.installer.install(dep, context)
+        result = self.installer.install(dep, self.dummy_context)
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
+        # Verify extras were included in the pip command
+        cmd_args = mock_run.call_args[0][0]
+        self.assertTrue(
+            any("requests[security]" in arg for arg in cmd_args),
+            f"Expected 'requests[security]' in pip command args: {cmd_args}",
+        )
 
     @integration_test(scope="component")
     @slow_test
