@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 from unittest.mock import patch
 
-from wobble.decorators import regression_test, integration_test, slow_test
+from wobble.decorators import regression_test, integration_test
 
 # Import path management removed - using test_data_utils for test dependencies
 
@@ -907,9 +907,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
-    @slow_test
     def test_create_environment_no_python_no_mcp_server(self):
         """Test creating environment without Python support should not install MCP server."""
+        self.env_manager.python_env_manager.is_available = lambda: False
         # Mock the MCP server installation to track calls
         original_install = self.env_manager._install_hatch_mcp_server
         install_called = False
@@ -940,9 +940,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
-    @slow_test
     def test_install_mcp_server_existing_environment(self):
         """Test installing MCP server in an existing environment."""
+        self.env_manager.python_env_manager.is_available = lambda: False
         # Create environment first without Python environment
         success = self.env_manager.create_environment(
             "test_existing_mcp",
@@ -1016,9 +1016,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
-    @slow_test
     def test_create_python_environment_only_with_mcp_wrapper(self):
         """Test creating Python environment only with MCP wrapper support."""
+        self.env_manager.python_env_manager.is_available = lambda: False
         # First create a Hatch environment without Python
         self.env_manager.create_environment(
             "test_python_only", "Test Python Only", create_python_env=False
