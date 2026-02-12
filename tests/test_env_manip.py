@@ -31,12 +31,8 @@ class PackageEnvironmentTests(unittest.TestCase):
         # Create a temporary directory for test environments
         self.temp_dir = tempfile.mkdtemp()
 
-        # Path to Hatching-Dev packages
+        # Path to Hatching-Dev packages (only needed for system/docker dep tests)
         self.hatch_dev_path = Path(__file__).parent.parent.parent / "Hatching-Dev"
-        self.assertTrue(
-            self.hatch_dev_path.exists(),
-            f"Hatching-Dev directory not found at {self.hatch_dev_path}",
-        )
 
         # Create a sample registry that includes Hatching-Dev packages
         self._create_sample_registry()
@@ -176,9 +172,12 @@ class PackageEnvironmentTests(unittest.TestCase):
         shutil.rmtree(self.temp_dir)
 
     @regression_test
-    @slow_test
-    def test_create_environment(self):
+    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
+    def test_create_environment(self, mock_install_mcp):
         """Test creating an environment."""
+        # Mock python env manager to avoid real conda/mamba calls
+        self.env_manager.python_env_manager.is_available = lambda: False
+
         result = self.env_manager.create_environment("test_env", "Test environment")
         self.assertTrue(result, "Failed to create environment")
 
@@ -198,9 +197,12 @@ class PackageEnvironmentTests(unittest.TestCase):
         self.assertEqual(len(env_data["packages"]), 0)
 
     @regression_test
-    @slow_test
-    def test_remove_environment(self):
+    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
+    def test_remove_environment(self, mock_install_mcp):
         """Test removing an environment."""
+        # Mock python env manager to avoid real conda/mamba calls
+        self.env_manager.python_env_manager.is_available = lambda: False
+
         # First create an environment
         self.env_manager.create_environment("test_env", "Test environment")
         self.assertTrue(self.env_manager.environment_exists("test_env"))
@@ -216,9 +218,12 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @slow_test
-    def test_set_current_environment(self):
+    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
+    def test_set_current_environment(self, mock_install_mcp):
         """Test setting the current environment."""
+        # Mock python env manager to avoid real conda/mamba calls
+        self.env_manager.python_env_manager.is_available = lambda: False
+
         # First create an environment
         self.env_manager.create_environment("test_env", "Test environment")
 
