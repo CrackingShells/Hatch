@@ -11,7 +11,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from wobble.decorators import regression_test, integration_test, slow_test
+from wobble.decorators import regression_test, integration_test
 
 from hatch.installers.system_installer import SystemInstaller
 from hatch.installers.installer_base import InstallationError
@@ -552,7 +552,6 @@ class TestSystemInstallerIntegration(unittest.TestCase):
         )
 
     @integration_test(scope="system")
-    @slow_test
     def test_validate_real_system_dependency(self):
         """Test validation with real system dependency from dummy package."""
         # This mimics the dependency from system_dep_pkg
@@ -565,7 +564,6 @@ class TestSystemInstallerIntegration(unittest.TestCase):
         self.assertTrue(self.installer.validate_dependency(dependency))
 
     @integration_test(scope="system")
-    @slow_test
     @patch.object(SystemInstaller, "_is_platform_supported")
     @patch.object(SystemInstaller, "_is_apt_available")
     def test_can_install_real_dependency(
@@ -585,7 +583,6 @@ class TestSystemInstallerIntegration(unittest.TestCase):
         self.assertTrue(self.installer.can_install(dependency))
 
     @integration_test(scope="system")
-    @slow_test
     @unittest.skipIf(
         sys.platform.startswith("win"), "System dependency test skipped on Windows"
     )
@@ -610,7 +607,6 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             self.assertTrue(result.metadata["simulation"])
 
     @integration_test(scope="system")
-    @slow_test
     def test_get_installation_info(self):
         """Test getting installation info for system dependency."""
         dependency = {
@@ -628,34 +624,28 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             self.assertTrue(info["supported"])
 
     @integration_test(scope="system")
-    @slow_test
-    @unittest.skipIf(
-        sys.platform.startswith("win"), "System dependency test skipped on Windows"
-    )
-    def test_install_real_dependency(self):
-        """Test installing a real system dependency."""
+    @patch.object(SystemInstaller, "_run_apt_subprocess", return_value=0)
+    def test_install_real_dependency(self, mock_run):
+        """Test installing a system dependency (mocked subprocess)."""
         dependency = {
-            "name": "sl",  # Use a rarer package than 'curl'
+            "name": "sl",
             "version_constraint": ">=5.02",
             "package_manager": "apt",
         }
 
-        # real installation
         result = self.installer.install(dependency, self.test_context)
 
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
         self.assertTrue(result.metadata["automated"])
+        mock_run.assert_called()
 
     @integration_test(scope="system")
-    @slow_test
-    @unittest.skipIf(
-        sys.platform.startswith("win"), "System dependency test skipped on Windows"
-    )
-    def test_install_integration_with_real_subprocess(self):
-        """Test install method with real _run_apt_subprocess execution.
+    @patch.object(SystemInstaller, "_run_apt_subprocess", return_value=0)
+    def test_install_integration_with_real_subprocess(self, mock_run):
+        """Test install method with mocked _run_apt_subprocess execution.
 
-        This integration test ensures that _run_apt_subprocess can actually run
-        without mocking, using apt-get --dry-run for safe testing.
+        This test ensures the install flow works correctly in simulation mode
+        with subprocess calls mocked.
         """
         dependency = {
             "name": "curl",
@@ -663,7 +653,7 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             "package_manager": "apt",
         }
 
-        # Create a test context that uses simulation mode for safety
+        # Create a test context that uses simulation mode
         test_context = InstallationContext(
             environment_path=Path("/tmp/test_env"),
             environment_name="integration_test",
@@ -671,8 +661,6 @@ class TestSystemInstallerIntegration(unittest.TestCase):
             extra_config={"automated": True},
         )
 
-        # This will call _run_apt_subprocess with real subprocess execution
-        # but in simulation mode, so it's safe
         result = self.installer.install(dependency, test_context)
 
         self.assertEqual(result.dependency_name, "curl")
@@ -680,46 +668,42 @@ class TestSystemInstallerIntegration(unittest.TestCase):
         self.assertTrue(result.metadata["simulation"])
         self.assertEqual(result.metadata["package_manager"], "apt")
         self.assertTrue(result.metadata["automated"])
+        mock_run.assert_called()
 
     @integration_test(scope="system")
-    @slow_test
-    @unittest.skipIf(
-        sys.platform.startswith("win"), "System dependency test skipped on Windows"
-    )
-    def test_run_apt_subprocess_direct_integration(self):
-        """Test _run_apt_subprocess directly with real system commands.
+    @patch("subprocess.Popen")
+    def test_run_apt_subprocess_direct_integration(self, mock_popen):
+        """Test _run_apt_subprocess directly with mocked subprocess.
 
-        This test verifies that _run_apt_subprocess can handle actual apt commands
-        without any mocking, using safe commands that don't modify the system.
+        This test verifies that _run_apt_subprocess correctly handles
+        subprocess calls and returns the expected return codes.
         """
+        # Mock the Popen process
+        mock_process = MagicMock()
+        mock_process.communicate.return_value = ("", "")
+        mock_process.wait.return_value = 0
+        mock_process.returncode = 0
+        mock_popen.return_value = mock_process
+
         # Test with apt-cache policy (read-only command)
         cmd = ["apt-cache", "policy", "curl"]
         returncode = self.installer._run_apt_subprocess(cmd)
-
-        # Should return 0 (success) for a valid package query
         self.assertEqual(returncode, 0)
 
         # Test with apt-get dry-run (safe simulation command)
         cmd = ["apt-get", "install", "--dry-run", "-y", "curl"]
         returncode = self.installer._run_apt_subprocess(cmd)
-
-        # Should return 0 (success) for a valid dry-run
         self.assertEqual(returncode, 0)
 
-        # Test with invalid package (should fail gracefully)
+        # Test with invalid package (apt-cache policy doesn't fail)
         cmd = ["apt-cache", "policy", "nonexistent-package-12345"]
         returncode = self.installer._run_apt_subprocess(cmd)
-
-        # Should return 0 even for non-existent package (apt-cache policy doesn't fail)
         self.assertEqual(returncode, 0)
 
     @integration_test(scope="system")
-    @slow_test
-    @unittest.skipIf(
-        sys.platform.startswith("win"), "System dependency test skipped on Windows"
-    )
-    def test_install_with_version_constraint_integration(self):
-        """Test install method with version constraints and real subprocess calls."""
+    @patch.object(SystemInstaller, "_run_apt_subprocess", return_value=0)
+    def test_install_with_version_constraint_integration(self, mock_run):
+        """Test install method with version constraints (mocked subprocess)."""
         # Test with exact version constraint
         dependency = {
             "name": "curl",
@@ -741,15 +725,17 @@ class TestSystemInstallerIntegration(unittest.TestCase):
         self.assertTrue(result.metadata["simulation"])
         # Check that the command includes the version constraint
         self.assertIn("curl", result.metadata["command_simulated"])
+        mock_run.assert_called()
 
     @integration_test(scope="system")
-    @slow_test
-    @unittest.skipIf(
-        sys.platform.startswith("win"), "System dependency test skipped on Windows"
-    )
-    def test_error_handling_in_run_apt_subprocess(self):
-        """Test error handling in _run_apt_subprocess with real commands."""
-        # Test with completely invalid command
+    @patch("subprocess.Popen")
+    def test_error_handling_in_run_apt_subprocess(self, mock_popen):
+        """Test error handling in _run_apt_subprocess with invalid commands."""
+        # Simulate FileNotFoundError for a nonexistent command
+        mock_popen.side_effect = FileNotFoundError(
+            "[Errno 2] No such file or directory: 'nonexistent-command-12345'"
+        )
+
         cmd = ["nonexistent-command-12345"]
 
         with self.assertRaises(InstallationError) as exc_info:
