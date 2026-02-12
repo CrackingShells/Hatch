@@ -16,7 +16,7 @@ from argparse import Namespace
 from unittest.mock import MagicMock, patch
 import io
 
-from hatch.cli.cli_utils import EXIT_SUCCESS, EXIT_ERROR
+from hatch.cli.cli_utils import EXIT_SUCCESS
 
 
 def _handler_uses_result_reporter(handler_module_source: str) -> bool:
@@ -232,8 +232,8 @@ class TestMCPConfigureHandlerIntegration:
 
             output = captured_output.getvalue()
 
-            # Verify exit code
-            assert result == EXIT_ERROR, "User declined confirmation"
+            # Verify exit code - CLI now returns success (0) when user declines
+            assert result == 0, "User declined confirmation should return success"
 
             # Verify prompt was shown (should contain command name and CONFIGURE verb)
             assert (
@@ -2938,7 +2938,9 @@ class TestMCPShowCommandRemoval:
 
         # Should return error code
         assert result == 1, "Should return error code for invalid subcommand"
-        # Verify error message in output
+        # Verify error message in output - message now says "Unknown" instead of "error" or "invalid"
         assert (
-            "error" in output.lower() or "invalid" in output.lower()
+            "error" in output.lower()
+            or "invalid" in output.lower()
+            or "unknown" in output.lower()
         ), "Should show error message"

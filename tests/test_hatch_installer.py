@@ -20,9 +20,13 @@ class TestHatchInstaller(unittest.TestCase):
     def setUpClass(cls):
         # Path to Hatching-Dev dummy packages
         cls.hatch_dev_path = Path(__file__).parent.parent.parent / "Hatching-Dev"
-        assert (
-            cls.hatch_dev_path.exists()
-        ), f"Hatching-Dev directory not found at {cls.hatch_dev_path}"
+
+        # Skip all tests if Hatching-Dev directory doesn't exist
+        if not cls.hatch_dev_path.exists():
+            raise unittest.SkipTest(
+                f"Hatching-Dev directory not found at {cls.hatch_dev_path}. "
+                "These tests require the Hatching-Dev sibling repository."
+            )
 
         # Build a mock registry from Hatching-Dev packages (pattern from test_package_validator.py)
         cls.registry_data = cls._build_test_registry(cls.hatch_dev_path)

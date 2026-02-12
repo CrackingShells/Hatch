@@ -66,11 +66,11 @@ class TestColorEnum(unittest.TestCase):
         self.assertTrue(hasattr(Color, "RESET"), "Color enum missing RESET")
 
     def test_color_enum_total_count(self):
-        """Color enum should have exactly 14 members."""
+        """Color enum should have exactly 15 members."""
         from hatch.cli.cli_utils import Color
 
-        # 6 bright + 6 dim + GRAY + RESET = 14
-        self.assertEqual(len(Color), 14, f"Expected 14 colors, got {len(Color)}")
+        # 6 bright + 6 dim + GRAY + AMBER + RESET = 15
+        self.assertEqual(len(Color), 15, f"Expected 15 colors, got {len(Color)}")
 
     def test_color_values_are_ansi_codes(self):
         """Color values should be ANSI escape sequences (16-color or true color)."""

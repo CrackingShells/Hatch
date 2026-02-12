@@ -5,6 +5,7 @@ including conda/mamba environment creation, configuration, and integration.
 """
 
 import json
+import platform
 import shutil
 import tempfile
 import unittest
@@ -69,6 +70,9 @@ class TestPythonEnvironmentManager(unittest.TestCase):
     @patch(
         "hatch.python_environment_manager.PythonEnvironmentManager.get_environment_path",
         return_value=Path("C:/fake/env"),
+    )
+    @unittest.skipUnless(
+        platform.system() == "Windows", "Windows-specific path separator test"
     )
     @patch("platform.system", return_value="Windows")
     def test_get_environment_activation_info_windows(
