@@ -2073,6 +2073,7 @@ def handle_mcp_sync(args: Namespace) -> int:
             - dry_run: If True, show what would be done without making changes
             - auto_approve: If True, skip confirmation prompt
             - no_backup: If True, skip creating backups
+            - detailed: If set, show field-level details (optionally filtered by consequence types)
 
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
@@ -2092,6 +2093,30 @@ def handle_mcp_sync(args: Namespace) -> int:
     dry_run = getattr(args, "dry_run", False)
     auto_approve = getattr(args, "auto_approve", False)
     no_backup = getattr(args, "no_backup", False)
+    detailed = getattr(args, "detailed", None)
+
+    # Parse detailed filter if provided
+    filter_types = None
+    if detailed:
+        if detailed.lower() == "all":
+            filter_types = None  # Show all consequence types
+        else:
+            # Parse comma-separated consequence types (past tense)
+            filter_types = set(
+                t.strip().upper() for t in detailed.split(",") if t.strip()
+            )
+            # Validate consequence types
+            valid_types = {ct.result_label for ct in ConsequenceType}
+            invalid_types = filter_types - valid_types
+            if invalid_types:
+                format_validation_error(
+                    ValidationError(
+                        f"Invalid consequence types: {', '.join(invalid_types)}",
+                        field="--detailed",
+                        suggestion=f"Valid types: {', '.join(sorted(valid_types))}",
+                    )
+                )
+                return EXIT_ERROR
 
     try:
         # Parse target hosts
@@ -2161,18 +2186,86 @@ def handle_mcp_sync(args: Namespace) -> int:
             servers=server_list,
             pattern=pattern,
             no_backup=no_backup,
+            generate_reports=detailed is not None,
         )
 
         if result.success:
             # Create new reporter for results with actual sync details
             result_reporter = ResultReporter("hatch mcp sync", dry_run=False)
-            for res in result.results:
-                if res.success:
-                    result_reporter.add(ConsequenceType.SYNC, f"→ {res.hostname}")
-                else:
-                    result_reporter.add(
-                        ConsequenceType.SKIP, f"→ {res.hostname}: {res.error_message}"
-                    )
+
+            # If detailed output requested, show conversion reports
+            if detailed is not None:
+                for res in result.results:
+                    if res.success and res.conversion_reports:
+                        # Add detailed conversion reports for each server
+                        for report in res.conversion_reports:
+                            # Filter consequences if requested
+                            if filter_types is None:
+                                # Show all - add the full report
+                                result_reporter.add_from_conversion_report(report)
+                            else:
+                                # Filter by consequence type
+                                # Map report operation to ConsequenceType
+                                operation_map = {
+                                    "create": ConsequenceType.CONFIGURE,
+                                    "update": ConsequenceType.CONFIGURE,
+                                    "delete": ConsequenceType.REMOVE,
+                                    "migrate": ConsequenceType.CONFIGURE,
+                                }
+                                resource_type = operation_map.get(
+                                    report.operation, ConsequenceType.CONFIGURE
+                                )
+
+                                # Check if resource type matches filter
+                                if resource_type.result_label in filter_types:
+                                    result_reporter.add_from_conversion_report(report)
+                                else:
+                                    # Check if any field operations match filter
+                                    field_op_map = {
+                                        "UPDATED": ConsequenceType.UPDATE,
+                                        "UNSUPPORTED": ConsequenceType.SKIP,
+                                        "UNCHANGED": ConsequenceType.UNCHANGED,
+                                    }
+                                    matching_fields = [
+                                        field_op
+                                        for field_op in report.field_operations
+                                        if field_op_map.get(
+                                            field_op.operation, ConsequenceType.UPDATE
+                                        ).result_label
+                                        in filter_types
+                                    ]
+                                    if matching_fields:
+                                        # Create filtered report with only matching fields
+                                        from hatch.mcp_host_config.reporting import (
+                                            ConversionReport,
+                                        )
+
+                                        filtered_report = ConversionReport(
+                                            operation=report.operation,
+                                            server_name=report.server_name,
+                                            source_host=report.source_host,
+                                            target_host=report.target_host,
+                                            field_operations=matching_fields,
+                                            dry_run=report.dry_run,
+                                        )
+                                        result_reporter.add_from_conversion_report(
+                                            filtered_report
+                                        )
+                    elif not res.success:
+                        result_reporter.add(
+                            ConsequenceType.SKIP,
+                            f"→ {res.hostname}: {res.error_message}",
+                        )
+            else:
+                # Standard output (no detailed)
+                for res in result.results:
+                    if res.success:
+                        result_reporter.add(ConsequenceType.SYNC, f"→ {res.hostname}")
+                    else:
+                        result_reporter.add(
+                            ConsequenceType.SKIP,
+                            f"→ {res.hostname}: {res.error_message}",
+                        )
 
             # Add sync statistics as summary details
             result_reporter.add(

@@ -7,11 +7,14 @@ the v2 design specification with consolidated MCPServerConfig model.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
-from typing import Dict, List, Optional, Literal
+from typing import Dict, List, Optional, Literal, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
 import logging
+
+if TYPE_CHECKING:
+    from .reporting import ConversionReport
 
 logger = logging.getLogger(__name__)
 
@@ -460,6 +463,10 @@ class ConfigurationResult(BaseModel):
     backup_created: bool = Field(False, description="Whether backup was created")
     backup_path: Optional[Path] = Field(None, description="Path to backup file")
     error_message: Optional[str] = Field(None, description="Error message if failed")
+    conversion_reports: List["ConversionReport"] = Field(
+        default_factory=list,
+        description="Detailed conversion reports for each server (optional)",
+    )
 
     @model_validator(mode="after")
     def validate_result_consistency(self):
@@ -492,3 +499,13 @@ class SyncResult(BaseModel):
             return 0.0
         successful = len([r for r in self.results if r.success])
         return (successful / len(self.results)) * 100.0
+
+
+# Rebuild models to resolve forward references
+if TYPE_CHECKING:
+    pass
+else:
+    # Import at runtime to avoid circular dependency
+    from .reporting import ConversionReport
+
+    ConfigurationResult.model_rebuild()

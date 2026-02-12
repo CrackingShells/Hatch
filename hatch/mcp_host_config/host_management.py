@@ -501,6 +501,7 @@ class MCPHostConfigurationManager:
         servers: Optional[List[str]] = None,
         pattern: Optional[str] = None,
         no_backup: bool = False,
+        generate_reports: bool = False,
     ) -> SyncResult:
         """Advanced synchronization with multiple source/target options.
 
@@ -511,6 +512,7 @@ class MCPHostConfigurationManager:
             servers (List[str], optional): Specific server names to sync
             pattern (str, optional): Regex pattern for server selection
             no_backup (bool, optional): Skip backup creation. Defaults to False.
+            generate_reports (bool, optional): Generate detailed conversion reports. Defaults to False.
 
         Returns:
             SyncResult: Result of the synchronization operation
@@ -631,6 +633,8 @@ class MCPHostConfigurationManager:
 
                     # Add servers to target configuration
                     host_servers_added = 0
+                    host_conversion_reports = []
+
                     for server_name, server_hosts in source_servers.items():
                         # Find appropriate server config for this target host
                         server_config = None
@@ -652,6 +656,23 @@ class MCPHostConfigurationManager:
                                 server_config = server_hosts[from_host]["server_config"]
 
                         if server_config:
+                            # Get existing config for comparison (if any)
+                            old_config = current_config.servers.get(server_name)
+
+                            # Generate conversion report if requested
+                            if generate_reports:
+                                from .reporting import generate_conversion_report
+
+                                report = generate_conversion_report(
+                                    operation="update" if old_config else "create",
+                                    server_name=server_name,
+                                    target_host=host_type,
+                                    config=server_config,
+                                    old_config=old_config,
+                                    dry_run=False,
+                                )
+                                host_conversion_reports.append(report)
+
                             current_config.add_server(server_name, server_config)
                             host_servers_added += 1
 
@@ -666,6 +687,9 @@ class MCPHostConfigurationManager:
                             hostname=target_host,
                             backup_created=backup_path is not None,
                             backup_path=backup_path,
+                            conversion_reports=host_conversion_reports
+                            if generate_reports
+                            else [],
                         )
                     )
 

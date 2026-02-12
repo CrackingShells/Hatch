@@ -790,6 +790,13 @@ def _setup_mcp_commands(subparsers):
         action="store_true",
         help="Skip backup creation before synchronization",
     )
+    mcp_sync_parser.add_argument(
+        "--detailed",
+        nargs="?",
+        const="all",
+        default=None,
+        help="Show field-level details (optionally filter by consequence types: created,updated,synced,etc. or 'all')",
+    )
 
 
 def _route_env_command(args):
