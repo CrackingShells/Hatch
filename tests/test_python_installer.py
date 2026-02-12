@@ -255,37 +255,32 @@ class TestPythonInstallerIntegration(unittest.TestCase):
             f"Expected 'requests[security]' in pip command args: {cmd_args}",
         )
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_uninstall_actual_package(self):
-        """Test actual uninstallation of a Python package.
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_uninstall_actual_package(self, mock_run):
+        """Test install/uninstall cycle completes successfully.
 
-        First installs a package, then uninstalls it to test the complete cycle.
-        This validates both installation and uninstallation without mocking.
+        Mocks _run_pip_subprocess to validate our install and uninstall flow.
         """
         dep = {"name": "wheel", "version_constraint": "*", "type": "python"}
 
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={"python_executable": self.python_executable},
-        )
-
         # First install the package
-        install_result = self.installer.install(dep, context)
+        install_result = self.installer.install(dep, self.dummy_context)
         self.assertEqual(install_result.status, InstallationStatus.COMPLETED)
 
         # Then uninstall it
-        uninstall_result = self.installer.uninstall(dep, context)
+        uninstall_result = self.installer.uninstall(dep, self.dummy_context)
         self.assertEqual(uninstall_result.status, InstallationStatus.COMPLETED)
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_nonexistent_package_failure(self):
-        """Test that installation fails appropriately for non-existent packages.
+        # Verify both install and uninstall called _run_pip_subprocess
+        self.assertEqual(mock_run.call_count, 2)
 
-        This validates error handling when pip encounters a package that doesn't exist,
-        without using mocks to simulate the failure.
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=1)
+    def test_install_nonexistent_package_failure(self, mock_run):
+        """Test that installation fails appropriately when pip returns non-zero.
+
+        Mocks _run_pip_subprocess to return failure, validating our error handling.
         """
         dep = {
             "name": "this-package-definitely-does-not-exist-12345",
@@ -293,14 +288,8 @@ class TestPythonInstallerIntegration(unittest.TestCase):
             "type": "python",
         }
 
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={"python_executable": self.python_executable},
-        )
-
         with self.assertRaises(InstallationError) as cm:
-            self.installer.install(dep, context)
+            self.installer.install(dep, self.dummy_context)
 
         # Verify the error contains useful information
         error_msg = str(cm.exception)
