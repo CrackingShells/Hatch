@@ -1,3 +1,4 @@
+import sys
 import json
 import unittest
 import logging
@@ -8,19 +9,13 @@ from pathlib import Path
 from datetime import datetime
 from unittest.mock import patch
 
-from wobble.decorators import regression_test, integration_test
+from wobble.decorators import regression_test, integration_test, slow_test
 
 # Import path management removed - using test_data_utils for test dependencies
 
 from hatch.environment_manager import HatchEnvironmentManager
-import hatch.installers.hatch_installer  # noqa: F401 - Ensure HatchInstaller is registered
-from hatch.installers.python_installer import (
-    PythonInstaller,
-)  # noqa: F401 - Register PythonInstaller
-from hatch.installers.system_installer import (
-    SystemInstaller,
-)  # noqa: F401 - Register SystemInstaller
-from hatch.installers.docker_installer import DockerInstaller  # noqa: F401
+from hatch.python_environment_manager import PythonEnvironmentManager
+from hatch.installers.docker_installer import DOCKER_DAEMON_AVAILABLE
 
 # Configure logging
 logging.basicConfig(
@@ -37,15 +32,27 @@ class PackageEnvironmentTests(unittest.TestCase):
         # Create a temporary directory for test environments
         self.temp_dir = tempfile.mkdtemp()
 
-        # Path to Hatching-Dev packages (only needed for system/docker dep tests)
+        # Path to Hatching-Dev packages (used by some integration-style tests)
         self.hatch_dev_path = Path(__file__).parent.parent.parent / "Hatching-Dev"
 
-        # Create a sample registry that includes Hatching-Dev packages
+        # Create a sample registry that includes test packages
         self._create_sample_registry()
 
         # Override environment paths to use our test directory
         env_dir = Path(self.temp_dir) / "envs"
         env_dir.mkdir(exist_ok=True)
+
+        # Patch slow operations before creating HatchEnvironmentManager:
+        # 1. _detect_conda_mamba: prevents subprocess calls to find conda/mamba
+        # 2. _install_hatch_mcp_server: prevents real pip install from GitHub
+        self._patcher_detect = patch.object(
+            PythonEnvironmentManager, "_detect_conda_mamba"
+        )
+        self._patcher_install_mcp = patch.object(
+            HatchEnvironmentManager, "_install_hatch_mcp_server"
+        )
+        self._mock_detect = self._patcher_detect.start()
+        self._mock_install_mcp = self._patcher_install_mcp.start()
 
         # Create environment manager for testing with isolated test directories
         self.env_manager = HatchEnvironmentManager(
@@ -174,16 +181,15 @@ class PackageEnvironmentTests(unittest.TestCase):
 
     def tearDown(self):
         """Clean up test environment after each test."""
+        # Stop patchers
+        self._patcher_detect.stop()
+        self._patcher_install_mcp.stop()
         # Remove temporary directory
         shutil.rmtree(self.temp_dir)
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_create_environment(self, mock_install_mcp):
+    def test_create_environment(self):
         """Test creating an environment."""
-        # Mock python env manager to avoid real conda/mamba calls
-        self.env_manager.python_env_manager.is_available = lambda: False
-
         result = self.env_manager.create_environment("test_env", "Test environment")
         self.assertTrue(result, "Failed to create environment")
 
@@ -203,12 +209,8 @@ class PackageEnvironmentTests(unittest.TestCase):
         self.assertEqual(len(env_data["packages"]), 0)
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_remove_environment(self, mock_install_mcp):
+    def test_remove_environment(self):
         """Test removing an environment."""
-        # Mock python env manager to avoid real conda/mamba calls
-        self.env_manager.python_env_manager.is_available = lambda: False
-
         # First create an environment
         self.env_manager.create_environment("test_env", "Test environment")
         self.assertTrue(self.env_manager.environment_exists("test_env"))
@@ -224,12 +226,8 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_set_current_environment(self, mock_install_mcp):
+    def test_set_current_environment(self):
         """Test setting the current environment."""
-        # Mock python env manager to avoid real conda/mamba calls
-        self.env_manager.python_env_manager.is_available = lambda: False
-
         # First create an environment
         self.env_manager.create_environment("test_env", "Test environment")
 
@@ -244,12 +242,9 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_local_package(self, mock_install_mcp):
+    @slow_test
+    def test_add_local_package(self):
         """Test adding a local package to an environment."""
-        # Mock python env manager to avoid real conda/mamba calls
-        self.env_manager.python_env_manager.is_available = lambda: False
-
         # Create an environment
         self.env_manager.create_environment("test_env", "Test environment")
         self.env_manager.set_current_environment("test_env")
@@ -284,12 +279,9 @@ class PackageEnvironmentTests(unittest.TestCase):
         self.assertIn("source", pkg_data, "Package data missing source")
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_package_with_dependencies(self, mock_install_mcp):
+    @slow_test
+    def test_add_package_with_dependencies(self):
         """Test adding a package with dependencies to an environment."""
-        # Mock python env manager to avoid real conda/mamba calls
-        self.env_manager.python_env_manager.is_available = lambda: False
-
         # Create an environment
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
@@ -342,12 +334,9 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_package_with_some_dependencies_already_present(self, mock_install_mcp):
+    @slow_test
+    def test_add_package_with_some_dependencies_already_present(self):
         """Test adding a package where some dependencies are already present and others are not."""
-        # Mock python env manager to avoid real conda/mamba calls
-        self.env_manager.python_env_manager.is_available = lambda: False
-
         # Create an environment
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
@@ -404,10 +393,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             )
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_package_with_all_dependencies_already_present(self, mock_mcp):
+    @slow_test
+    def test_add_package_with_all_dependencies_already_present(self):
         """Test adding a package where all dependencies are already present."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # Create an environment
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
@@ -465,10 +453,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             )
 
     @regression_test
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_package_with_version_constraint_satisfaction(self, mock_mcp):
+    @slow_test
+    def test_add_package_with_version_constraint_satisfaction(self):
         """Test adding a package with version constraints where dependencies are satisfied."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # Create an environment
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
@@ -523,15 +510,11 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @integration_test(scope="component")
-    @patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_package_with_mixed_dependency_types(self, mock_mcp, mock_pip):
+    @slow_test
+    def test_add_package_with_mixed_dependency_types(self):
         """Test adding a package with mixed hatch and python dependencies."""
-        self.env_manager.python_env_manager.is_available = lambda: False
-        # Create an environment (skip python env creation - mocked)
-        self.env_manager.create_environment(
-            "test_env", "Test environment", create_python_env=False
-        )
+        # Create an environment
+        self.env_manager.create_environment("test_env", "Test environment")
         self.env_manager.set_current_environment("test_env")
 
         # Add a package that has both hatch and python dependencies
@@ -596,14 +579,7 @@ class PackageEnvironmentTests(unittest.TestCase):
             "complex_dep_pkg", package_names, "New package missing from environment"
         )
 
-        # Python dep package has a dep to requests. Verify via mocked env info
-        # (python env is mocked - no real conda/pip calls)
-        self.env_manager.python_env_manager.get_environment_info = lambda env: {
-            "packages": [
-                {"name": "numpy", "version": "1.24.0"},
-                {"name": "requests", "version": "2.28.0"},
-            ]
-        }
+        # Python dep package has a dep to request. This should be satisfied in the python environment
         python_env_info = self.env_manager.python_env_manager.get_environment_info(
             "test_env"
         )
@@ -618,27 +594,18 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @integration_test(scope="system")
-    @patch.object(SystemInstaller, "_verify_installation", return_value="7.0.0")
-    @patch.object(SystemInstaller, "_run_apt_subprocess", return_value=0)
-    @patch.object(SystemInstaller, "_is_apt_available", return_value=True)
-    @patch.object(SystemInstaller, "_is_platform_supported", return_value=True)
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_package_with_system_dependency(
-        self, mock_mcp, mock_platform, mock_apt_avail, mock_apt_run, mock_verify
-    ):
+    @slow_test
+    @unittest.skipIf(
+        sys.platform.startswith("win"), "System dependency test skipped on Windows"
+    )
+    def test_add_package_with_system_dependency(self):
         """Test adding a package with a system dependency."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
         )
         self.env_manager.set_current_environment("test_env")
         # Add a package that declares a system dependency (e.g., 'curl')
-        from test_data_utils import TestDataLoader
-
-        test_loader = TestDataLoader()
-        system_dep_pkg_path = (
-            test_loader.packages_dir / "dependencies" / "system_dep_pkg"
-        )
+        system_dep_pkg_path = self.hatch_dev_path / "system_dep_pkg"
         self.assertTrue(
             system_dep_pkg_path.exists(),
             f"System dependency package not found: {system_dep_pkg_path}",
@@ -659,26 +626,21 @@ class PackageEnvironmentTests(unittest.TestCase):
             "System dependency package missing from environment",
         )
 
+    # Skip if Docker is not available
     @integration_test(scope="service")
-    @patch.object(DockerInstaller, "_pull_docker_image")
-    @patch.object(DockerInstaller, "_is_docker_available", return_value=True)
-    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
-    def test_add_package_with_docker_dependency(
-        self, mock_mcp, mock_docker_avail, mock_pull
-    ):
+    @slow_test
+    @unittest.skipUnless(
+        DOCKER_DAEMON_AVAILABLE,
+        "Docker dependency test skipped due to Docker not being available",
+    )
+    def test_add_package_with_docker_dependency(self):
         """Test adding a package with a docker dependency."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
         )
         self.env_manager.set_current_environment("test_env")
-        # Add a package that declares a docker dependency (e.g., 'nginx')
-        from test_data_utils import TestDataLoader
-
-        test_loader = TestDataLoader()
-        docker_dep_pkg_path = (
-            test_loader.packages_dir / "dependencies" / "docker_dep_pkg"
-        )
+        # Add a package that declares a docker dependency (e.g., 'redis:latest')
+        docker_dep_pkg_path = self.hatch_dev_path / "docker_dep_pkg"
         self.assertTrue(
             docker_dep_pkg_path.exists(),
             f"Docker dependency package not found: {docker_dep_pkg_path}",
@@ -700,9 +662,9 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
+    @slow_test
     def test_create_environment_with_mcp_server_default(self):
         """Test creating environment with default MCP server installation."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # Mock the MCP server installation to avoid actual network calls
         original_install = self.env_manager._install_hatch_mcp_server
         installed_env = None
@@ -777,9 +739,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
+    @slow_test
     def test_create_environment_with_mcp_server_opt_out(self):
         """Test creating environment with MCP server installation opted out."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # Mock the MCP server installation to track calls
         original_install = self.env_manager._install_hatch_mcp_server
         install_called = False
@@ -831,9 +793,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
+    @slow_test
     def test_create_environment_with_mcp_server_custom_tag(self):
         """Test creating environment with custom MCP server tag."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # Mock the MCP server installation to avoid actual network calls
         original_install = self.env_manager._install_hatch_mcp_server
         installed_tag = None
@@ -907,9 +869,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
+    @slow_test
     def test_create_environment_no_python_no_mcp_server(self):
         """Test creating environment without Python support should not install MCP server."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # Mock the MCP server installation to track calls
         original_install = self.env_manager._install_hatch_mcp_server
         install_called = False
@@ -940,9 +902,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
+    @slow_test
     def test_install_mcp_server_existing_environment(self):
         """Test installing MCP server in an existing environment."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # Create environment first without Python environment
         success = self.env_manager.create_environment(
             "test_existing_mcp",
@@ -1016,9 +978,9 @@ class PackageEnvironmentTests(unittest.TestCase):
             self.env_manager._install_hatch_mcp_server = original_install
 
     @regression_test
+    @slow_test
     def test_create_python_environment_only_with_mcp_wrapper(self):
         """Test creating Python environment only with MCP wrapper support."""
-        self.env_manager.python_env_manager.is_available = lambda: False
         # First create a Hatch environment without Python
         self.env_manager.create_environment(
             "test_python_only", "Test Python Only", create_python_env=False
