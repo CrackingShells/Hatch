@@ -242,7 +242,6 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @slow_test
     def test_add_local_package(self):
         """Test adding a local package to an environment."""
         # Create an environment
@@ -279,7 +278,6 @@ class PackageEnvironmentTests(unittest.TestCase):
         self.assertIn("source", pkg_data, "Package data missing source")
 
     @regression_test
-    @slow_test
     def test_add_package_with_dependencies(self):
         """Test adding a package with dependencies to an environment."""
         # Create an environment
@@ -334,7 +332,6 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @slow_test
     def test_add_package_with_some_dependencies_already_present(self):
         """Test adding a package where some dependencies are already present and others are not."""
         # Create an environment
