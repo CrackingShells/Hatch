@@ -152,30 +152,40 @@ class TestPythonInstaller(unittest.TestCase):
 class TestPythonInstallerIntegration(unittest.TestCase):
     """Integration tests for PythonInstaller that perform actual package installations."""
 
-    def setUp(self):
-        """Set up a temporary directory and PythonInstaller instance for each test."""
+    @classmethod
+    def setUpClass(cls):
+        """Create a shared virtual environment once for all integration tests."""
+        cls.shared_temp_dir = tempfile.mkdtemp()
+        cls.shared_env_path = Path(cls.shared_temp_dir) / "shared_test_env"
+        subprocess.check_call([sys.executable, "-m", "venv", str(cls.shared_env_path)])
+        if sys.platform == "win32":
+            cls.shared_python_executable = (
+                cls.shared_env_path / "Scripts" / "python.exe"
+            )
+        else:
+            cls.shared_python_executable = cls.shared_env_path / "bin" / "python"
 
+    @classmethod
+    def tearDownClass(cls):
+        """Remove the shared virtual environment."""
+        shutil.rmtree(cls.shared_temp_dir, ignore_errors=True)
+
+    def setUp(self):
+        """Set up a PythonInstaller instance for each test.
+
+        Mocked tests use a simple temp directory (no real venv needed).
+        Integration tests use the shared venv from setUpClass.
+        """
         self.temp_dir = tempfile.mkdtemp()
         self.env_path = Path(self.temp_dir) / "test_env"
-
-        # Use pip to create a virtual environment
-        subprocess.check_call([sys.executable, "-m", "venv", str(self.env_path)])
-
-        # assert the virtual environment was created successfully
-        self.assertTrue(self.env_path.exists() and self.env_path.is_dir())
-
-        # Get the Python executable in the virtual environment
-        if sys.platform == "win32":
-            self.python_executable = self.env_path / "Scripts" / "python.exe"
-        else:
-            self.python_executable = self.env_path / "bin" / "python"
+        self.env_path.mkdir(parents=True, exist_ok=True)
 
         self.installer = PythonInstaller()
         self.dummy_context = DummyContext(
             self.env_path,
             env_name="test_env",
             extra_config={
-                "python_executable": self.python_executable,
+                "python_executable": sys.executable,
                 "target_dir": str(self.env_path),
             },
         )
