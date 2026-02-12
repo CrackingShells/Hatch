@@ -15,6 +15,7 @@ from wobble.decorators import regression_test, integration_test, slow_test
 
 from hatch.environment_manager import HatchEnvironmentManager
 from hatch.installers.docker_installer import DOCKER_DAEMON_AVAILABLE
+import hatch.installers.hatch_installer  # noqa: F401 - Ensure HatchInstaller is registered
 
 # Configure logging
 logging.basicConfig(
@@ -238,9 +239,12 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @slow_test
-    def test_add_local_package(self):
+    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
+    def test_add_local_package(self, mock_install_mcp):
         """Test adding a local package to an environment."""
+        # Mock python env manager to avoid real conda/mamba calls
+        self.env_manager.python_env_manager.is_available = lambda: False
+
         # Create an environment
         self.env_manager.create_environment("test_env", "Test environment")
         self.env_manager.set_current_environment("test_env")
@@ -275,9 +279,12 @@ class PackageEnvironmentTests(unittest.TestCase):
         self.assertIn("source", pkg_data, "Package data missing source")
 
     @regression_test
-    @slow_test
-    def test_add_package_with_dependencies(self):
+    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
+    def test_add_package_with_dependencies(self, mock_install_mcp):
         """Test adding a package with dependencies to an environment."""
+        # Mock python env manager to avoid real conda/mamba calls
+        self.env_manager.python_env_manager.is_available = lambda: False
+
         # Create an environment
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
@@ -330,9 +337,12 @@ class PackageEnvironmentTests(unittest.TestCase):
         )
 
     @regression_test
-    @slow_test
-    def test_add_package_with_some_dependencies_already_present(self):
+    @patch.object(HatchEnvironmentManager, "_install_hatch_mcp_server")
+    def test_add_package_with_some_dependencies_already_present(self, mock_install_mcp):
         """Test adding a package where some dependencies are already present and others are not."""
+        # Mock python env manager to avoid real conda/mamba calls
+        self.env_manager.python_env_manager.is_available = lambda: False
+
         # Create an environment
         self.env_manager.create_environment(
             "test_env", "Test environment", create_python_env=False
