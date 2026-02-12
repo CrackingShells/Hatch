@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 from unittest.mock import patch
 from hatch.environment_manager import HatchEnvironmentManager
-from wobble.decorators import integration_test, slow_test
+from wobble.decorators import integration_test
 from test_data_utils import NonTTYTestDataLoader, TestDataLoader
 
 
@@ -34,7 +34,6 @@ class TestNonTTYIntegration(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @integration_test(scope="component")
-    @slow_test
     @patch("sys.stdin.isatty", return_value=False)
     def test_cli_package_add_non_tty(self, mock_isatty):
         """Test package addition in non-TTY environment via CLI."""
@@ -59,7 +58,6 @@ class TestNonTTYIntegration(unittest.TestCase):
         mock_isatty.assert_called()
 
     @integration_test(scope="component")
-    @slow_test
     @patch.dict(os.environ, {"HATCH_AUTO_APPROVE": "1"})
     def test_environment_variable_integration(self):
         """Test HATCH_AUTO_APPROVE environment variable integration."""
@@ -85,7 +83,6 @@ class TestNonTTYIntegration(unittest.TestCase):
         )
 
     @integration_test(scope="component")
-    @slow_test
     @patch("sys.stdin.isatty", return_value=False)
     def test_multiple_package_installation_non_tty(self, mock_isatty):
         """Test multiple package installation in non-TTY environment."""
@@ -111,7 +108,6 @@ class TestNonTTYIntegration(unittest.TestCase):
             self.assertTrue(result2, "Second package installation should succeed")
 
     @integration_test(scope="component")
-    @slow_test
     @patch.dict(os.environ, {"HATCH_AUTO_APPROVE": "true"})
     def test_environment_variable_case_insensitive_integration(self):
         """Test case-insensitive environment variable in full integration."""
@@ -133,7 +129,6 @@ class TestNonTTYIntegration(unittest.TestCase):
         )
 
     @integration_test(scope="component")
-    @slow_test
     @patch("sys.stdin.isatty", return_value=True)
     @patch.dict(os.environ, {"HATCH_AUTO_APPROVE": "invalid"})
     @patch("builtins.input", return_value="y")
@@ -178,7 +173,6 @@ class TestNonTTYErrorScenarios(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @integration_test(scope="component")
-    @slow_test
     @patch("sys.stdin.isatty", return_value=True)
     @patch("builtins.input", side_effect=KeyboardInterrupt())
     def test_keyboard_interrupt_integration(self, mock_input, mock_isatty):
@@ -200,7 +194,6 @@ class TestNonTTYErrorScenarios(unittest.TestCase):
         self.assertFalse(result, "Package installation should be cancelled by user")
 
     @integration_test(scope="component")
-    @slow_test
     @patch("sys.stdin.isatty", return_value=True)
     @patch("builtins.input", side_effect=EOFError())
     def test_eof_error_integration(self, mock_input, mock_isatty):
@@ -241,7 +234,6 @@ class TestEnvironmentVariableIntegrationScenarios(unittest.TestCase):
         shutil.rmtree(self.temp_dir, ignore_errors=True)
 
     @integration_test(scope="component")
-    @slow_test
     def test_all_valid_environment_variables_integration(self):
         """Test all valid environment variable values in integration."""
         # Create test environment
