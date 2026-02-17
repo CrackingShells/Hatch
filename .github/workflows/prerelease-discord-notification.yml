@@ -25,7 +25,7 @@ jobs:
 
             💻 Install with pip:
             ```bash
-            pip install hatch-xclam=${{ github.event.release.tag_name }}
+            pip install hatch-xclam==${{ github.event.release.tag_name }}
             ```
 
             Help us make *Hatch!* better by testing and reporting [issues](https://github.com/CrackingShells/Hatch/issues)! 🐛➡️✨
