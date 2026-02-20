@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hatch-xclam"
-version = "0.8.0-dev.1"
+version = "0.8.0-dev.2"
 description = "Package manager for the Cracking Shells ecosystem"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -28,7 +28,13 @@ dependencies = [
 
   [project.optional-dependencies]
   docs = [ "mkdocs>=1.4.0", "mkdocstrings[python]>=0.20.0" ]
-  dev = [ "cs-wobble>=0.2.0", "pytest>=8.0.0", "black>=23.0.0", "ruff>=0.1.9", "pre-commit>=3.0.0" ]
+  dev = [
+  "cs-wobble>=0.2.0",
+  "pytest>=8.0.0",
+  "black>=23.0.0",
+  "ruff>=0.1.9",
+  "pre-commit>=3.0.0"
+]
 
   [project.scripts]
   hatch = "hatch.cli:main"
@@ -44,7 +50,7 @@ dependencies = [
 where = [ "." ]
 
 [tool.pytest.ini_options]
-pythonpath = ["tests"]
+pythonpath = [ "tests" ]
 
 [tool.ruff]
 exclude = [
@@ -57,11 +63,9 @@ exclude = [
   "cracking-shells-playbook",
   "__reports__",
   "__design__",
-  "tests/test_data",
+  "tests/test_data"
 ]
 
-[tool.ruff.lint]
-# Match the original baseline analysis scope: F (pyflakes) and E (pycodestyle errors)
-# Explicitly exclude E501 (line-too-long) which wasn't in the original baseline
-select = ["E", "F"]
-ignore = ["E501"]
+  [tool.ruff.lint]
+  select = [ "E", "F" ]
+  ignore = [ "E501" ]
