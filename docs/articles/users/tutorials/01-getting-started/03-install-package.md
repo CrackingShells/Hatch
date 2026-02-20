@@ -53,7 +53,7 @@ No additional dependencies to install.
 Total packages to install: 1
 ============================================================
 
-Proceed with installation? [y/N]: 
+Proceed with installation? [y/N]:
 ```
 
 For automated scenarios, use `--auto-approve` to skip confirmation prompts:
@@ -82,17 +82,44 @@ If you don't have a local package yet, you can create one using the `hatch creat
 
 ## Step 4: Verify Installation
 
-List installed packages in your environment:
+Check that the package was installed:
 
 ```bash
-hatch package list --env my_python_env
+hatch env list
 ```
 
-Output shows package details:
+You should see the package count updated:
 
 ```txt
-Packages in environment 'my_python_env':
-my-package (1.0.0)    Hatch compliant: true    source: file:///path/to/package    location: /env/path/my-package
+Environments:
+  Name             Python        Packages
+  ───────────────────────────────────────
+  * my_python_env  3.11.5               1
+```
+
+For detailed package information, use `hatch env show`:
+
+```bash
+hatch env show my_python_env
+```
+
+Output shows complete package details:
+
+```txt
+Environment: my_python_env (active)
+  Description: Environment with Python support
+  Created: 2026-02-01 10:00:00
+
+  Python Environment:
+    Version: 3.11.5
+    Executable: /path/to/python
+    Status: Active
+
+  Packages (1):
+    base_pkg_1
+      Version: 1.0.3
+      Source: registry (https://registry.example.com)
+      Deployed to: (none)
 ```
 
 ## Step 5: Understanding Package Dependencies
@@ -136,5 +163,5 @@ YYYY-MM-DD HH:MM:SS - hatch.package_loader - INFO - Using cached package base_pk
 
 </details>
 
-> Previous: [Create Environment](02-create-env.md)  
+> Previous: [Create Environment](02-create-env.md)
 > Next: [Checkpoint](04-checkpoint.md)

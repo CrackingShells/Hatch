@@ -121,11 +121,14 @@ hatch mcp sync --from-env project_alpha --to-host claude-desktop,cursor
 **Expected Output**:
 
 ```text
-Synchronize MCP configurations from host 'claude-desktop' to 1 host(s)? [y/N]: y
-[SUCCESS] Synchronization completed
-  Servers synced: 4
-  Hosts updated: 1
-  ✓ cursor (backup: path\to\.hatch\mcp_host_config_backups\cursor\mcp.json.cursor.20251124_225305_495653)
+[SYNC] MCP configurations from environment 'project_alpha' to 2 host(s)
+
+Proceed? [y/N]: y
+[SUCCESS] Operation completed:
+  [SYNCED] Servers synced: 4
+  [UPDATED] Hosts updated: 2
+  [CREATED] Backup: ~/.hatch/mcp_host_config_backups/cursor/mcp.json.cursor.20251124_225305_495653
+  [CREATED] Backup: ~/.hatch/mcp_host_config_backups/claude-desktop/mcp.json.claude-desktop.20251124_225306_123456
 ```
 
 ### Deploy Project-Beta to All Hosts
@@ -145,12 +148,16 @@ hatch mcp sync --from-env project_beta --to-host all
 Check what was deployed to each host for each project:
 
 ```bash
-# Check project_alpha deployments
-hatch env use project_alpha
-hatch mcp list servers
+# View environment deployments by host (environment → host → server)
+hatch env list hosts --env project_alpha
 
-# Check project_beta deployments
-hatch env use project_beta
+# View environment deployments by server (environment → server → host)
+hatch env list servers --env project_alpha
+
+# Check host configurations (shows all servers on all hosts)
+hatch mcp list hosts
+
+# Check server configurations (shows all servers across hosts)
 hatch mcp list servers
 ```
 
@@ -223,12 +230,23 @@ Will restore the latest backup available. For a more granular restoration, you c
 Use environment-scoped commands to verify your project configurations:
 
 ```bash
-# Check project_alpha server deployments
-hatch env use project_alpha
-hatch mcp list servers
+# View environment deployments by host
+hatch env list hosts --env project_alpha
 
-# Check which hosts have project_alpha servers configured
-hatch mcp list hosts
+# View environment deployments by server
+hatch env list servers --env project_alpha
+
+# View detailed host configurations
+hatch mcp show hosts
+
+# View detailed server configurations
+hatch mcp show servers
+
+# Filter by server name using regex
+hatch mcp show hosts --server "weather.*"
+
+# Filter by host name using regex
+hatch mcp show servers --host "claude.*"
 ```
 
 ### Common Project Isolation Issues
@@ -258,7 +276,7 @@ Hatch creates automatic backups before any configuration changes. You don't need
 
 ```bash
 # List available backups (always created automatically)
-hatch mcp backup list --host claude-desktop
+hatch mcp backup list claude-desktop
 
 # Clean old backups if needed
 hatch mcp backup clean claude-desktop --keep-count 10
@@ -267,8 +285,11 @@ hatch mcp backup clean claude-desktop --keep-count 10
 **Restore Project Configuration**:
 
 ```bash
-# Restore from specific backup
-hatch mcp backup restore claude-desktop project_alpha-stable
+# Restore latest backup
+hatch mcp backup restore claude-desktop
+
+# Restore from specific backup file
+hatch mcp backup restore claude-desktop --backup-file mcp.json.claude-desktop.20231201_143022
 
 # Then re-sync current project if needed
 hatch env use project_alpha

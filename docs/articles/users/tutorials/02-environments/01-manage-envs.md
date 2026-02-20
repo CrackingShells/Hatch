@@ -36,19 +36,17 @@ hatch env list
 Example output:
 
 ```txt
-Available environments:
-* my_python_env - Environment with Python support
-    Python: 3.11.9 (conda: my_python_env)
-  my_first_env - My first Hatch environment
-    Python: 3.13.5 (conda: my_first_env)
-
-Python Environment Manager:
-  Conda executable: /usr/local/bin/conda
-  Mamba executable: /usr/local/bin/mamba
-  Preferred manager: mamba
+Environments:
+  Name             Python        Packages
+  ───────────────────────────────────────
+  * my_python_env  3.11.9               0
+    my_first_env   3.13.5               0
 ```
 
-The `*` indicates the current active environment.
+**Key Details**:
+- The `*` indicates the current active environment
+- Python column shows version number (or `-` if no Python environment)
+- Packages column shows count of installed packages
 
 ## Step 2: Switch Between Environments
 
@@ -56,6 +54,12 @@ Change your current working environment:
 
 ```bash
 hatch env use my_first_env
+```
+
+Expected output:
+
+```txt
+[SET] Current environment → 'my_first_env'
 ```
 
 Verify the switch:
@@ -78,22 +82,37 @@ Remove an environment you no longer need:
 hatch env remove my_first_env
 ```
 
+Expected output:
+
+```txt
+[REMOVE] Environment 'my_first_env'
+
+Proceed? [y/N]: y
+[REMOVED] Environment 'my_first_env'
+```
+
 **Important:** This removes both the Hatch environment and any associated Python environment. Make sure to back up any important data first.
+
+**Note**: The command will prompt for confirmation unless you use `--auto-approve`.
 
 ## Step 4: Understanding Environment Information
 
-The `env list` command provides detailed information:
+The `env list` command displays environments in a table format with:
 
-- **Environment name and description** - Basic identification
-- **Current environment marker (*)** - Shows which environment is active
-- **Python environment status** - Shows Python version and conda environment name
-- **Python Environment Manager status** - Shows available conda/mamba executables
+- **Name column** - Environment name with `*` marker for current environment
+- **Python column** - Python version (or `-` if no Python environment)
+- **Packages column** - Count of installed packages
 
-If conda/mamba is not available, you'll see:
+For detailed information about a specific environment, including descriptions and full package details, use:
 
+```bash
+hatch env show <environment_name>
 ```
-Python Environment Manager: Conda/mamba not available
-```
+
+This will display:
+- Environment description and creation date
+- Python environment details (version, executable path, conda environment name)
+- Complete list of installed packages with versions and deployment status
 
 ## Step 5: Managing Multiple Environments
 
@@ -108,7 +127,7 @@ hatch env create project_b --description "Environment for Project B" --python-ve
 hatch env use project_a
 # Work on project A...
 
-hatch env use project_b  
+hatch env use project_b
 # Work on project B...
 ```
 
@@ -121,7 +140,7 @@ Create three environments with different Python versions, switch between them, a
 ```bash
 # Create environments
 hatch env create env_311 --python-version 3.11 --description "Python 3.11 environment"
-hatch env create env_312 --python-version 3.12 --description "Python 3.12 environment" 
+hatch env create env_312 --python-version 3.12 --description "Python 3.12 environment"
 hatch env create env_313 --python-version 3.13 --description "Python 3.13 environment"
 
 # Switch between them
@@ -140,5 +159,5 @@ hatch env remove env_313
 
 </details>
 
-> Previous: [Getting Started Checkpoint](../01-getting-started/04-checkpoint.md)  
+> Previous: [Getting Started Checkpoint](../01-getting-started/04-checkpoint.md)
 > Next: [Python Environment Management](02-python-env.md)

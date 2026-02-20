@@ -42,7 +42,7 @@ Different installer types have varying privilege implications:
 
 #### Docker Installer (`docker_installer.py`)
 
-- Manages Docker image dependencies  
+- Manages Docker image dependencies
 - Requires Docker daemon access
 - Images run with Docker's security model
 
@@ -122,7 +122,7 @@ Always review dependency specifications in `hatch_metadata.json`:
     ],
     "system": [
       {
-        "name": "curl", 
+        "name": "curl",
         "version_constraint": ">=7.0.0",
         "package_manager": "apt"
       }

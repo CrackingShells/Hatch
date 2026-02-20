@@ -17,8 +17,8 @@ jobs:
           content: "<@&1418053865818951721>"
           title: "🎉 New *Hatch!* Release Available!"
           description: |
-            **Version `${{ github.event.release.tag_name }}`** has been released! 
-            
+            **Version `${{ github.event.release.tag_name }}`** has been released!
+
             🚀 Get the latest features and improvements
             📚 Click [here](${{ github.event.release.html_url }}) to view the changelog and download
 
@@ -26,7 +26,7 @@ jobs:
             ```bash
             pip install hatch-xclam
             ```
-            
+
             Happy MCP coding with *Hatch!* 🐣
           color: 0x00ff88
           username: "Cracking Shells Release Bot"

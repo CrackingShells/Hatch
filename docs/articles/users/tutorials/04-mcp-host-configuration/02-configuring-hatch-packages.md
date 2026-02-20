@@ -4,7 +4,7 @@
 **Concepts covered:**
 
 - Hatch package deployment with automatic dependency resolution
-- `hatch package add --host` and `hatch package sync` commands  
+- `hatch package add --host` and `hatch package sync` commands
 - Guaranteed dependency installation (Python, apt, Docker, other Hatch packages)
 - Package-first deployment advantages over direct configuration
 
@@ -29,7 +29,7 @@ Hatch packages include complete dependency specifications that are automatically
 # Package deployment handles ALL dependencies automatically
 hatch package add my-weather-server --host claude-desktop
 # ✅ Installs Python dependencies (requests, numpy, etc.)
-# ✅ Installs system dependencies (curl, git, etc.) 
+# ✅ Installs system dependencies (curl, git, etc.)
 # ✅ Installs Docker containers if specified
 # ✅ Installs other Hatch package dependencies
 # ✅ Configures MCP server on Claude Desktop
@@ -46,7 +46,7 @@ hatch package add my-weather-server --host claude-desktop
 
 **Direct Configuration (Advanced)**:
 - ❌ Manual dependency management required
-- ❌ No compatibility guarantees  
+- ❌ No compatibility guarantees
 - ❌ Multiple setup steps
 - ❌ Potential environment conflicts
 - ❌ Limited rollback options
@@ -69,10 +69,11 @@ hatch package add . --host claude-desktop
 
 **Expected Output**:
 ```
-Successfully added package: my_new_package
+[SUCCESS] Operation completed:
+  [ADDED] Package 'my_new_package'
+
 Configuring MCP server for package 'my_new_package' on 1 host(s)...
-✓ Configured my_new_package (my_new_package) on claude-desktop
-MCP configuration completed: 1/1 hosts configured
+✓ Configured my_new_package on claude-desktop
 ```
 
 ### Verify Deployment
@@ -123,18 +124,9 @@ hatch package list
 ```bash
 # Sync a specific package to hosts
 hatch package sync my-weather-server --host claude-desktop
-
-# Sync multiple packages
-hatch package sync weather-server,news-api --host all
 ```
 
-### Sync All Packages
-
-```bash
-# Sync all packages in current environment to hosts
-hatch package sync --host claude-desktop,cursor
-```
-The `hatch package sync` command syncs all packages that are already installed in the current environment.
+**Note**: The `hatch package sync` command requires a package name. To sync all packages from an environment to hosts, use `hatch mcp sync --from-env <env_name> --to-host <hosts>` (covered in [Tutorial 04-04](04-environment-synchronization.md)).
 
 ## Step 4: Validate Dependency Resolution
 
@@ -186,7 +178,7 @@ hatch package add . --host claude-desktop
 ### Production Environment
 
 ```bash
-# Switch to production environment  
+# Switch to production environment
 hatch env use production
 
 # Deploy with production settings

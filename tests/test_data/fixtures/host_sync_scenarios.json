@@ -23,7 +23,7 @@
     "after": {
       "packages": [
         {
-          "name": "weather-toolkit", 
+          "name": "weather-toolkit",
           "configured_hosts": {
             "claude-desktop": {
               "config_path": "~/.claude/config.json",

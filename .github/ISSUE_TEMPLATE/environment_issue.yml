@@ -56,7 +56,7 @@ body:
       placeholder: |
         - OS: (e.g., Ubuntu 22.04, macOS 14.1, Windows 11)
         - Hatch version: (run `pip show hatch`)
-        - Python version: 
+        - Python version:
         - Conda/Mamba version: (run `conda --version` or `mamba --version`)
         - Available disk space: (run `df -h` on Linux/macOS or check disk space on Windows)
       render: markdown
@@ -95,11 +95,11 @@ body:
         Please provide current environment information
       placeholder: |
         Run these commands and paste the output:
-        
+
         hatch env list
         hatch env current
         hatch env python info --hatch_env <env-name> --detailed
-        
+
         For Python environment issues:
         conda env list (or mamba env list)
         conda info (or mamba info)
@@ -151,11 +151,11 @@ body:
         If relevant, provide information about the environment directory structure
       placeholder: |
         Environment directory location: ~/.hatch/envs/<env-name>
-        
+
         Directory contents:
         ls -la ~/.hatch/envs/<env-name>/ (Linux/macOS)
         Get-ChildItem ~/.hatch/envs/<env-name>/ (Windows PowerShell)
-        
+
         Python environment location (if applicable):
         conda env list | grep <env-name>
       render: text
@@ -169,7 +169,7 @@ body:
       placeholder: |
         Run and paste output:
         hatch package list --env <env-name>
-        
+
         For Python environment:
         conda list -n <python-env-name> (or mamba list)
       render: text

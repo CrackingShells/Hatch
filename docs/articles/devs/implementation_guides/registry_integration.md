@@ -36,22 +36,22 @@ class PrivateRegistryRetriever(RegistryRetriever):
         super().__init__()
         self.base_url = base_url
         self.api_key = api_key
-    
+
     def download_package(self, package_name: str, version: str, target_dir: Path) -> Path:
         headers = {"Authorization": f"Bearer {self.api_key}"}
         download_url = f"{self.base_url}/packages/{package_name}/{version}/download"
-        
+
         response = requests.get(download_url, headers=headers)
         response.raise_for_status()
-        
+
         package_file = target_dir / f"{package_name}-{version}.zip"
         package_file.write_bytes(response.content)
         return package_file
-    
+
     def get_package_versions(self, package_name: str) -> List[str]:
         headers = {"Authorization": f"Bearer {self.api_key}"}
         url = f"{self.base_url}/packages/{package_name}/versions"
-        
+
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         return response.json()["versions"]
@@ -64,22 +64,22 @@ class LocalRegistryRetriever(RegistryRetriever):
     def __init__(self, registry_path: Path):
         super().__init__()
         self.registry_path = registry_path
-    
+
     def download_package(self, package_name: str, version: str, target_dir: Path) -> Path:
         source_path = self.registry_path / package_name / version
         if not source_path.exists():
             raise PackageNotFoundError(f"Package {package_name}=={version} not found locally")
-        
+
         # Copy to target directory
         package_dir = target_dir / f"{package_name}-{version}"
         shutil.copytree(source_path, package_dir)
         return package_dir
-    
+
     def get_package_versions(self, package_name: str) -> List[str]:
         package_path = self.registry_path / package_name
         if not package_path.exists():
             return []
-        
+
         return [d.name for d in package_path.iterdir() if d.is_dir()]
 ```
 
@@ -92,17 +92,17 @@ class CachedRegistryRetriever(RegistryRetriever):
         self.upstream = upstream_retriever
         self.cache_dir = cache_dir
         self.cache_dir.mkdir(parents=True, exist_ok=True)
-    
+
     def download_package(self, package_name: str, version: str, target_dir: Path) -> Path:
         cache_key = f"{package_name}-{version}"
         cached_path = self.cache_dir / cache_key
-        
+
         if cached_path.exists():
             # Copy from cache
             target_path = target_dir / cache_key
             shutil.copytree(cached_path, target_path)
             return target_path
-        
+
         # Download and cache
         package_path = self.upstream.download_package(package_name, version, target_dir)
         shutil.copytree(package_path, cached_path)
@@ -116,16 +116,16 @@ class FallbackRegistryRetriever(RegistryRetriever):
     def __init__(self, retrievers: List[RegistryRetriever]):
         super().__init__()
         self.retrievers = retrievers
-    
+
     def download_package(self, package_name: str, version: str, target_dir: Path) -> Path:
         for retriever in self.retrievers:
             try:
                 return retriever.download_package(package_name, version, target_dir)
             except PackageNotFoundError:
                 continue
-        
+
         raise PackageNotFoundError(f"Package {package_name}=={version} not found in any registry")
-    
+
     def get_package_versions(self, package_name: str) -> List[str]:
         all_versions = set()
         for retriever in self.retrievers:
@@ -134,7 +134,7 @@ class FallbackRegistryRetriever(RegistryRetriever):
                 all_versions.update(versions)
             except Exception:
                 continue
-        
+
         return sorted(all_versions)
 ```
 
@@ -174,7 +174,7 @@ class ConfigurableRegistryRetriever(RegistryRetriever):
         self.config = config
         self.base_url = config["base_url"]
         self.timeout = config.get("timeout", 30)
-        
+
     @classmethod
     def from_config_file(cls, config_path: Path):
         with open(config_path) as f:
@@ -193,10 +193,10 @@ class TestPrivateRegistry(unittest.TestCase):
         mock_response = Mock()
         mock_response.content = b"fake package data"
         mock_get.return_value = mock_response
-        
+
         registry = PrivateRegistryRetriever("https://example.com", "fake-key")
         package_path = registry.download_package("test-pkg", "1.0.0", Path("/tmp"))
-        
+
         self.assertTrue(package_path.exists())
         mock_get.assert_called_with(
             "https://example.com/packages/test-pkg/1.0.0/download",

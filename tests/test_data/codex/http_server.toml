@@ -4,4 +4,3 @@ bearer_token_env_var = "FIGMA_OAUTH_TOKEN"
 
 [mcp_servers.figma.http_headers]
 "X-Figma-Region" = "us-east-1"
-

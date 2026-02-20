@@ -15,6 +15,7 @@ You're working on Hatch and need to:
 
 ### Adding Functionality
 
+- **[Adding CLI Commands](./adding_cli_commands.md)** - Add new commands to the CLI (10-minute read)
 - **[Adding New Installers](./adding_installers.md)** - Support new dependency types (5-minute read)
 - **[Package Loading Extensions](./package_loader_extensions.md)** - Custom package formats and validation (3-minute read)
 
