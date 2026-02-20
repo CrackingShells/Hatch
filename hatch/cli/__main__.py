@@ -43,27 +43,27 @@ from hatch.cli.cli_utils import get_hatch_version, Color, _colors_enabled
 
 class HatchArgumentParser(argparse.ArgumentParser):
     """Custom ArgumentParser with formatted error messages.
-    
+
     Overrides the error() method to format argparse errors with
     [ERROR] prefix and bright red color (when colors enabled).
-    
+
     Reference: R13 §4.2.1 (13-error_message_formatting_v0.md)
-    
+
     Output format:
         [ERROR] <message>
-    
+
     Example:
         >>> parser = HatchArgumentParser(description="Test CLI")
         >>> parser.parse_args(['--invalid'])
         [ERROR] unrecognized arguments: --invalid
     """
-    
+
     def error(self, message: str) -> None:
         """Override to format errors with [ERROR] prefix and color.
-        
+
         Args:
             message: Error message from argparse
-        
+
         Note:
             Preserves exit code 2 (argparse convention).
         """
@@ -144,9 +144,13 @@ def _setup_env_commands(subparsers):
     )
 
     # List environments command - now with subcommands per R10
-    env_list_parser = env_subparsers.add_parser("list", help="List environments, hosts, or servers")
-    env_list_subparsers = env_list_parser.add_subparsers(dest="list_command", help="List command to execute")
-    
+    env_list_parser = env_subparsers.add_parser(
+        "list", help="List environments, hosts, or servers"
+    )
+    env_list_subparsers = env_list_parser.add_subparsers(
+        dest="list_command", help="List command to execute"
+    )
+
     # Default list behavior (no subcommand) - handled by checking list_command is None
     env_list_parser.add_argument(
         "--pattern",
@@ -155,13 +159,14 @@ def _setup_env_commands(subparsers):
     env_list_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"
     )
-    
+
     # env list hosts subcommand per R10 §3.3
     env_list_hosts_parser = env_list_subparsers.add_parser(
         "hosts", help="List environment/host/server deployments"
     )
     env_list_hosts_parser.add_argument(
-        "--env", "-e",
+        "--env",
+        "-e",
         help="Filter by environment name using regex pattern",
     )
     env_list_hosts_parser.add_argument(
@@ -171,13 +176,14 @@ def _setup_env_commands(subparsers):
     env_list_hosts_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"
     )
-    
+
     # env list servers subcommand per R10 §3.4
     env_list_servers_parser = env_list_subparsers.add_parser(
         "servers", help="List environment/server/host deployments"
     )
     env_list_servers_parser.add_argument(
-        "--env", "-e",
+        "--env",
+        "-e",
         help="Filter by environment name using regex pattern",
     )
     env_list_servers_parser.add_argument(
@@ -578,7 +584,8 @@ def _setup_mcp_commands(subparsers):
         help="Command to execute the MCP server (for local servers) [hosts: all]",
     )
     server_type_group.add_argument(
-        "--url", help="Server URL for remote MCP servers (SSE transport) [hosts: all except claude-desktop, claude-code]"
+        "--url",
+        help="Server URL for remote MCP servers (SSE transport) [hosts: all except claude-desktop, claude-code]",
     )
     server_type_group.add_argument(
         "--http-url", help="HTTP streaming endpoint URL [hosts: gemini]"
@@ -605,7 +612,9 @@ def _setup_mcp_commands(subparsers):
         "--timeout", type=int, help="Request timeout in milliseconds [hosts: gemini]"
     )
     mcp_configure_parser.add_argument(
-        "--trust", action="store_true", help="Bypass tool call confirmations [hosts: gemini]"
+        "--trust",
+        action="store_true",
+        help="Bypass tool call confirmations [hosts: gemini]",
     )
     mcp_configure_parser.add_argument(
         "--cwd", help="Working directory for stdio transport [hosts: gemini, codex]"
@@ -638,50 +647,48 @@ def _setup_mcp_commands(subparsers):
         "--disabled",
         action="store_true",
         default=None,
-        help="Disable the MCP server [hosts: kiro]"
+        help="Disable the MCP server [hosts: kiro]",
     )
     mcp_configure_parser.add_argument(
         "--auto-approve-tools",
         action="append",
-        help="Tool names to auto-approve without prompting [hosts: kiro]"
+        help="Tool names to auto-approve without prompting [hosts: kiro]",
     )
     mcp_configure_parser.add_argument(
-        "--disable-tools",
-        action="append",
-        help="Tool names to disable [hosts: kiro]"
+        "--disable-tools", action="append", help="Tool names to disable [hosts: kiro]"
     )
 
     # Codex-specific arguments
     mcp_configure_parser.add_argument(
         "--env-vars",
         action="append",
-        help="Environment variable names to whitelist/forward [hosts: codex]"
+        help="Environment variable names to whitelist/forward [hosts: codex]",
     )
     mcp_configure_parser.add_argument(
         "--startup-timeout",
         type=int,
-        help="Server startup timeout in seconds (default: 10) [hosts: codex]"
+        help="Server startup timeout in seconds (default: 10) [hosts: codex]",
     )
     mcp_configure_parser.add_argument(
         "--tool-timeout",
         type=int,
-        help="Tool execution timeout in seconds (default: 60) [hosts: codex]"
+        help="Tool execution timeout in seconds (default: 60) [hosts: codex]",
     )
     mcp_configure_parser.add_argument(
         "--enabled",
         action="store_true",
         default=None,
-        help="Enable the MCP server [hosts: codex]"
+        help="Enable the MCP server [hosts: codex]",
     )
     mcp_configure_parser.add_argument(
         "--bearer-token-env-var",
         type=str,
-        help="Name of environment variable containing bearer token for Authorization header [hosts: codex]"
+        help="Name of environment variable containing bearer token for Authorization header [hosts: codex]",
     )
     mcp_configure_parser.add_argument(
         "--env-header",
         action="append",
-        help="HTTP header from environment variable in KEY=ENV_VAR_NAME format [hosts: codex]"
+        help="HTTP header from environment variable in KEY=ENV_VAR_NAME format [hosts: codex]",
     )
 
     mcp_configure_parser.add_argument(
@@ -690,10 +697,14 @@ def _setup_mcp_commands(subparsers):
         help="Skip backup creation before configuration [hosts: all]",
     )
     mcp_configure_parser.add_argument(
-        "--dry-run", action="store_true", help="Preview configuration without execution [hosts: all]"
+        "--dry-run",
+        action="store_true",
+        help="Preview configuration without execution [hosts: all]",
     )
     mcp_configure_parser.add_argument(
-        "--auto-approve", action="store_true", help="Skip confirmation prompts [hosts: all]"
+        "--auto-approve",
+        action="store_true",
+        help="Skip confirmation prompts [hosts: all]",
     )
 
     # MCP remove commands
@@ -779,6 +790,13 @@ def _setup_mcp_commands(subparsers):
         action="store_true",
         help="Skip backup creation before synchronization",
     )
+    mcp_sync_parser.add_argument(
+        "--detailed",
+        nargs="?",
+        const="all",
+        default=None,
+        help="Show field-level details (optionally filter by consequence types: created,updated,synced,etc. or 'all')",
+    )
 
 
 def _route_env_command(args):
@@ -805,7 +823,7 @@ def _route_env_command(args):
         return handle_env_remove(args)
     elif args.env_command == "list":
         # Check for subcommand (hosts, servers) or default list behavior
-        list_command = getattr(args, 'list_command', None)
+        list_command = getattr(args, "list_command", None)
         if list_command == "hosts":
             return handle_env_list_hosts(args)
         elif list_command == "servers":
@@ -897,13 +915,15 @@ def _route_mcp_command(args):
             return 1
 
     elif args.mcp_command == "show":
-        show_command = getattr(args, 'show_command', None)
+        show_command = getattr(args, "show_command", None)
         if show_command == "hosts":
             return handle_mcp_show_hosts(args)
         elif show_command == "servers":
             return handle_mcp_show_servers(args)
         else:
-            print("Unknown show command. Use 'hatch mcp show hosts' or 'hatch mcp show servers'")
+            print(
+                "Unknown show command. Use 'hatch mcp show hosts' or 'hatch mcp show servers'"
+            )
             return 1
 
     elif args.mcp_command == "backup":
@@ -1011,10 +1031,12 @@ def main() -> int:
     # Route commands
     if args.command == "create":
         from hatch.cli.cli_system import handle_create
+
         return handle_create(args)
 
     elif args.command == "validate":
         from hatch.cli.cli_system import handle_validate
+
         return handle_validate(args)
 
     elif args.command == "env":

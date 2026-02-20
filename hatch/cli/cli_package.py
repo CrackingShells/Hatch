@@ -46,6 +46,8 @@ from hatch.cli.cli_utils import (
     ConsequenceType,
     format_warning,
     format_info,
+    format_validation_error,
+    ValidationError,
 )
 from hatch.mcp_host_config import (
     MCPHostConfigurationManager,
@@ -60,7 +62,7 @@ if TYPE_CHECKING:
 
 def handle_package_remove(args: Namespace) -> int:
     """Handle 'hatch package remove' command.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
@@ -68,10 +70,10 @@ def handle_package_remove(args: Namespace) -> int:
             - env: Optional environment name (default: current)
             - dry_run: Preview changes without execution
             - auto_approve: Skip confirmation prompt
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
-    
+
     Reference: R03 §3.1 (03-mutation_output_specification_v0.md)
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
@@ -93,7 +95,7 @@ def handle_package_remove(args: Namespace) -> int:
         prompt = reporter.report_prompt()
         if prompt:
             print(prompt)
-        
+
         if not request_confirmation("Proceed?"):
             format_info("Operation cancelled")
             return EXIT_SUCCESS
@@ -108,28 +110,28 @@ def handle_package_remove(args: Namespace) -> int:
 
 def handle_package_list(args: Namespace) -> int:
     """Handle 'hatch package list' command.
-    
+
     .. deprecated::
         This command is deprecated. Use 'hatch env list' instead,
         which shows packages inline with environment information.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
             - env: Optional environment name (default: current)
-    
+
     Returns:
         Exit code (0 for success)
     """
     import sys
-    
+
     # Emit deprecation warning to stderr
     print(
         "Warning: 'hatch package list' is deprecated. "
         "Use 'hatch env list' instead, which shows packages inline.",
-        file=sys.stderr
+        file=sys.stderr,
     )
-    
+
     env_manager: "HatchEnvironmentManager" = args.env_manager
     env = getattr(args, "env", None)
 
@@ -147,19 +149,18 @@ def handle_package_list(args: Namespace) -> int:
     return EXIT_SUCCESS
 
 
-
 def _get_package_names_with_dependencies(
     env_manager: "HatchEnvironmentManager",
     package_path_or_name: str,
     env_name: str,
 ) -> Tuple[str, List[str], Optional[PackageService]]:
     """Get package name and its dependencies.
-    
+
     Args:
         env_manager: HatchEnvironmentManager instance
         package_path_or_name: Package path or name
         env_name: Environment name
-    
+
     Returns:
         Tuple of (package_name, list_of_all_package_names, package_service_or_none)
     """
@@ -195,12 +196,12 @@ def _get_package_names_with_dependencies(
             if package_service is None:
                 format_warning(
                     f"Could not find package '{package_name}' in environment '{env_name}'",
-                    suggestion="Skipping dependency analysis"
+                    suggestion="Skipping dependency analysis",
                 )
         except Exception as e:
             format_warning(
                 f"Could not load package metadata for '{package_name}': {e}",
-                suggestion="Skipping dependency analysis"
+                suggestion="Skipping dependency analysis",
             )
 
     # Get dependency names if we have package service
@@ -241,9 +242,9 @@ def _configure_packages_on_hosts(
     reporter: Optional[ResultReporter] = None,
 ) -> Tuple[int, int]:
     """Configure MCP servers for packages on specified hosts.
-    
+
     This is shared logic used by both package add and package sync commands.
-    
+
     Args:
         env_manager: HatchEnvironmentManager instance
         mcp_manager: MCPHostConfigurationManager instance
@@ -253,7 +254,7 @@ def _configure_packages_on_hosts(
         no_backup: Skip backup creation
         dry_run: Preview only, don't execute
         reporter: Optional ResultReporter for unified output
-    
+
     Returns:
         Tuple of (success_count, total_operations)
     """
@@ -264,7 +265,9 @@ def _configure_packages_on_hosts(
             config = get_package_mcp_server_config(env_manager, env_name, pkg_name)
             server_configs.append((pkg_name, config))
         except Exception as e:
-            format_warning(f"Could not get MCP configuration for package '{pkg_name}': {e}")
+            format_warning(
+                f"Could not get MCP configuration for package '{pkg_name}': {e}"
+            )
 
     if not server_configs:
         return 0, 0
@@ -287,7 +290,7 @@ def _configure_packages_on_hosts(
                         config=server_config,
                         dry_run=dry_run,
                     )
-                    
+
                     # Add to reporter if provided
                     if reporter:
                         reporter.add_from_conversion_report(report)
@@ -321,24 +324,35 @@ def _configure_packages_on_hosts(
                                 server_config=server_config_dict,
                             )
                         except Exception as e:
-                            format_warning(f"Failed to update package metadata for {pkg_name}: {e}")
+                            format_warning(
+                                f"Failed to update package metadata for {pkg_name}: {e}"
+                            )
                     else:
-                        print(f"✗ Failed to configure {server_config.name} ({pkg_name}) on {host}: {result.error_message}")
+                        format_warning(
+                            f"Failed to configure {server_config.name} ({pkg_name}) on {host}",
+                            suggestion=f"Reason: {result.error_message}",
+                        )
 
                 except Exception as e:
-                    print(f"✗ Error configuring {server_config.name} ({pkg_name}) on {host}: {e}")
+                    format_warning(
+                        f"Error configuring {server_config.name} ({pkg_name}) on {host}",
+                        suggestion=f"Exception: {e}",
+                    )
 
         except ValueError as e:
-            print(f"✗ Invalid host '{host}': {e}")
+            format_validation_error(
+                ValidationError(
+                    f"Invalid host '{host}'", field="--host", suggestion=str(e)
+                )
+            )
             continue
 
     return success_count, total_operations
 
 
-
 def handle_package_add(args: Namespace) -> int:
     """Handle 'hatch package add' command.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
@@ -350,13 +364,13 @@ def handle_package_add(args: Namespace) -> int:
             - refresh_registry: Force registry refresh
             - auto_approve: Skip confirmation prompts
             - host: Optional comma-separated host list for MCP configuration
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
     mcp_manager: MCPHostConfigurationManager = args.mcp_manager
-    
+
     package_path_or_name = args.package_path_or_name
     env = getattr(args, "env", None)
     version = getattr(args, "version", None)
@@ -368,10 +382,10 @@ def handle_package_add(args: Namespace) -> int:
 
     # Create reporter for unified output
     reporter = ResultReporter("hatch package add", dry_run=dry_run)
-    
+
     # Add package to environment
     reporter.add(ConsequenceType.ADD, f"Package '{package_path_or_name}'")
-    
+
     if not env_manager.add_package_to_environment(
         package_path_or_name,
         env,
@@ -415,7 +429,7 @@ def handle_package_add(args: Namespace) -> int:
 
 def handle_package_sync(args: Namespace) -> int:
     """Handle 'hatch package sync' command.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
@@ -426,13 +440,13 @@ def handle_package_sync(args: Namespace) -> int:
             - dry_run: Preview only
             - auto_approve: Skip confirmation
             - no_backup: Skip backup creation
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
     """
     env_manager: "HatchEnvironmentManager" = args.env_manager
     mcp_manager: MCPHostConfigurationManager = args.mcp_manager
-    
+
     package_name = args.package_name
     host_arg = args.host
     env = getattr(args, "env", None)
@@ -474,24 +488,26 @@ def handle_package_sync(args: Namespace) -> int:
                     # Get Hatch dependencies
                     dependencies = package_service.get_dependencies()
                     hatch_deps = dependencies.get("hatch", [])
-                    dep_names = [dep.get("name") for dep in hatch_deps if dep.get("name")]
+                    dep_names = [
+                        dep.get("name") for dep in hatch_deps if dep.get("name")
+                    ]
 
                     # Add dependencies to the sync list (before main package)
                     package_names = dep_names + [package_name]
                 else:
                     format_warning(
                         f"Package '{package_name}' not found in environment '{env_name}'",
-                        suggestion="Syncing only the specified package"
+                        suggestion="Syncing only the specified package",
                     )
             else:
                 format_warning(
                     f"Could not access environment '{env_name}'",
-                    suggestion="Syncing only the specified package"
+                    suggestion="Syncing only the specified package",
                 )
         except Exception as e:
             format_warning(
                 f"Could not analyze dependencies for '{package_name}': {e}",
-                suggestion="Syncing only the specified package"
+                suggestion="Syncing only the specified package",
             )
 
         # Get MCP server configurations for all packages
@@ -501,7 +517,9 @@ def handle_package_sync(args: Namespace) -> int:
                 config = get_package_mcp_server_config(env_manager, env_name, pkg_name)
                 server_configs.append((pkg_name, config))
             except Exception as e:
-                format_warning(f"Could not get MCP configuration for package '{pkg_name}': {e}")
+                format_warning(
+                    f"Could not get MCP configuration for package '{pkg_name}': {e}"
+                )
 
         if not server_configs:
             reporter.report_error(
@@ -553,7 +571,7 @@ def handle_package_sync(args: Namespace) -> int:
 
         # Report results
         reporter.report_result()
-        
+
         if success_count == total_operations:
             return EXIT_SUCCESS
         elif success_count > 0:

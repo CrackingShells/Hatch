@@ -75,7 +75,7 @@ The command will exit with status code 1 when validation fails.
 ### Invalid Package Name
 
 ```json
-// ❌ Invalid - contains hyphens  
+// ❌ Invalid - contains hyphens
 "name": "my_package"
 
 // ✅ Valid - uses underscores
@@ -177,7 +177,7 @@ hatch create test-package  # Invalid name with hyphens
 hatch validate test-package
 
 # 3. Fix errors:
-# - Change name to "test_package" 
+# - Change name to "test_package"
 # - Add missing required fields
 # - Use proper version format like "1.0.0"
 

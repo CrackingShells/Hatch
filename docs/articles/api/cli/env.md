@@ -38,12 +38,12 @@ All handlers follow the standard signature:
 ```python
 def handle_env_command(args: Namespace) -> int:
     """Handle 'hatch env command' command.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
             - <command-specific arguments>
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
     """

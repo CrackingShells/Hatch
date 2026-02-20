@@ -50,22 +50,23 @@ from hatch.cli.cli_utils import (
 
 def main():
     """Main entry point - delegates to __main__.main().
-    
+
     This provides the hatch.cli.main() interface.
     """
     from hatch.cli.__main__ import main as _main
+
     return _main()
 
 
 __all__ = [
-    'main',
-    'EXIT_SUCCESS',
-    'EXIT_ERROR',
-    'get_hatch_version',
-    'request_confirmation',
-    'parse_env_vars',
-    'parse_header',
-    'parse_input',
-    'parse_host_list',
-    'get_package_mcp_server_config',
+    "main",
+    "EXIT_SUCCESS",
+    "EXIT_ERROR",
+    "get_hatch_version",
+    "request_confirmation",
+    "parse_env_vars",
+    "parse_header",
+    "parse_input",
+    "parse_host_list",
+    "get_package_mcp_server_config",
 ]

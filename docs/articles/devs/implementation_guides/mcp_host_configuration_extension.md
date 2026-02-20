@@ -78,11 +78,11 @@ from hatch.mcp_host_config.models import MCPServerConfig
 
 class YourHostAdapter(BaseAdapter):
     """Adapter for Your Host."""
-    
+
     @property
     def host_name(self) -> str:
         return "your-host"
-    
+
     def get_supported_fields(self) -> FrozenSet[str]:
         """Return fields Your Host accepts."""
         # Start with universal fields, add host-specific ones
@@ -90,7 +90,7 @@ class YourHostAdapter(BaseAdapter):
             "type",  # If your host supports transport type
             # "your_specific_field",
         })
-    
+
     def validate(self, config: MCPServerConfig) -> None:
         """Validate configuration for Your Host."""
         # Check transport requirements
@@ -99,11 +99,11 @@ class YourHostAdapter(BaseAdapter):
                 "Either 'command' (local) or 'url' (remote) required",
                 host_name=self.host_name
             )
-        
+
         # Add any host-specific validation
         # if config.command and config.url:
         #     raise AdapterValidationError("Cannot have both", ...)
-    
+
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Serialize configuration for Your Host format."""
         self.validate(config)
@@ -139,21 +139,21 @@ Add to `hatch/mcp_host_config/strategies.py`:
 @register_host_strategy(MCPHostType.YOUR_HOST)
 class YourHostStrategy(MCPHostStrategy):
     """Strategy for Your Host file I/O."""
-    
+
     def get_config_path(self) -> Optional[Path]:
         """Return path to config file."""
         return Path.home() / ".your_host" / "config.json"
-    
+
     def is_host_available(self) -> bool:
         """Check if host is installed."""
         config_path = self.get_config_path()
         return config_path is not None and config_path.parent.exists()
-    
+
     def get_config_key(self) -> str:
         """Return the key containing MCP servers."""
         return "mcpServers"  # Most hosts use this
-    
-    # read_configuration() and write_configuration() 
+
+    # read_configuration() and write_configuration()
     # can inherit from a base class or implement from scratch
 ```
 
@@ -179,19 +179,19 @@ class YourHostStrategy(CursorBasedHostStrategy):
 class TestYourHostAdapter(unittest.TestCase):
     def setUp(self):
         self.adapter = YourHostAdapter()
-    
+
     def test_host_name(self):
         self.assertEqual(self.adapter.host_name, "your-host")
-    
+
     def test_supported_fields(self):
         fields = self.adapter.get_supported_fields()
         self.assertIn("command", fields)
-    
+
     def test_validate_requires_transport(self):
         config = MCPServerConfig(name="test")
         with self.assertRaises(AdapterValidationError):
             self.adapter.validate(config)
-    
+
     def test_serialize_filters_unsupported(self):
         config = MCPServerConfig(name="test", command="python", httpUrl="http://x")
         result = self.adapter.serialize(config)
@@ -391,4 +391,3 @@ Adding a new host is now a **4-step process**:
 4. **Add tests** for adapter and strategy
 
 The unified model handles all fields. Adapters filter and validate. Strategies handle files. No model conversion needed.
-

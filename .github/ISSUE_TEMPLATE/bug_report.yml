@@ -48,7 +48,7 @@ body:
       placeholder: |
         - OS: (e.g., Ubuntu 22.04, macOS 14.1, Windows 11)
         - Hatch version: (run `pip show hatch`)
-        - Python version: 
+        - Python version:
         - Package manager: (conda/mamba version if applicable)
         - Current environment: (run `hatch env current`)
       render: markdown
@@ -117,18 +117,18 @@ body:
         Please run the diagnostic commands from the troubleshooting guide and paste the output:
       placeholder: |
         Run these commands and paste the output:
-        
+
         hatch env list
-        hatch env current  
+        hatch env current
         hatch package list
         pip show hatch
-        
+
         For environment-specific issues:
         hatch env python info --hatch_env <env-name> --detailed
-        
+
         For registry issues:
         hatch package add <package-name> --refresh-registry
-        
+
         Cache information:
         ls -la ~/.hatch/cache/packages (Linux/macOS)
         Get-ChildItem -Path $env:USERPROFILE\.hatch\cache (Windows PowerShell)

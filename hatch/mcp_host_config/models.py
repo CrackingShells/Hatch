@@ -7,17 +7,21 @@ the v2 design specification with consolidated MCPServerConfig model.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator, ConfigDict
-from typing import Dict, List, Optional, Union, Literal
+from typing import Dict, List, Optional, Literal, TYPE_CHECKING
 from datetime import datetime
 from pathlib import Path
 from enum import Enum
 import logging
+
+if TYPE_CHECKING:
+    from .reporting import ConversionReport
 
 logger = logging.getLogger(__name__)
 
 
 class MCPHostType(str, Enum):
     """Enumeration of supported MCP host types."""
+
     CLAUDE_DESKTOP = "claude-desktop"
     CLAUDE_CODE = "claude-code"
     VSCODE = "vscode"
@@ -54,25 +58,32 @@ class MCPServerConfig(BaseModel):
 
     # Transport type discriminator (Claude/VSCode/Cursor only, NOT Gemini/Kiro/Codex)
     type: Optional[Literal["stdio", "sse", "http"]] = Field(
-        None,
-        description="Transport type (stdio for local, sse/http for remote)"
+        None, description="Transport type (stdio for local, sse/http for remote)"
     )
 
     # stdio transport (local server)
-    command: Optional[str] = Field(None, description="Executable path/name for local servers")
-    args: Optional[List[str]] = Field(None, description="Command arguments for local servers")
+    command: Optional[str] = Field(
+        None, description="Executable path/name for local servers"
+    )
+    args: Optional[List[str]] = Field(
+        None, description="Command arguments for local servers"
+    )
 
     # sse transport (remote server)
     url: Optional[str] = Field(None, description="Server endpoint URL (SSE transport)")
 
     # http transport (Gemini-specific remote server)
-    httpUrl: Optional[str] = Field(None, description="HTTP streaming endpoint URL (Gemini)")
+    httpUrl: Optional[str] = Field(
+        None, description="HTTP streaming endpoint URL (Gemini)"
+    )
 
     # ========================================================================
     # Universal Fields (all hosts)
     # ========================================================================
     env: Optional[Dict[str, str]] = Field(None, description="Environment variables")
-    headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers for remote servers")
+    headers: Optional[Dict[str, str]] = Field(
+        None, description="HTTP headers for remote servers"
+    )
 
     # ========================================================================
     # Gemini-Specific Fields
@@ -80,52 +91,86 @@ class MCPServerConfig(BaseModel):
     cwd: Optional[str] = Field(None, description="Working directory (Gemini/Codex)")
     timeout: Optional[int] = Field(None, description="Request timeout in milliseconds")
     trust: Optional[bool] = Field(None, description="Bypass tool call confirmations")
-    includeTools: Optional[List[str]] = Field(None, description="Tools to include (allowlist)")
-    excludeTools: Optional[List[str]] = Field(None, description="Tools to exclude (blocklist)")
+    includeTools: Optional[List[str]] = Field(
+        None, description="Tools to include (allowlist)"
+    )
+    excludeTools: Optional[List[str]] = Field(
+        None, description="Tools to exclude (blocklist)"
+    )
 
     # OAuth configuration (Gemini)
-    oauth_enabled: Optional[bool] = Field(None, description="Enable OAuth for this server")
+    oauth_enabled: Optional[bool] = Field(
+        None, description="Enable OAuth for this server"
+    )
     oauth_clientId: Optional[str] = Field(None, description="OAuth client identifier")
     oauth_clientSecret: Optional[str] = Field(None, description="OAuth client secret")
-    oauth_authorizationUrl: Optional[str] = Field(None, description="OAuth authorization endpoint")
+    oauth_authorizationUrl: Optional[str] = Field(
+        None, description="OAuth authorization endpoint"
+    )
     oauth_tokenUrl: Optional[str] = Field(None, description="OAuth token endpoint")
     oauth_scopes: Optional[List[str]] = Field(None, description="Required OAuth scopes")
     oauth_redirectUri: Optional[str] = Field(None, description="Custom redirect URI")
-    oauth_tokenParamName: Optional[str] = Field(None, description="Query parameter name for tokens")
+    oauth_tokenParamName: Optional[str] = Field(
+        None, description="Query parameter name for tokens"
+    )
     oauth_audiences: Optional[List[str]] = Field(None, description="OAuth audiences")
-    authProviderType: Optional[str] = Field(None, description="Authentication provider type")
+    authProviderType: Optional[str] = Field(
+        None, description="Authentication provider type"
+    )
 
     # ========================================================================
     # VSCode/Cursor-Specific Fields
     # ========================================================================
     envFile: Optional[str] = Field(None, description="Path to environment file")
-    inputs: Optional[List[Dict]] = Field(None, description="Input variable definitions (VSCode only)")
+    inputs: Optional[List[Dict]] = Field(
+        None, description="Input variable definitions (VSCode only)"
+    )
 
     # ========================================================================
     # Kiro-Specific Fields
     # ========================================================================
     disabled: Optional[bool] = Field(None, description="Whether server is disabled")
-    autoApprove: Optional[List[str]] = Field(None, description="Auto-approved tool names")
+    autoApprove: Optional[List[str]] = Field(
+        None, description="Auto-approved tool names"
+    )
     disabledTools: Optional[List[str]] = Field(None, description="Disabled tool names")
 
     # ========================================================================
     # Codex-Specific Fields
     # ========================================================================
-    env_vars: Optional[List[str]] = Field(None, description="Environment variables to whitelist/forward")
-    startup_timeout_sec: Optional[int] = Field(None, description="Server startup timeout in seconds")
-    tool_timeout_sec: Optional[int] = Field(None, description="Tool execution timeout in seconds")
-    enabled: Optional[bool] = Field(None, description="Enable/disable server without deleting config")
-    enabled_tools: Optional[List[str]] = Field(None, description="Allow-list of tools to expose")
-    disabled_tools: Optional[List[str]] = Field(None, description="Deny-list of tools to hide")
-    bearer_token_env_var: Optional[str] = Field(None, description="Env var containing bearer token")
-    http_headers: Optional[Dict[str, str]] = Field(None, description="HTTP headers (Codex naming)")
-    env_http_headers: Optional[Dict[str, str]] = Field(None, description="Header names to env var names")
+    env_vars: Optional[List[str]] = Field(
+        None, description="Environment variables to whitelist/forward"
+    )
+    startup_timeout_sec: Optional[int] = Field(
+        None, description="Server startup timeout in seconds"
+    )
+    tool_timeout_sec: Optional[int] = Field(
+        None, description="Tool execution timeout in seconds"
+    )
+    enabled: Optional[bool] = Field(
+        None, description="Enable/disable server without deleting config"
+    )
+    enabled_tools: Optional[List[str]] = Field(
+        None, description="Allow-list of tools to expose"
+    )
+    disabled_tools: Optional[List[str]] = Field(
+        None, description="Deny-list of tools to hide"
+    )
+    bearer_token_env_var: Optional[str] = Field(
+        None, description="Env var containing bearer token"
+    )
+    http_headers: Optional[Dict[str, str]] = Field(
+        None, description="HTTP headers (Codex naming)"
+    )
+    env_http_headers: Optional[Dict[str, str]] = Field(
+        None, description="Header names to env var names"
+    )
 
     # ========================================================================
     # Minimal Validators (host-specific validation is in adapters)
     # ========================================================================
 
-    @field_validator('command')
+    @field_validator("command")
     @classmethod
     def validate_command_not_empty(cls, v):
         """Validate command is not empty when provided."""
@@ -133,16 +178,16 @@ class MCPServerConfig(BaseModel):
             raise ValueError("Command cannot be empty")
         return v.strip() if v else v
 
-    @field_validator('url', 'httpUrl')
+    @field_validator("url", "httpUrl")
     @classmethod
     def validate_url_format(cls, v):
         """Validate URL format when provided."""
         if v is not None:
-            if not v.startswith(('http://', 'https://')):
+            if not v.startswith(("http://", "https://")):
                 raise ValueError("URL must start with http:// or https://")
         return v
 
-    @model_validator(mode='after')
+    @model_validator(mode="after")
     def validate_has_transport(self):
         """Validate that at least one transport is configured.
 
@@ -235,17 +280,16 @@ class MCPServerConfig(BaseModel):
             return "http"
 
         return None
-    
-
 
 
 class HostConfigurationMetadata(BaseModel):
     """Metadata for host configuration tracking."""
+
     config_path: str = Field(..., description="Path to host configuration file")
     configured_at: datetime = Field(..., description="Initial configuration timestamp")
     last_synced: datetime = Field(..., description="Last synchronization timestamp")
-    
-    @field_validator('config_path')
+
+    @field_validator("config_path")
     @classmethod
     def validate_config_path_not_empty(cls, v):
         """Validate config path is not empty."""
@@ -256,12 +300,15 @@ class HostConfigurationMetadata(BaseModel):
 
 class PackageHostConfiguration(BaseModel):
     """Host configuration for a single package (corrected structure)."""
+
     config_path: str = Field(..., description="Path to host configuration file")
     configured_at: datetime = Field(..., description="Initial configuration timestamp")
     last_synced: datetime = Field(..., description="Last synchronization timestamp")
-    server_config: MCPServerConfig = Field(..., description="Server configuration for this host")
-    
-    @field_validator('config_path')
+    server_config: MCPServerConfig = Field(
+        ..., description="Server configuration for this host"
+    )
+
+    @field_validator("config_path")
     @classmethod
     def validate_config_path_format(cls, v):
         """Validate config path format."""
@@ -272,6 +319,7 @@ class PackageHostConfiguration(BaseModel):
 
 class EnvironmentPackageEntry(BaseModel):
     """Package entry within environment with corrected MCP structure."""
+
     name: str = Field(..., description="Package name")
     version: str = Field(..., description="Package version")
     type: str = Field(..., description="Package type (hatch, mcp_standalone, etc.)")
@@ -279,69 +327,82 @@ class EnvironmentPackageEntry(BaseModel):
     installed_at: datetime = Field(..., description="Installation timestamp")
     configured_hosts: Dict[str, PackageHostConfiguration] = Field(
         default_factory=dict,
-        description="Host configurations for this package's MCP server"
+        description="Host configurations for this package's MCP server",
     )
-    
-    @field_validator('name')
+
+    @field_validator("name")
     @classmethod
     def validate_package_name(cls, v):
         """Validate package name format."""
         if not v.strip():
             raise ValueError("Package name cannot be empty")
         # Allow standard package naming patterns
-        if not v.replace('-', '').replace('_', '').replace('.', '').isalnum():
+        if not v.replace("-", "").replace("_", "").replace(".", "").isalnum():
             raise ValueError(f"Invalid package name format: {v}")
         return v.strip()
 
-    @field_validator('configured_hosts')
+    @field_validator("configured_hosts")
     @classmethod
     def validate_host_names(cls, v):
         """Validate host names are supported."""
         supported_hosts = {
-            'claude-desktop', 'claude-code', 'vscode',
-            'cursor', 'lmstudio', 'gemini', 'kiro'
+            "claude-desktop",
+            "claude-code",
+            "vscode",
+            "cursor",
+            "lmstudio",
+            "gemini",
+            "kiro",
         }
         for host_name in v.keys():
             if host_name not in supported_hosts:
-                raise ValueError(f"Unsupported host: {host_name}. Supported: {supported_hosts}")
+                raise ValueError(
+                    f"Unsupported host: {host_name}. Supported: {supported_hosts}"
+                )
         return v
 
 
 class EnvironmentData(BaseModel):
     """Complete environment data structure with corrected MCP integration."""
+
     name: str = Field(..., description="Environment name")
     description: str = Field(..., description="Environment description")
     created_at: datetime = Field(..., description="Environment creation timestamp")
     packages: List[EnvironmentPackageEntry] = Field(
-        default_factory=list,
-        description="Packages installed in this environment"
+        default_factory=list, description="Packages installed in this environment"
     )
-    python_environment: bool = Field(True, description="Whether this is a Python environment")
-    python_env: Dict = Field(default_factory=dict, description="Python environment data")
-    
-    @field_validator('name')
+    python_environment: bool = Field(
+        True, description="Whether this is a Python environment"
+    )
+    python_env: Dict = Field(
+        default_factory=dict, description="Python environment data"
+    )
+
+    @field_validator("name")
     @classmethod
     def validate_environment_name(cls, v):
         """Validate environment name format."""
         if not v.strip():
             raise ValueError("Environment name cannot be empty")
         return v.strip()
-    
+
     def get_mcp_packages(self) -> List[EnvironmentPackageEntry]:
         """Get packages that have MCP server configurations."""
         return [pkg for pkg in self.packages if pkg.configured_hosts]
-    
+
     def get_standalone_mcp_package(self) -> Optional[EnvironmentPackageEntry]:
         """Get the standalone MCP servers package if it exists."""
         for pkg in self.packages:
             if pkg.name == "__standalone_mcp_servers__":
                 return pkg
         return None
-    
-    def add_standalone_mcp_server(self, server_name: str, host_config: PackageHostConfiguration):
+
+    def add_standalone_mcp_server(
+        self, server_name: str, host_config: PackageHostConfiguration
+    ):
         """Add a standalone MCP server configuration."""
         standalone_pkg = self.get_standalone_mcp_package()
-        
+
         if standalone_pkg is None:
             # Create standalone package entry
             standalone_pkg = EnvironmentPackageEntry(
@@ -350,10 +411,10 @@ class EnvironmentData(BaseModel):
                 type="mcp_standalone",
                 source="user_configured",
                 installed_at=datetime.now(),
-                configured_hosts={}
+                configured_hosts={},
             )
             self.packages.append(standalone_pkg)
-        
+
         # Add host configuration (single server per package constraint)
         for host_name, config in host_config.items():
             standalone_pkg.configured_hosts[host_name] = config
@@ -361,12 +422,12 @@ class EnvironmentData(BaseModel):
 
 class HostConfiguration(BaseModel):
     """Host configuration file structure using consolidated MCPServerConfig."""
+
     servers: Dict[str, MCPServerConfig] = Field(
-        default_factory=dict,
-        description="Configured MCP servers"
+        default_factory=dict, description="Configured MCP servers"
     )
-    
-    @field_validator('servers')
+
+    @field_validator("servers")
     @classmethod
     def validate_servers_not_empty_when_present(cls, v):
         """Validate servers dict structure."""
@@ -374,34 +435,40 @@ class HostConfiguration(BaseModel):
             if not isinstance(config, (dict, MCPServerConfig)):
                 raise ValueError(f"Invalid server config for {server_name}")
         return v
-    
+
     def add_server(self, name: str, config: MCPServerConfig):
         """Add server configuration."""
         self.servers[name] = config
-    
+
     def remove_server(self, name: str) -> bool:
         """Remove server configuration."""
         if name in self.servers:
             del self.servers[name]
             return True
         return False
-    
+
     class Config:
         """Pydantic configuration."""
+
         arbitrary_types_allowed = True
         extra = "allow"  # Allow additional host-specific fields
 
 
 class ConfigurationResult(BaseModel):
     """Result of a configuration operation."""
+
     success: bool = Field(..., description="Whether operation succeeded")
     hostname: str = Field(..., description="Target hostname")
     server_name: Optional[str] = Field(None, description="Server name if applicable")
     backup_created: bool = Field(False, description="Whether backup was created")
     backup_path: Optional[Path] = Field(None, description="Path to backup file")
     error_message: Optional[str] = Field(None, description="Error message if failed")
-    
-    @model_validator(mode='after')
+    conversion_reports: List["ConversionReport"] = Field(
+        default_factory=list,
+        description="Detailed conversion reports for each server (optional)",
+    )
+
+    @model_validator(mode="after")
     def validate_result_consistency(self):
         """Validate result consistency."""
         if not self.success and not self.error_message:
@@ -412,16 +479,19 @@ class ConfigurationResult(BaseModel):
 
 class SyncResult(BaseModel):
     """Result of environment synchronization operation."""
+
     success: bool = Field(..., description="Whether overall sync succeeded")
-    results: List[ConfigurationResult] = Field(..., description="Individual host results")
+    results: List[ConfigurationResult] = Field(
+        ..., description="Individual host results"
+    )
     servers_synced: int = Field(..., description="Total servers synchronized")
     hosts_updated: int = Field(..., description="Number of hosts updated")
-    
+
     @property
     def failed_hosts(self) -> List[str]:
         """Get list of hosts that failed synchronization."""
         return [r.hostname for r in self.results if not r.success]
-    
+
     @property
     def success_rate(self) -> float:
         """Calculate success rate percentage."""
@@ -429,3 +499,13 @@ class SyncResult(BaseModel):
             return 0.0
         successful = len([r for r in self.results if r.success])
         return (successful / len(self.results)) * 100.0
+
+
+# Rebuild models to resolve forward references
+if TYPE_CHECKING:
+    pass
+else:
+    # Import at runtime to avoid circular dependency
+    from .reporting import ConversionReport
+
+    ConfigurationResult.model_rebuild()

@@ -42,11 +42,11 @@ class MyInstaller(DependencyInstaller):
     @property
     def installer_type(self) -> str:
         return "my-type"  # What goes in dependency["type"]
-    
+
     def can_install(self, dependency: Dict[str, Any]) -> bool:
         # Return True if you can handle this dependency
         return dependency.get("type") == "my-type"
-    
+
     def install(self, dependency: Dict[str, Any], context: InstallationContext) -> InstallationResult:
         # Your installation logic here
         name = dependency["name"]

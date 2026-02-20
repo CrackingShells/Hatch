@@ -65,7 +65,7 @@ View detailed help for specific command groups:
 # Environment management
 hatch env --help
 
-# Package management  
+# Package management
 hatch package --help
 ```
 
@@ -78,7 +78,7 @@ Explore the help output for the `create` command. What options are available for
 ```bash
 # positional arguments:
 #   name                  Package name
-# 
+#
 # options:
 #   -h, --help            show this help message and exit
 #   --dir DIR, -d DIR     Target directory (default: current directory)

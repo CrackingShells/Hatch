@@ -73,10 +73,10 @@ mcp = FastMCP("my_new_package", log_level="WARNING")
 @mcp.tool()
 def example_tool(param: str) -> str:
     """Example tool function.
-    
+
     Args:
         param (str): Example parameter.
-    
+
     Returns:
         str: Example result."""
 
@@ -147,7 +147,7 @@ hatch create described-package --description "A package that demonstrates detail
 
 # Examine the differences
 cat basic-package/hatch_metadata.json
-cat my-packages/custom_package/hatch_metadata.json  
+cat my-packages/custom_package/hatch_metadata.json
 cat described-package/hatch_metadata.json
 ```
 

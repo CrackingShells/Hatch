@@ -10,4 +10,3 @@ enabled = true
 
 [mcp_servers.context7.env]
 MY_VAR = "value"
-

@@ -5,12 +5,10 @@ Scope: Verify all adapters satisfy BaseAdapter protocol contract.
 """
 
 import unittest
-from typing import Dict, Any
 
 from hatch.mcp_host_config.models import MCPServerConfig, MCPHostType
 from hatch.mcp_host_config.adapters import (
     get_adapter,
-    BaseAdapter,
     ClaudeAdapter,
     CodexAdapter,
     CursorAdapter,
@@ -19,7 +17,6 @@ from hatch.mcp_host_config.adapters import (
     LMStudioAdapter,
     VSCodeAdapter,
 )
-
 
 # All adapter classes to test
 ALL_ADAPTERS = [
@@ -54,17 +51,18 @@ class TestAdapterProtocol(unittest.TestCase):
             adapter = adapter_cls()
             with self.subTest(adapter=adapter_cls.__name__):
                 self.assertTrue(
-                    hasattr(adapter, 'get_supported_fields'),
-                    f"{adapter_cls.__name__} missing 'get_supported_fields'"
+                    hasattr(adapter, "get_supported_fields"),
+                    f"{adapter_cls.__name__} missing 'get_supported_fields'",
                 )
                 self.assertTrue(
                     callable(adapter.get_supported_fields),
-                    f"{adapter_cls.__name__}.get_supported_fields is not callable"
+                    f"{adapter_cls.__name__}.get_supported_fields is not callable",
                 )
                 supported = adapter.get_supported_fields()
                 self.assertIsInstance(
-                    supported, frozenset,
-                    f"{adapter_cls.__name__}.get_supported_fields() did not return frozenset"
+                    supported,
+                    frozenset,
+                    f"{adapter_cls.__name__}.get_supported_fields() did not return frozenset",
                 )
 
     def test_AP02_all_adapters_have_validate(self):
@@ -73,12 +71,12 @@ class TestAdapterProtocol(unittest.TestCase):
             adapter = adapter_cls()
             with self.subTest(adapter=adapter_cls.__name__):
                 self.assertTrue(
-                    hasattr(adapter, 'validate'),
-                    f"{adapter_cls.__name__} missing 'validate'"
+                    hasattr(adapter, "validate"),
+                    f"{adapter_cls.__name__} missing 'validate'",
                 )
                 self.assertTrue(
                     callable(adapter.validate),
-                    f"{adapter_cls.__name__}.validate is not callable"
+                    f"{adapter_cls.__name__}.validate is not callable",
                 )
 
     def test_AP03_all_adapters_have_serialize(self):
@@ -87,31 +85,32 @@ class TestAdapterProtocol(unittest.TestCase):
             adapter = adapter_cls()
             with self.subTest(adapter=adapter_cls.__name__):
                 self.assertTrue(
-                    hasattr(adapter, 'serialize'),
-                    f"{adapter_cls.__name__} missing 'serialize'"
+                    hasattr(adapter, "serialize"),
+                    f"{adapter_cls.__name__} missing 'serialize'",
                 )
                 self.assertTrue(
                     callable(adapter.serialize),
-                    f"{adapter_cls.__name__}.serialize is not callable"
+                    f"{adapter_cls.__name__}.serialize is not callable",
                 )
 
     def test_AP04_serialize_never_returns_name(self):
         """AP-04: `serialize()` never returns `name` field for any adapter."""
         config = MCPServerConfig(name="test-server", command="python")
-        
+
         for adapter_cls in ALL_ADAPTERS:
             adapter = adapter_cls()
             with self.subTest(adapter=adapter_cls.__name__):
                 result = adapter.serialize(config)
                 self.assertNotIn(
-                    "name", result,
-                    f"{adapter_cls.__name__}.serialize() returned 'name' field"
+                    "name",
+                    result,
+                    f"{adapter_cls.__name__}.serialize() returned 'name' field",
                 )
 
     def test_AP05_serialize_never_returns_none_values(self):
         """AP-05: `serialize()` returns no None values."""
         config = MCPServerConfig(name="test-server", command="python")
-        
+
         for adapter_cls in ALL_ADAPTERS:
             adapter = adapter_cls()
             with self.subTest(adapter=adapter_cls.__name__):
@@ -119,7 +118,7 @@ class TestAdapterProtocol(unittest.TestCase):
                 for key, value in result.items():
                     self.assertIsNotNone(
                         value,
-                        f"{adapter_cls.__name__}.serialize() returned None for '{key}'"
+                        f"{adapter_cls.__name__}.serialize() returned None for '{key}'",
                     )
 
     def test_AP06_get_adapter_returns_correct_type(self):
@@ -128,11 +127,11 @@ class TestAdapterProtocol(unittest.TestCase):
             with self.subTest(host=host_type.value):
                 adapter = get_adapter(host_type)
                 self.assertIsInstance(
-                    adapter, expected_cls,
-                    f"get_adapter({host_type}) returned {type(adapter)}, expected {expected_cls}"
+                    adapter,
+                    expected_cls,
+                    f"get_adapter({host_type}) returned {type(adapter)}, expected {expected_cls}",
                 )
 
 
 if __name__ == "__main__":
     unittest.main()
-

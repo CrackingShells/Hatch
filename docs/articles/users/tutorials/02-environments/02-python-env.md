@@ -4,7 +4,7 @@
 **Concepts covered:**
 
 - Advanced Python environment operations
-- Python environment initialization and configuration  
+- Python environment initialization and configuration
 - Environment diagnostics and troubleshooting
 - Hatch MCP server wrapper management
 
@@ -104,7 +104,7 @@ Remove only the Python environment while keeping the Hatch environment:
 # With confirmation prompt
 hatch env python remove --hatch_env my_env
 
-# Force removal without prompt  
+# Force removal without prompt
 hatch env python remove --hatch_env my_env --force
 ```
 
@@ -162,5 +162,5 @@ hatch env list
 
 </details>
 
-> Previous: [Manage Environments](01-manage-envs.md)  
+> Previous: [Manage Environments](01-manage-envs.md)
 > Next: [Checkpoint](03-checkpoint.md)

@@ -40,10 +40,10 @@ class ClaudeHostStrategy(MCPHostStrategy):
     def get_config_key(self) -> str:
         """Claude family uses 'mcpServers' key."""
         return "mcpServers"
-    
+
     def validate_server_config(self, server_config: MCPServerConfig) -> bool:
         """Claude family validation - accepts any valid command or URL.
-        
+
         Claude Desktop accepts both absolute and relative paths for commands.
         Commands are resolved at runtime using the system PATH, similar to
         how shell commands work. This validation only checks that either a
@@ -57,27 +57,29 @@ class ClaudeHostStrategy(MCPHostStrategy):
             return True
         # Reject if neither command nor URL is provided
         return False
-    
-    def _preserve_claude_settings(self, existing_config: Dict, new_servers: Dict) -> Dict:
+
+    def _preserve_claude_settings(
+        self, existing_config: Dict, new_servers: Dict
+    ) -> Dict:
         """Preserve Claude-specific settings when updating configuration."""
         # Preserve non-MCP settings like theme, auto_update, etc.
         preserved_config = existing_config.copy()
         preserved_config[self.get_config_key()] = new_servers
         return preserved_config
-    
+
     def read_configuration(self) -> HostConfiguration:
         """Read Claude configuration file."""
         config_path = self.get_config_path()
         if not config_path or not config_path.exists():
             return HostConfiguration()
-        
+
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config_data = json.load(f)
-            
+
             # Extract MCP servers from Claude configuration
             mcp_servers = config_data.get(self.get_config_key(), {})
-            
+
             # Convert to MCPServerConfig objects
             servers = {}
             for name, server_data in mcp_servers.items():
@@ -86,14 +88,16 @@ class ClaudeHostStrategy(MCPHostStrategy):
                 except Exception as e:
                     logger.warning(f"Invalid server config for {name}: {e}")
                     continue
-            
+
             return HostConfiguration(servers=servers)
-            
+
         except Exception as e:
             logger.error(f"Failed to read Claude configuration: {e}")
             return HostConfiguration()
-    
-    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
         """Write Claude configuration file using adapter-based serialization."""
         config_path = self.get_config_path()
         if not config_path:
@@ -107,7 +111,7 @@ class ClaudeHostStrategy(MCPHostStrategy):
             existing_config = {}
             if config_path.exists():
                 try:
-                    with open(config_path, 'r') as f:
+                    with open(config_path, "r") as f:
                         existing_config = json.load(f)
                 except Exception:
                     pass  # Start with empty config if read fails
@@ -119,11 +123,13 @@ class ClaudeHostStrategy(MCPHostStrategy):
                 servers_dict[name] = adapter.serialize(server_config)
 
             # Preserve Claude-specific settings
-            updated_config = self._preserve_claude_settings(existing_config, servers_dict)
+            updated_config = self._preserve_claude_settings(
+                existing_config, servers_dict
+            )
 
             # Write atomically
-            temp_path = config_path.with_suffix('.tmp')
-            with open(temp_path, 'w') as f:
+            temp_path = config_path.with_suffix(".tmp")
+            with open(temp_path, "w") as f:
                 json.dump(updated_config, f, indent=2)
 
             temp_path.replace(config_path)
@@ -137,19 +143,31 @@ class ClaudeHostStrategy(MCPHostStrategy):
 @register_host_strategy(MCPHostType.CLAUDE_DESKTOP)
 class ClaudeDesktopStrategy(ClaudeHostStrategy):
     """Configuration strategy for Claude Desktop."""
-    
+
     def get_config_path(self) -> Optional[Path]:
         """Get Claude Desktop configuration path."""
         system = platform.system()
-        
+
         if system == "Darwin":  # macOS
-            return Path.home() / "Library" / "Application Support" / "Claude" / "claude_desktop_config.json"
+            return (
+                Path.home()
+                / "Library"
+                / "Application Support"
+                / "Claude"
+                / "claude_desktop_config.json"
+            )
         elif system == "Windows":
-            return Path.home() / "AppData" / "Roaming" / "Claude" / "claude_desktop_config.json"
+            return (
+                Path.home()
+                / "AppData"
+                / "Roaming"
+                / "Claude"
+                / "claude_desktop_config.json"
+            )
         elif system == "Linux":
             return Path.home() / ".config" / "Claude" / "claude_desktop_config.json"
         return None
-    
+
     def is_host_available(self) -> bool:
         """Check if Claude Desktop is installed."""
         config_path = self.get_config_path()
@@ -233,7 +251,7 @@ class CursorBasedHostStrategy(MCPHostStrategy):
             return HostConfiguration()
 
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config_data = json.load(f)
 
             # Extract MCP servers
@@ -254,7 +272,9 @@ class CursorBasedHostStrategy(MCPHostStrategy):
             logger.error(f"Failed to read Cursor configuration: {e}")
             return HostConfiguration()
 
-    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
         """Write Cursor-based configuration file using adapter-based serialization."""
         config_path = self.get_config_path()
         if not config_path:
@@ -268,7 +288,7 @@ class CursorBasedHostStrategy(MCPHostStrategy):
             existing_config = {}
             if config_path.exists():
                 try:
-                    with open(config_path, 'r') as f:
+                    with open(config_path, "r") as f:
                         existing_config = json.load(f)
                 except Exception:
                     pass
@@ -283,8 +303,8 @@ class CursorBasedHostStrategy(MCPHostStrategy):
             existing_config[self.get_config_key()] = servers_dict
 
             # Write atomically
-            temp_path = config_path.with_suffix('.tmp')
-            with open(temp_path, 'w') as f:
+            temp_path = config_path.with_suffix(".tmp")
+            with open(temp_path, "w") as f:
                 json.dump(existing_config, f, indent=2)
 
             temp_path.replace(config_path)
@@ -298,11 +318,11 @@ class CursorBasedHostStrategy(MCPHostStrategy):
 @register_host_strategy(MCPHostType.CURSOR)
 class CursorHostStrategy(CursorBasedHostStrategy):
     """Configuration strategy for Cursor IDE."""
-    
+
     def get_config_path(self) -> Optional[Path]:
         """Get Cursor configuration path."""
         return Path.home() / ".cursor" / "mcp.json"
-    
+
     def is_host_available(self) -> bool:
         """Check if Cursor IDE is installed."""
         cursor_dir = Path.home() / ".cursor"
@@ -323,7 +343,6 @@ class LMStudioHostStrategy(CursorBasedHostStrategy):
 
     def is_host_available(self) -> bool:
         """Check if LM Studio is installed."""
-        config_path = self.get_config_path()
         return self.get_config_path().parent.exists()
 
 
@@ -345,7 +364,14 @@ class VSCodeHostStrategy(MCPHostStrategy):
                 return appdata / "Code" / "User" / "mcp.json"
             elif system == "Darwin":  # macOS
                 # macOS: $HOME/Library/Application Support/Code/User/mcp.json
-                return Path.home() / "Library" / "Application Support" / "Code" / "User" / "mcp.json"
+                return (
+                    Path.home()
+                    / "Library"
+                    / "Application Support"
+                    / "Code"
+                    / "User"
+                    / "mcp.json"
+                )
             elif system == "Linux":
                 # Linux: $HOME/.config/Code/User/mcp.json
                 return Path.home() / ".config" / "Code" / "User" / "mcp.json"
@@ -384,7 +410,7 @@ class VSCodeHostStrategy(MCPHostStrategy):
             return HostConfiguration()
 
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config_data = json.load(f)
 
             # Extract MCP servers from direct structure
@@ -404,8 +430,10 @@ class VSCodeHostStrategy(MCPHostStrategy):
         except Exception as e:
             logger.error(f"Failed to read VS Code configuration: {e}")
             return HostConfiguration()
-    
-    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
         """Write VS Code mcp.json configuration using adapter-based serialization."""
         config_path = self.get_config_path()
         if not config_path:
@@ -419,7 +447,7 @@ class VSCodeHostStrategy(MCPHostStrategy):
             existing_config = {}
             if config_path.exists():
                 try:
-                    with open(config_path, 'r') as f:
+                    with open(config_path, "r") as f:
                         existing_config = json.load(f)
                 except Exception:
                     pass
@@ -434,8 +462,8 @@ class VSCodeHostStrategy(MCPHostStrategy):
             existing_config[self.get_config_key()] = servers_dict
 
             # Write atomically
-            temp_path = config_path.with_suffix('.tmp')
-            with open(temp_path, 'w') as f:
+            temp_path = config_path.with_suffix(".tmp")
+            with open(temp_path, "w") as f:
                 json.dump(existing_config, f, indent=2)
 
             temp_path.replace(config_path)
@@ -482,7 +510,7 @@ class KiroHostStrategy(MCPHostStrategy):
             return HostConfiguration(servers={})
 
         try:
-            with open(config_path, 'r', encoding='utf-8') as f:
+            with open(config_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
             servers = {}
@@ -501,7 +529,9 @@ class KiroHostStrategy(MCPHostStrategy):
             logger.error(f"Failed to read Kiro configuration: {e}")
             return HostConfiguration(servers={})
 
-    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
         """Write configuration to Kiro with backup support using adapter-based serialization."""
         config_path_str = self.get_config_path()
         if not config_path_str:
@@ -516,7 +546,7 @@ class KiroHostStrategy(MCPHostStrategy):
             # Read existing configuration to preserve other settings
             existing_data = {}
             if config_path.exists():
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     existing_data = json.load(f)
 
             # Use adapter for serialization (includes validation and field filtering)
@@ -536,7 +566,7 @@ class KiroHostStrategy(MCPHostStrategy):
                 data=existing_data,
                 backup_manager=backup_manager,
                 hostname="kiro",
-                skip_backup=no_backup
+                skip_backup=no_backup,
             )
 
             return True
@@ -581,7 +611,7 @@ class GeminiHostStrategy(MCPHostStrategy):
             return HostConfiguration()
 
         try:
-            with open(config_path, 'r') as f:
+            with open(config_path, "r") as f:
                 config_data = json.load(f)
 
             # Extract MCP servers from Gemini configuration
@@ -602,7 +632,9 @@ class GeminiHostStrategy(MCPHostStrategy):
             logger.error(f"Failed to read Gemini configuration: {e}")
             return HostConfiguration()
 
-    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
         """Write Gemini settings.json configuration using adapter-based serialization."""
         config_path = self.get_config_path()
         if not config_path:
@@ -616,7 +648,7 @@ class GeminiHostStrategy(MCPHostStrategy):
             existing_config = {}
             if config_path.exists():
                 try:
-                    with open(config_path, 'r') as f:
+                    with open(config_path, "r") as f:
                         existing_config = json.load(f)
                 except Exception:
                     pass
@@ -631,13 +663,13 @@ class GeminiHostStrategy(MCPHostStrategy):
             existing_config[self.get_config_key()] = servers_dict
 
             # Write atomically with enhanced error handling
-            temp_path = config_path.with_suffix('.tmp')
+            temp_path = config_path.with_suffix(".tmp")
             try:
-                with open(temp_path, 'w') as f:
+                with open(temp_path, "w") as f:
                     json.dump(existing_config, f, indent=2, ensure_ascii=False)
 
                 # Verify the JSON is valid by reading it back
-                with open(temp_path, 'r') as f:
+                with open(temp_path, "r") as f:
                     json.load(f)  # This will raise an exception if JSON is invalid
 
                 # Only replace if verification succeeds
@@ -695,11 +727,11 @@ class CodexHostStrategy(MCPHostStrategy):
             return HostConfiguration(servers={})
 
         try:
-            with open(config_path, 'rb') as f:
+            with open(config_path, "rb") as f:
                 toml_data = tomllib.load(f)
 
             # Preserve [features] section for later write
-            self._preserved_features = toml_data.get('features', {})
+            self._preserved_features = toml_data.get("features", {})
 
             # Extract MCP servers from [mcp_servers.*] tables
             mcp_servers = toml_data.get(self.get_config_key(), {})
@@ -720,7 +752,9 @@ class CodexHostStrategy(MCPHostStrategy):
             logger.error(f"Failed to read Codex configuration: {e}")
             return HostConfiguration(servers={})
 
-    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
         """Write Codex TOML configuration file with backup support using adapter-based serialization."""
         config_path = self.get_config_path()
         if not config_path:
@@ -733,14 +767,14 @@ class CodexHostStrategy(MCPHostStrategy):
             existing_data = {}
             if config_path.exists():
                 try:
-                    with open(config_path, 'rb') as f:
+                    with open(config_path, "rb") as f:
                         existing_data = tomllib.load(f)
                 except Exception:
                     pass
 
             # Preserve [features] section
-            if 'features' in existing_data:
-                self._preserved_features = existing_data['features']
+            if "features" in existing_data:
+                self._preserved_features = existing_data["features"]
 
             # Use adapter for serialization (includes validation and field filtering)
             adapter = get_adapter(self.get_adapter_host_name())
@@ -755,14 +789,14 @@ class CodexHostStrategy(MCPHostStrategy):
 
             # Preserve [features] at top
             if self._preserved_features:
-                final_data['features'] = self._preserved_features
+                final_data["features"] = self._preserved_features
 
             # Add MCP servers
             final_data[self.get_config_key()] = servers_data
 
             # Preserve other top-level keys
             for key, value in existing_data.items():
-                if key not in ('features', self.get_config_key()):
+                if key not in ("features", self.get_config_key()):
                     final_data[key] = value
 
             # Use atomic write with TOML serializer
@@ -780,7 +814,7 @@ class CodexHostStrategy(MCPHostStrategy):
                 serializer=toml_serializer,
                 backup_manager=backup_manager,
                 hostname="codex",
-                skip_backup=no_backup
+                skip_backup=no_backup,
             )
 
             return True
@@ -809,8 +843,8 @@ class CodexHostStrategy(MCPHostStrategy):
         data = dict(server_data)
 
         # Map Codex 'http_headers' to universal 'headers' for MCPServerConfig
-        if 'http_headers' in data:
-            data['headers'] = data.pop('http_headers')
+        if "http_headers" in data:
+            data["headers"] = data.pop("http_headers")
 
         return data
 
@@ -822,11 +856,11 @@ class CodexHostStrategy(MCPHostStrategy):
         data = server_config.model_dump(exclude_unset=True)
 
         # Remove 'name' field as it's the table key in TOML
-        data.pop('name', None)
+        data.pop("name", None)
 
         # Map universal 'headers' to Codex 'http_headers' for TOML
-        if 'headers' in data:
-            data['http_headers'] = data.pop('headers')
+        if "headers" in data:
+            data["http_headers"] = data.pop("headers")
 
         return data
 
@@ -839,10 +873,10 @@ class CodexHostStrategy(MCPHostStrategy):
         result = dict(data)
 
         # Remove 'name' field as it's the table key in TOML
-        result.pop('name', None)
+        result.pop("name", None)
 
         # Map universal 'headers' to Codex 'http_headers' for TOML
-        if 'headers' in result:
-            result['http_headers'] = result.pop('headers')
+        if "headers" in result:
+            result["http_headers"] = result.pop("headers")
 
         return result

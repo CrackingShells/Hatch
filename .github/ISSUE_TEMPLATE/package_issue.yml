@@ -137,7 +137,7 @@ body:
           ...
         }
         ```
-        
+
         For validation issues, also include the validation output:
         hatch validate <package-dir>
       render: markdown

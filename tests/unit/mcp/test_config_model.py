@@ -16,7 +16,7 @@ class TestMCPServerConfig(unittest.TestCase):
     def test_UM01_valid_stdio_config(self):
         """UM-01: Valid stdio config with command field."""
         config = MCPServerConfig(name="test", command="python")
-        
+
         self.assertEqual(config.command, "python")
         self.assertTrue(config.is_local_server)
         self.assertFalse(config.is_remote_server)
@@ -24,7 +24,7 @@ class TestMCPServerConfig(unittest.TestCase):
     def test_UM02_valid_sse_config(self):
         """UM-02: Valid SSE config with url field."""
         config = MCPServerConfig(name="test", url="https://example.com/mcp")
-        
+
         self.assertEqual(config.url, "https://example.com/mcp")
         self.assertFalse(config.is_local_server)
         self.assertTrue(config.is_remote_server)
@@ -32,7 +32,7 @@ class TestMCPServerConfig(unittest.TestCase):
     def test_UM03_valid_http_config_gemini(self):
         """UM-03: Valid HTTP config with httpUrl field (Gemini-style)."""
         config = MCPServerConfig(name="test", httpUrl="https://example.com/http")
-        
+
         self.assertEqual(config.httpUrl, "https://example.com/http")
         # httpUrl is considered remote
         self.assertTrue(config.is_remote_server)
@@ -40,8 +40,10 @@ class TestMCPServerConfig(unittest.TestCase):
     def test_UM04_allows_command_and_url(self):
         """UM-04: Unified model allows both command and url (adapters validate)."""
         # The unified model is permissive - adapters enforce host-specific rules
-        config = MCPServerConfig(name="test", command="python", url="https://example.com")
-        
+        config = MCPServerConfig(
+            name="test", command="python", url="https://example.com"
+        )
+
         self.assertEqual(config.command, "python")
         self.assertEqual(config.url, "https://example.com")
 
@@ -49,8 +51,10 @@ class TestMCPServerConfig(unittest.TestCase):
         """UM-05: Reject config with no transport specified."""
         with self.assertRaises(ValidationError) as context:
             MCPServerConfig(name="test")
-        
-        self.assertIn("At least one transport must be specified", str(context.exception))
+
+        self.assertIn(
+            "At least one transport must be specified", str(context.exception)
+        )
 
     def test_UM06_accept_all_fields(self):
         """UM-06: Accept config with many fields set."""
@@ -63,7 +67,7 @@ class TestMCPServerConfig(unittest.TestCase):
             cwd="/workspace",
             timeout=30000,
         )
-        
+
         self.assertEqual(config.name, "full-server")
         self.assertEqual(config.args, ["-m", "server"])
         self.assertEqual(config.env, {"API_KEY": "secret"})
@@ -75,11 +79,9 @@ class TestMCPServerConfig(unittest.TestCase):
         """UM-07: Extra/unknown fields are allowed (extra='allow')."""
         # Create config with extra fields via model_construct to bypass validation
         config = MCPServerConfig.model_construct(
-            name="test",
-            command="python",
-            unknown_field="value"
+            name="test", command="python", unknown_field="value"
         )
-        
+
         # The model should allow extra fields
         self.assertEqual(config.command, "python")
 
@@ -87,13 +89,13 @@ class TestMCPServerConfig(unittest.TestCase):
         """Test URL format validation - must start with http:// or https://."""
         with self.assertRaises(ValidationError) as context:
             MCPServerConfig(name="test", url="ftp://example.com")
-        
+
         self.assertIn("URL must start with http:// or https://", str(context.exception))
 
     def test_command_whitespace_stripped(self):
         """Test command field strips leading/trailing whitespace."""
         config = MCPServerConfig(name="test", command="  python  ")
-        
+
         self.assertEqual(config.command, "python")
 
     def test_command_empty_rejected(self):
@@ -109,13 +111,13 @@ class TestMCPServerConfig(unittest.TestCase):
             args=["server.py"],
             env={"KEY": "value"},
         )
-        
+
         # Serialize to dict
         data = config.model_dump(exclude_none=True)
-        
+
         # Reconstruct from dict
         reconstructed = MCPServerConfig.model_validate(data)
-        
+
         self.assertEqual(reconstructed.name, config.name)
         self.assertEqual(reconstructed.command, config.command)
         self.assertEqual(reconstructed.args, config.args)
@@ -143,4 +145,3 @@ class TestMCPServerConfigProperties(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

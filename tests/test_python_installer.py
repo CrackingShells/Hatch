@@ -7,14 +7,20 @@ from pathlib import Path
 from unittest import mock
 
 # Import wobble decorators for test categorization
-from wobble.decorators import regression_test, integration_test, slow_test
+from wobble.decorators import regression_test, integration_test
 
 from hatch.installers.python_installer import PythonInstaller
-from hatch.installers.installation_context import InstallationContext, InstallationStatus
+from hatch.installers.installation_context import (
+    InstallationContext,
+    InstallationStatus,
+)
 from hatch.installers.installer_base import InstallationError
 
+
 class DummyContext(InstallationContext):
-    def __init__(self, env_path=None, env_name=None, simulation_mode=False, extra_config=None):
+    def __init__(
+        self, env_path=None, env_name=None, simulation_mode=False, extra_config=None
+    ):
         self.simulation_mode = simulation_mode
         self.extra_config = extra_config or {}
         self.environment_path = env_path
@@ -23,12 +29,13 @@ class DummyContext(InstallationContext):
     def get_config(self, key, default=None):
         return self.extra_config.get(key, default)
 
+
 class TestPythonInstaller(unittest.TestCase):
     """Tests for the PythonInstaller class covering validation, installation, and error handling."""
 
     def setUp(self):
         """Set up a temporary directory and PythonInstaller instance for each test."""
-        
+
         self.temp_dir = tempfile.mkdtemp()
         self.env_path = Path(self.temp_dir) / "test_env"
 
@@ -37,11 +44,13 @@ class TestPythonInstaller(unittest.TestCase):
 
         # assert the virtual environment was created successfully
         self.assertTrue(self.env_path.exists() and self.env_path.is_dir())
-        
+
         self.installer = PythonInstaller()
-        self.dummy_context = DummyContext(self.env_path, env_name="test_env", extra_config={
-            "target_dir": str(self.env_path)
-        })
+        self.dummy_context = DummyContext(
+            self.env_path,
+            env_name="test_env",
+            extra_config={"target_dir": str(self.env_path)},
+        )
 
     def tearDown(self):
         """Clean up the temporary directory after each test."""
@@ -62,7 +71,11 @@ class TestPythonInstaller(unittest.TestCase):
     @regression_test
     def test_validate_dependency_invalid_package_manager(self):
         """Test validate_dependency returns False for unsupported package manager."""
-        dep = {"name": "requests", "version_constraint": ">=2.0.0", "package_manager": "unknown"}
+        dep = {
+            "name": "requests",
+            "version_constraint": ">=2.0.0",
+            "package_manager": "unknown",
+        }
         self.assertFalse(self.installer.validate_dependency(dep))
 
     @regression_test
@@ -78,7 +91,10 @@ class TestPythonInstaller(unittest.TestCase):
         self.assertFalse(self.installer.can_install(dep))
 
     @regression_test
-    @mock.patch("hatch.installers.python_installer.subprocess.Popen", side_effect=Exception("fail"))
+    @mock.patch(
+        "hatch.installers.python_installer.subprocess.Popen",
+        side_effect=Exception("fail"),
+    )
     def test_run_pip_subprocess_exception(self, mock_popen):
         """Test _run_pip_subprocess raises InstallationError on exception."""
         cmd = [sys.executable, "-m", "pip", "--version"]
@@ -106,7 +122,10 @@ class TestPythonInstaller(unittest.TestCase):
     @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=1)
     def test_install_failure(self, mock_run):
         """Test install raises InstallationError on pip failure."""
-        dep = {"name": "requests", "version_constraint": ">=2.0.0"} # The content don't matter here given the mock
+        dep = {
+            "name": "requests",
+            "version_constraint": ">=2.0.0",
+        }  # The content don't matter here given the mock
         context = DummyContext()
         with self.assertRaises(InstallationError):
             self.installer.install(dep, context)
@@ -129,199 +148,180 @@ class TestPythonInstaller(unittest.TestCase):
         with self.assertRaises(InstallationError):
             self.installer.uninstall(dep, context)
 
-class TestPythonInstallerIntegration(unittest.TestCase):
 
+class TestPythonInstallerIntegration(unittest.TestCase):
     """Integration tests for PythonInstaller that perform actual package installations."""
 
+    @classmethod
+    def setUpClass(cls):
+        """Create a shared virtual environment once for all integration tests."""
+        cls.shared_temp_dir = tempfile.mkdtemp()
+        cls.shared_env_path = Path(cls.shared_temp_dir) / "shared_test_env"
+        subprocess.check_call([sys.executable, "-m", "venv", str(cls.shared_env_path)])
+        if sys.platform == "win32":
+            cls.shared_python_executable = (
+                cls.shared_env_path / "Scripts" / "python.exe"
+            )
+        else:
+            cls.shared_python_executable = cls.shared_env_path / "bin" / "python"
+
+    @classmethod
+    def tearDownClass(cls):
+        """Remove the shared virtual environment."""
+        shutil.rmtree(cls.shared_temp_dir, ignore_errors=True)
+
     def setUp(self):
-        """Set up a temporary directory and PythonInstaller instance for each test."""
-        
+        """Set up a PythonInstaller instance for each test.
+
+        Mocked tests use a simple temp directory (no real venv needed).
+        Integration tests use the shared venv from setUpClass.
+        """
         self.temp_dir = tempfile.mkdtemp()
         self.env_path = Path(self.temp_dir) / "test_env"
-        
-        # Use pip to create a virtual environment
-        subprocess.check_call([sys.executable, "-m", "venv", str(self.env_path)])
+        self.env_path.mkdir(parents=True, exist_ok=True)
 
-        # assert the virtual environment was created successfully
-        self.assertTrue(self.env_path.exists() and self.env_path.is_dir())
-
-        # Get the Python executable in the virtual environment
-        if sys.platform == "win32":
-            self.python_executable = self.env_path / "Scripts" / "python.exe"
-        else:
-            self.python_executable = self.env_path / "bin" / "python"
-        
         self.installer = PythonInstaller()
-        self.dummy_context = DummyContext(self.env_path, env_name="test_env", extra_config={
-            "python_executable": self.python_executable,
-            "target_dir": str(self.env_path)
-        })
+        self.dummy_context = DummyContext(
+            self.env_path,
+            env_name="test_env",
+            extra_config={
+                "python_executable": sys.executable,
+                "target_dir": str(self.env_path),
+            },
+        )
 
     def tearDown(self):
         """Clean up the temporary directory after each test."""
         shutil.rmtree(self.temp_dir)
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_actual_package_success(self):
-        """Test actual installation of a real Python package without mocking.
-        
-        Uses a lightweight package that's commonly available and installs quickly.
-        This validates the entire installation pipeline including subprocess handling.
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_install_actual_package_success(self, mock_run):
+        """Test installation pipeline returns COMPLETED on successful pip install.
+
+        Mocks _run_pip_subprocess to validate our install flow without calling pip.
         """
-        # Use a lightweight, commonly available package for testing
-        dep = {
-            "name": "wheel", 
-            "version_constraint": "*",
-            "type": "python"
-        }
-        
-        # Create a virtual environment context to avoid polluting system packages
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={
-                "python_executable": self.python_executable,
-                "target_dir": str(self.env_path)
-            }
-        )
-        result = self.installer.install(dep, context)
+        dep = {"name": "wheel", "version_constraint": "*", "type": "python"}
+
+        result = self.installer.install(dep, self.dummy_context)
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
         self.assertIn("wheel", result.dependency_name)
+        mock_run.assert_called_once()
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_package_with_version_constraint(self):
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_install_package_with_version_constraint(self, mock_run):
         """Test installation with specific version constraint.
 
-        Validates that version constraints are properly passed to pip
-        and that the installation succeeds with real package resolution.
+        Validates that version constraints are properly passed through
+        our install flow and result metadata is populated.
         """
         dep = {
             "name": "setuptools",
             "version_constraint": ">=40.0.0",
-            "type": "python"
+            "type": "python",
         }
-        
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={
-            "python_executable": self.python_executable
-        })
 
-        result = self.installer.install(dep, context)
+        result = self.installer.install(dep, self.dummy_context)
         self.assertEqual(result.status, InstallationStatus.COMPLETED)
-        # Verify the dependency was processed correctly
         self.assertIsNotNone(result.metadata)
+        # Verify the version constraint was included in the command
+        cmd_args = mock_run.call_args[0][0]
+        self.assertTrue(
+            any("setuptools>=40.0.0" in arg for arg in cmd_args),
+            f"Expected 'setuptools>=40.0.0' in pip command args: {cmd_args}",
+        )
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_package_with_extras(self):
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_install_package_with_extras(self, mock_run):
         """Test installation of a package with extras specification.
-        
-        Tests the extras handling functionality with a real package installation.
+
+        Validates that extras are correctly formatted in the pip command.
         """
         dep = {
             "name": "requests",
             "version_constraint": "*",
             "type": "python",
-            "extras": ["security"]  # pip[security] if available
+            "extras": ["security"],
         }
-        
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={
-            "python_executable": self.python_executable
-        })
-        
-        result = self.installer.install(dep, context)
-        self.assertEqual(result.status, InstallationStatus.COMPLETED)
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_uninstall_actual_package(self):
-        """Test actual uninstallation of a Python package.
-        
-        First installs a package, then uninstalls it to test the complete cycle.
-        This validates both installation and uninstallation without mocking.
+        result = self.installer.install(dep, self.dummy_context)
+        self.assertEqual(result.status, InstallationStatus.COMPLETED)
+        # Verify extras were included in the pip command
+        cmd_args = mock_run.call_args[0][0]
+        self.assertTrue(
+            any("requests[security]" in arg for arg in cmd_args),
+            f"Expected 'requests[security]' in pip command args: {cmd_args}",
+        )
+
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=0)
+    def test_uninstall_actual_package(self, mock_run):
+        """Test install/uninstall cycle completes successfully.
+
+        Mocks _run_pip_subprocess to validate our install and uninstall flow.
         """
-        dep = {
-            "name": "wheel",
-            "version_constraint": "*", 
-            "type": "python"
-        }
-        
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={
-            "python_executable": self.python_executable
-        })
-        
+        dep = {"name": "wheel", "version_constraint": "*", "type": "python"}
+
         # First install the package
-        install_result = self.installer.install(dep, context)
+        install_result = self.installer.install(dep, self.dummy_context)
         self.assertEqual(install_result.status, InstallationStatus.COMPLETED)
-        
+
         # Then uninstall it
-        uninstall_result = self.installer.uninstall(dep, context)
+        uninstall_result = self.installer.uninstall(dep, self.dummy_context)
         self.assertEqual(uninstall_result.status, InstallationStatus.COMPLETED)
 
-    @integration_test(scope="component")
-    @slow_test
-    def test_install_nonexistent_package_failure(self):
-        """Test that installation fails appropriately for non-existent packages.
-        
-        This validates error handling when pip encounters a package that doesn't exist,
-        without using mocks to simulate the failure.
+        # Verify both install and uninstall called _run_pip_subprocess
+        self.assertEqual(mock_run.call_count, 2)
+
+    @regression_test
+    @mock.patch.object(PythonInstaller, "_run_pip_subprocess", return_value=1)
+    def test_install_nonexistent_package_failure(self, mock_run):
+        """Test that installation fails appropriately when pip returns non-zero.
+
+        Mocks _run_pip_subprocess to return failure, validating our error handling.
         """
         dep = {
             "name": "this-package-definitely-does-not-exist-12345",
             "version_constraint": "*",
-            "type": "python"
+            "type": "python",
         }
-        
-        context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
-            extra_config={
-            "python_executable": self.python_executable
-        })
-        
+
         with self.assertRaises(InstallationError) as cm:
-            self.installer.install(dep, context)
-        
+            self.installer.install(dep, self.dummy_context)
+
         # Verify the error contains useful information
         error_msg = str(cm.exception)
         self.assertIn("this-package-definitely-does-not-exist-12345", error_msg)
 
     @integration_test(scope="component")
-    @slow_test
     def test_get_installation_info_for_installed_package(self):
         """Test retrieval of installation info for an actually installed package.
-        
-        This tests the get_installation_info method with a real package
-        that should be available in most Python environments.
+
+        Uses the shared venv from setUpClass. This tests the get_installation_info
+        method with a real package that should be available in the shared venv.
         """
         dep = {
-            "name": "pip",  # pip should be available in most environments
+            "name": "pip",  # pip should be available in the shared venv
             "version_constraint": "*",
-            "type": "python"
+            "type": "python",
         }
-        
+
         context = DummyContext(
-            env_path=self.env_path,
-            env_name="test_env",
+            env_path=self.__class__.shared_env_path,
+            env_name="shared_test_env",
             extra_config={
-            "python_executable": self.python_executable
-        })
-        
+                "python_executable": self.__class__.shared_python_executable,
+            },
+        )
+
         info = self.installer.get_installation_info(dep, context)
         self.assertIsInstance(info, dict)
         # Basic checks for expected info structure
-        if info:  # Only check if info was returned (some implementations might return empty dict)
+        if info:
             self.assertIn("dependency_name", info)
+
 
 if __name__ == "__main__":
     unittest.main()

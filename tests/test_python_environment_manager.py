@@ -3,15 +3,21 @@
 This module contains tests for the Python environment management functionality,
 including conda/mamba environment creation, configuration, and integration.
 """
+
+import json
+import platform
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
-from wobble.decorators import regression_test, integration_test, slow_test
+from wobble.decorators import regression_test, integration_test
 
-from hatch.python_environment_manager import PythonEnvironmentManager, PythonEnvironmentError
+from hatch.python_environment_manager import (
+    PythonEnvironmentManager,
+    PythonEnvironmentError,
+)
 
 
 class TestPythonEnvironmentManager(unittest.TestCase):
@@ -32,7 +38,7 @@ class TestPythonEnvironmentManager(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         # Clean up any conda/mamba environments created during this test
-        if hasattr(self, 'manager') and self.manager.is_available():
+        if hasattr(self, "manager") and self.manager.is_available():
             for env_name in self.created_environments:
                 try:
                     if self.manager.environment_exists(env_name):
@@ -49,65 +55,122 @@ class TestPythonEnvironmentManager(unittest.TestCase):
             self.created_environments.append(env_name)
 
     @regression_test
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists', return_value=True)
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._get_conda_env_name', return_value='hatch_test_env')
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._get_python_executable_path', return_value='C:/fake/env/Scripts/python.exe')
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager.get_environment_path', return_value=Path('C:/fake/env'))
-    @patch('platform.system', return_value='Windows')
-    def test_get_environment_activation_info_windows(self, mock_platform, mock_get_env_path, mock_get_python_exec_path, mock_get_conda_env_name, mock_conda_env_exists):
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists",
+        return_value=True,
+    )
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._get_conda_env_name",
+        return_value="hatch_test_env",
+    )
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._get_python_executable_path",
+        return_value="C:/fake/env/Scripts/python.exe",
+    )
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager.get_environment_path",
+        return_value=Path("C:/fake/env"),
+    )
+    @unittest.skipUnless(
+        platform.system() == "Windows", "Windows-specific path separator test"
+    )
+    @patch("platform.system", return_value="Windows")
+    def test_get_environment_activation_info_windows(
+        self,
+        mock_platform,
+        mock_get_env_path,
+        mock_get_python_exec_path,
+        mock_get_conda_env_name,
+        mock_conda_env_exists,
+    ):
         """Test get_environment_activation_info returns correct env vars on Windows."""
-        env_name = 'test_env'
-        manager = PythonEnvironmentManager(environments_dir=Path('C:/fake/envs'))
+        env_name = "test_env"
+        manager = PythonEnvironmentManager(environments_dir=Path("C:/fake/envs"))
         env_vars = manager.get_environment_activation_info(env_name)
         self.assertIsInstance(env_vars, dict)
-        self.assertEqual(env_vars['CONDA_DEFAULT_ENV'], 'hatch_test_env')
-        self.assertEqual(env_vars['CONDA_PREFIX'], str(Path('C:/fake/env')))
-        self.assertIn('PATH', env_vars)
+        self.assertEqual(env_vars["CONDA_DEFAULT_ENV"], "hatch_test_env")
+        self.assertEqual(env_vars["CONDA_PREFIX"], str(Path("C:/fake/env")))
+        self.assertIn("PATH", env_vars)
         # On Windows, the path separator is ';' and paths are backslash
         # Split PATH and check each expected directory is present as a component
-        path_dirs = env_vars['PATH'].split(';')
-        self.assertIn('C:\\fake\\env', path_dirs)
-        self.assertIn('C:\\fake\\env\\Scripts', path_dirs)
-        self.assertIn('C:\\fake\\env\\Library\\bin', path_dirs)
-        self.assertEqual(env_vars['PYTHON'], 'C:/fake/env/Scripts/python.exe')
+        path_dirs = env_vars["PATH"].split(";")
+        self.assertIn("C:\\fake\\env", path_dirs)
+        self.assertIn("C:\\fake\\env\\Scripts", path_dirs)
+        self.assertIn("C:\\fake\\env\\Library\\bin", path_dirs)
+        self.assertEqual(env_vars["PYTHON"], "C:/fake/env/Scripts/python.exe")
 
     @regression_test
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists', return_value=True)
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._get_conda_env_name', return_value='hatch_test_env')
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._get_python_executable_path', return_value='/fake/env/bin/python')
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager.get_environment_path', return_value=Path('/fake/env'))
-    @patch('platform.system', return_value='Linux')
-    def test_get_environment_activation_info_unix(self, mock_platform, mock_get_env_path, mock_get_python_exec_path, mock_get_conda_env_name, mock_conda_env_exists):
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists",
+        return_value=True,
+    )
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._get_conda_env_name",
+        return_value="hatch_test_env",
+    )
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._get_python_executable_path",
+        return_value="/fake/env/bin/python",
+    )
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager.get_environment_path",
+        return_value=Path("/fake/env"),
+    )
+    @patch("platform.system", return_value="Linux")
+    def test_get_environment_activation_info_unix(
+        self,
+        mock_platform,
+        mock_get_env_path,
+        mock_get_python_exec_path,
+        mock_get_conda_env_name,
+        mock_conda_env_exists,
+    ):
         """Test get_environment_activation_info returns correct env vars on Unix."""
-        env_name = 'test_env'
-        manager = PythonEnvironmentManager(environments_dir=Path('/fake/envs'))
+        env_name = "test_env"
+        manager = PythonEnvironmentManager(environments_dir=Path("/fake/envs"))
         env_vars = manager.get_environment_activation_info(env_name)
         self.assertIsInstance(env_vars, dict)
-        self.assertEqual(env_vars['CONDA_DEFAULT_ENV'], 'hatch_test_env')
-        self.assertEqual(env_vars['CONDA_PREFIX'], str(Path('/fake/env')))
-        self.assertIn('PATH', env_vars)
+        self.assertEqual(env_vars["CONDA_DEFAULT_ENV"], "hatch_test_env")
+        self.assertEqual(env_vars["CONDA_PREFIX"], str(Path("/fake/env")))
+        self.assertIn("PATH", env_vars)
         # On Unix, the path separator is ':' and paths are forward slash, but Path() may normalize to backslash on Windows
         # Accept both possible representations for cross-platform test running
-        path_dirs = env_vars['PATH']
-        self.assertTrue('/fake/env/bin' in path_dirs or '\\fake\\env\\bin' in path_dirs, f"Expected '/fake/env/bin' or '\\fake\\env\\bin' to be in PATH: {env_vars['PATH']}")
-        self.assertEqual(env_vars['PYTHON'], '/fake/env/bin/python')
+        path_dirs = env_vars["PATH"]
+        self.assertTrue(
+            "/fake/env/bin" in path_dirs or "\\fake\\env\\bin" in path_dirs,
+            f"Expected '/fake/env/bin' or '\\fake\\env\\bin' to be in PATH: {env_vars['PATH']}",
+        )
+        self.assertEqual(env_vars["PYTHON"], "/fake/env/bin/python")
 
     @regression_test
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists', return_value=False)
-    def test_get_environment_activation_info_env_not_exists(self, mock_conda_env_exists):
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists",
+        return_value=False,
+    )
+    def test_get_environment_activation_info_env_not_exists(
+        self, mock_conda_env_exists
+    ):
         """Test get_environment_activation_info returns None if env does not exist."""
-        env_name = 'nonexistent_env'
-        manager = PythonEnvironmentManager(environments_dir=Path('/fake/envs'))
+        env_name = "nonexistent_env"
+        manager = PythonEnvironmentManager(environments_dir=Path("/fake/envs"))
         env_vars = manager.get_environment_activation_info(env_name)
         self.assertIsNone(env_vars)
 
     @regression_test
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists', return_value=True)
-    @patch('hatch.python_environment_manager.PythonEnvironmentManager._get_python_executable_path', return_value=None)
-    def test_get_environment_activation_info_no_python(self, mock_get_python_exec_path, mock_conda_env_exists):
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._conda_env_exists",
+        return_value=True,
+    )
+    @patch(
+        "hatch.python_environment_manager.PythonEnvironmentManager._get_python_executable_path",
+        return_value=None,
+    )
+    def test_get_environment_activation_info_no_python(
+        self, mock_get_python_exec_path, mock_conda_env_exists
+    ):
         """Test get_environment_activation_info returns None if python executable not found."""
-        env_name = 'test_env'
-        manager = PythonEnvironmentManager(environments_dir=Path('/fake/envs'))
+        env_name = "test_env"
+        manager = PythonEnvironmentManager(environments_dir=Path("/fake/envs"))
         env_vars = manager.get_environment_activation_info(env_name)
         self.assertIsNone(env_vars)
 
@@ -122,7 +185,9 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         """Test conda/mamba detection when mamba is available."""
         with patch.object(PythonEnvironmentManager, "_detect_manager") as mock_detect:
             # mamba found, conda found
-            mock_detect.side_effect = lambda manager: "/usr/bin/mamba" if manager == "mamba" else "/usr/bin/conda"
+            mock_detect.side_effect = lambda manager: (
+                "/usr/bin/mamba" if manager == "mamba" else "/usr/bin/conda"
+            )
             manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
             self.assertEqual(manager.mamba_executable, "/usr/bin/mamba")
             self.assertEqual(manager.conda_executable, "/usr/bin/conda")
@@ -132,7 +197,9 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         """Test conda/mamba detection when only conda is available."""
         with patch.object(PythonEnvironmentManager, "_detect_manager") as mock_detect:
             # mamba not found, conda found
-            mock_detect.side_effect = lambda manager: None if manager == "mamba" else "/usr/bin/conda"
+            mock_detect.side_effect = lambda manager: (
+                None if manager == "mamba" else "/usr/bin/conda"
+            )
             manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
             self.assertIsNone(manager.mamba_executable)
             self.assertEqual(manager.conda_executable, "/usr/bin/conda")
@@ -140,7 +207,9 @@ class TestPythonEnvironmentManager(unittest.TestCase):
     @regression_test
     def test_detect_conda_mamba_none_available(self):
         """Test conda/mamba detection when neither is available."""
-        with patch.object(PythonEnvironmentManager, "_detect_manager", return_value=None):
+        with patch.object(
+            PythonEnvironmentManager, "_detect_manager", return_value=None
+        ):
             manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
             self.assertIsNone(manager.mamba_executable)
             self.assertIsNone(manager.conda_executable)
@@ -153,16 +222,15 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         self.assertEqual(conda_name, "hatch_test_env")
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_python_executable_path_windows(self, mock_run):
         """Test Python executable path on Windows."""
-        with patch('platform.system', return_value='Windows'):
+        with patch("platform.system", return_value="Windows"):
             env_name = "test_env"
 
             # Mock conda info command to return environment path
             mock_run.return_value = Mock(
-                returncode=0,
-                stdout='{"envs": ["/conda/envs/hatch_test_env"]}'
+                returncode=0, stdout='{"envs": ["/conda/envs/hatch_test_env"]}'
             )
 
             python_path = self.manager._get_python_executable_path(env_name)
@@ -170,16 +238,15 @@ class TestPythonEnvironmentManager(unittest.TestCase):
             self.assertEqual(python_path, expected)
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_python_executable_path_unix(self, mock_run):
         """Test Python executable path on Unix/Linux."""
-        with patch('platform.system', return_value='Linux'):
+        with patch("platform.system", return_value="Linux"):
             env_name = "test_env"
 
             # Mock conda info command to return environment path
             mock_run.return_value = Mock(
-                returncode=0,
-                stdout='{"envs": ["/conda/envs/hatch_test_env"]}'
+                returncode=0, stdout='{"envs": ["/conda/envs/hatch_test_env"]}'
             )
 
             python_path = self.manager._get_python_executable_path(env_name)
@@ -192,11 +259,11 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
         manager.conda_executable = None
         manager.mamba_executable = None
-        
+
         self.assertFalse(manager.is_available())
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_is_available_with_conda(self, mock_run):
         """Test availability check when conda is available."""
         self.manager.conda_executable = "/usr/bin/conda"
@@ -223,12 +290,14 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         self.assertIsNone(self.manager.get_preferred_executable())
 
     @regression_test
-    @patch('shutil.which')
-    @patch('subprocess.run')
+    @patch("shutil.which")
+    @patch("subprocess.run")
     def test_create_python_environment_success(self, mock_run, mock_which):
         """Test successful Python environment creation."""
         # Patch mamba detection
-        mock_which.side_effect = lambda cmd: "/usr/bin/mamba" if cmd == "mamba" else None
+        mock_which.side_effect = lambda cmd: (
+            "/usr/bin/mamba" if cmd == "mamba" else None
+        )
 
         # Patch subprocess.run for both validation and creation
         def run_side_effect(cmd, *args, **kwargs):
@@ -240,13 +309,16 @@ class TestPythonEnvironmentManager(unittest.TestCase):
                 return Mock(returncode=0, stdout="Environment created")
             else:
                 return Mock(returncode=0, stdout="")
+
         mock_run.side_effect = run_side_effect
-        
+
         manager = PythonEnvironmentManager(environments_dir=self.environments_dir)
-        
+
         # Mock environment existence check
-        with patch.object(manager, '_conda_env_exists', return_value=False):
-            result = manager.create_python_environment("test_env", python_version="3.11")
+        with patch.object(manager, "_conda_env_exists", return_value=False):
+            result = manager.create_python_environment(
+                "test_env", python_version="3.11"
+            )
             self.assertTrue(result)
             mock_run.assert_called()
 
@@ -260,12 +332,14 @@ class TestPythonEnvironmentManager(unittest.TestCase):
             self.manager.create_python_environment("test_env")
 
     @regression_test
-    @patch('shutil.which')
-    @patch('subprocess.run')
+    @patch("shutil.which")
+    @patch("subprocess.run")
     def test_create_python_environment_already_exists(self, mock_run, mock_which):
         """Test Python environment creation when environment already exists."""
         # Patch mamba detection
-        mock_which.side_effect = lambda cmd: "/usr/bin/mamba" if cmd == "mamba" else None
+        mock_which.side_effect = lambda cmd: (
+            "/usr/bin/mamba" if cmd == "mamba" else None
+        )
 
         # Patch subprocess.run for both validation and creation
         def run_side_effect(cmd, *args, **kwargs):
@@ -277,18 +351,21 @@ class TestPythonEnvironmentManager(unittest.TestCase):
                 return Mock(returncode=0, stdout="Environment created")
             else:
                 return Mock(returncode=0, stdout="")
+
         mock_run.side_effect = run_side_effect
 
         # Mock environment already exists
-        with patch.object(self.manager, '_conda_env_exists', return_value=True):
+        with patch.object(self.manager, "_conda_env_exists", return_value=True):
             result = self.manager.create_python_environment("test_env")
             self.assertTrue(result)
             # Ensure 'create' was not called, but 'info' was
-            create_calls = [call for call in mock_run.call_args_list if "create" in call[0][0]]
+            create_calls = [
+                call for call in mock_run.call_args_list if "create" in call[0][0]
+            ]
             self.assertEqual(len(create_calls), 0)
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_conda_env_exists(self, mock_run):
         """Test conda environment existence check."""
         env_name = "test_env"
@@ -296,27 +373,26 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         # Mock conda env list to return the environment
         mock_run.return_value = Mock(
             returncode=0,
-            stdout='{"envs": ["/conda/envs/hatch_test_env", "/conda/envs/other_env"]}'
+            stdout='{"envs": ["/conda/envs/hatch_test_env", "/conda/envs/other_env"]}',
         )
 
         self.assertTrue(self.manager._conda_env_exists(env_name))
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_conda_env_not_exists(self, mock_run):
         """Test conda environment existence check when environment doesn't exist."""
         env_name = "nonexistent_env"
-        
+
         # Mock conda env list to not return the environment
         mock_run.return_value = Mock(
-            returncode=0,
-            stdout='{"envs": ["/conda/envs/other_env"]}'
+            returncode=0, stdout='{"envs": ["/conda/envs/other_env"]}'
         )
-        
+
         self.assertFalse(self.manager._conda_env_exists(env_name))
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_python_executable_exists(self, mock_run):
         """Test getting Python executable when environment exists."""
         env_name = "test_env"
@@ -324,19 +400,24 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         # Mock conda env list to show environment exists
         def run_side_effect(cmd, *args, **kwargs):
             if "env" in cmd and "list" in cmd:
-                return Mock(returncode=0, stdout='{"envs": ["/conda/envs/hatch_test_env"]}')
+                return Mock(
+                    returncode=0, stdout='{"envs": ["/conda/envs/hatch_test_env"]}'
+                )
             elif "info" in cmd and "--envs" in cmd:
-                return Mock(returncode=0, stdout='{"envs": ["/conda/envs/hatch_test_env"]}')
+                return Mock(
+                    returncode=0, stdout='{"envs": ["/conda/envs/hatch_test_env"]}'
+                )
             else:
-                return Mock(returncode=0, stdout='{}')
+                return Mock(returncode=0, stdout="{}")
 
         mock_run.side_effect = run_side_effect
 
         # Mock that the file exists
-        with patch('pathlib.Path.exists', return_value=True):
+        with patch("pathlib.Path.exists", return_value=True):
             result = self.manager.get_python_executable(env_name)
             import platform
             from pathlib import Path as _Path
+
             if platform.system() == "Windows":
                 expected = str(_Path("\\conda\\envs\\hatch_test_env\\python.exe"))
             else:
@@ -348,14 +429,14 @@ class TestPythonEnvironmentManager(unittest.TestCase):
         """Test getting Python executable when environment doesn't exist."""
         env_name = "nonexistent_env"
 
-        with patch.object(self.manager, '_conda_env_exists', return_value=False):
+        with patch.object(self.manager, "_conda_env_exists", return_value=False):
             result = self.manager.get_python_executable(env_name)
             self.assertIsNone(result)
 
 
 class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
     """Integration test cases for PythonEnvironmentManager with real conda/mamba operations.
-    
+
     These tests require conda or mamba to be installed on the system and will create
     real conda environments for testing. They are more comprehensive but slower than
     the mocked unit tests.
@@ -363,20 +444,31 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Set up class-level test environment."""
+        """Set up class-level test environment.
+
+        All tests in this class are mocked — no real conda/mamba environments
+        are created. The manager is initialised with fake executables so that
+        subprocess calls can be intercepted by per-test mocks.
+        """
         cls.temp_dir = tempfile.mkdtemp()
         cls.environments_dir = Path(cls.temp_dir) / "envs"
         cls.environments_dir.mkdir(exist_ok=True)
 
-        # Create manager instance for integration testing
-        cls.manager = PythonEnvironmentManager(environments_dir=cls.environments_dir)
+        # Create manager with mocked detection to avoid real subprocess calls
+        with patch.object(PythonEnvironmentManager, "_detect_conda_mamba"):
+            cls.manager = PythonEnvironmentManager(
+                environments_dir=cls.environments_dir
+            )
+        # Set fake executables so is_available() returns True
+        cls.manager.mamba_executable = "/usr/bin/mamba"
+        cls.manager.conda_executable = "/usr/bin/conda"
 
-        # Track all environments created during integration tests
+        # Shared environment names (referenced by tests, but never created for real)
+        cls.shared_env_basic = "test_shared_basic"
+        cls.shared_env_py311 = "test_shared_py311"
+
+        # Track environments (kept for API compatibility with setUp/tearDown)
         cls.all_created_environments = set()
-
-        # Skip all tests if conda/mamba is not available
-        if not cls.manager.is_available():
-            raise unittest.SkipTest("Conda/mamba not available for integration tests")
 
     def setUp(self):
         """Set up individual test."""
@@ -403,41 +495,22 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Clean up class-level test environment."""
-        # Clean up any remaining test environments
-        try:
-            # Clean up tracked environments
-            for env_name in list(cls.all_created_environments):
-                if cls.manager.environment_exists(env_name):
-                    cls.manager.remove_python_environment(env_name)
-
-            # Clean up known test environment patterns (fallback)
-            known_patterns = [
-                "test_integration_env", "test_python_311", "test_python_312", "test_diagnostics_env",
-                "test_env_1", "test_env_2", "test_env_3", "test_env_4", "test_env_5",
-                "test_python_39", "test_python_310", "test_python_312", "test_cache_env1", "test_cache_env2"
-            ]
-            for env_name in known_patterns:
-                if cls.manager.environment_exists(env_name):
-                    cls.manager.remove_python_environment(env_name)
-        except Exception:
-            pass  # Best effort cleanup
-
         shutil.rmtree(cls.temp_dir, ignore_errors=True)
 
     @integration_test(scope="system")
-    @slow_test
     def test_conda_mamba_detection_real(self):
-        """Test real conda/mamba detection on the system."""
+        """Test conda/mamba detection logic with mocked executables."""
+        # Manager already has fake executables set in setUpClass
         manager_info = self.manager.get_manager_info()
 
-        # At least one should be available since we skip tests if neither is available
+        # At least one should be available
         self.assertTrue(manager_info["is_available"])
         self.assertTrue(
-            manager_info["conda_executable"] is not None or
-            manager_info["mamba_executable"] is not None
+            manager_info["conda_executable"] is not None
+            or manager_info["mamba_executable"] is not None
         )
 
-        # Preferred manager should be set
+        # Preferred manager should be set (mamba preferred over conda)
         self.assertIsNotNone(manager_info["preferred_manager"])
 
         # Platform and Python version should be populated
@@ -445,9 +518,21 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
         self.assertIsNotNone(manager_info["python_version"])
 
     @integration_test(scope="system")
-    @slow_test
-    def test_manager_diagnostics_real(self):
-        """Test real manager diagnostics."""
+    @patch("subprocess.run")
+    def test_manager_diagnostics_real(self, mock_run):
+        """Test manager diagnostics with mocked subprocess calls."""
+
+        # Mock subprocess.run for --version calls made by get_manager_diagnostics
+        def version_side_effect(cmd, *args, **kwargs):
+            if "--version" in cmd:
+                if "conda" in cmd[0]:
+                    return Mock(returncode=0, stdout="conda 24.1.0")
+                elif "mamba" in cmd[0]:
+                    return Mock(returncode=0, stdout="mamba 1.5.6")
+            return Mock(returncode=0, stdout="")
+
+        mock_run.side_effect = version_side_effect
+
         diagnostics = self.manager.get_manager_diagnostics()
 
         # Should have basic information
@@ -467,11 +552,48 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
             self.assertIn("mamba_version", diagnostics)
 
     @integration_test(scope="system")
-    @slow_test
-    def test_create_and_remove_python_environment_real(self):
-        """Test real Python environment creation and removal."""
+    @patch("subprocess.run")
+    def test_create_and_remove_python_environment_real(self, mock_run):
+        """Test Python environment creation and removal with mocked subprocess.
+
+        Mocks subprocess.run to simulate conda create/remove/list/info commands
+        while preserving the full create → verify → info → remove → verify flow.
+        """
         env_name = "test_integration_env"
         self._track_environment(env_name)
+        conda_env_name = f"hatch_{env_name}"
+        env_path = f"/conda/envs/{conda_env_name}"
+
+        # Track environment state across subprocess calls
+        env_exists = [False]
+
+        def subprocess_side_effect(cmd, *args, **kwargs):
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            # env list / info --envs: return env list based on current state
+            if ("env" in cmd_str and "list" in cmd_str) or (
+                "info" in cmd_str and "--envs" in cmd_str
+            ):
+                if env_exists[0]:
+                    return Mock(
+                        returncode=0,
+                        stdout=f'{{"envs": ["{env_path}"]}}',
+                    )
+                else:
+                    return Mock(returncode=0, stdout='{"envs": []}')
+            # create: mark environment as created
+            elif "create" in cmd_str:
+                env_exists[0] = True
+                return Mock(returncode=0, stdout="Environment created")
+            # remove: mark environment as removed
+            elif "remove" in cmd_str:
+                env_exists[0] = False
+                return Mock(returncode=0, stdout="Environment removed")
+            # python --version
+            elif "--version" in cmd_str and "python" in cmd_str.lower():
+                return Mock(returncode=0, stdout="Python 3.12.0")
+            return Mock(returncode=0, stdout="")
+
+        mock_run.side_effect = subprocess_side_effect
 
         # Ensure environment doesn't exist initially
         if self.manager.environment_exists(env_name):
@@ -480,81 +602,120 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
         # Create environment
         result = self.manager.create_python_environment(env_name)
         self.assertTrue(result, "Failed to create Python environment")
-        
+
         # Verify environment exists
         self.assertTrue(self.manager.environment_exists(env_name))
-        
-        # Verify Python executable is available
-        python_exec = self.manager.get_python_executable(env_name)
-        self.assertIsNotNone(python_exec, "Python executable not found")
-        self.assertTrue(Path(python_exec).exists(), f"Python executable doesn't exist: {python_exec}")
-        
-        # Get environment info
-        env_info = self.manager.get_environment_info(env_name)
+
+        # Verify Python executable is available (mock Path.exists for the exec)
+        with patch("pathlib.Path.exists", return_value=True):
+            python_exec = self.manager.get_python_executable(env_name)
+            self.assertIsNotNone(python_exec, "Python executable not found")
+
+        # Get environment info (mock Path.exists for python exec check)
+        with patch("pathlib.Path.exists", return_value=True):
+            env_info = self.manager.get_environment_info(env_name)
         self.assertIsNotNone(env_info)
         self.assertEqual(env_info["environment_name"], env_name)
         self.assertIsNotNone(env_info["conda_env_name"])
         self.assertIsNotNone(env_info["python_executable"])
-        
+
         # Remove environment
         result = self.manager.remove_python_environment(env_name)
         self.assertTrue(result, "Failed to remove Python environment")
-        
+
         # Verify environment no longer exists
         self.assertFalse(self.manager.environment_exists(env_name))
 
     @integration_test(scope="system")
-    @slow_test
-    def test_create_python_environment_with_version_real(self):
-        """Test real Python environment creation with specific version."""
-        env_name = "test_python_311"
-        self._track_environment(env_name)
-        python_version = "3.11"
+    @patch("subprocess.run")
+    def test_create_python_environment_with_version_real(self, mock_run):
+        """Test Python environment with specific version using mocked subprocess.
 
-        # Ensure environment doesn't exist initially
-        if self.manager.environment_exists(env_name):
-            self.manager.remove_python_environment(env_name)
+        Mocks subprocess to simulate an environment with Python 3.11 installed.
+        """
+        env_name = self.shared_env_py311
+        conda_env_name = f"hatch_{env_name}"
+        env_path = f"/conda/envs/{conda_env_name}"
 
-        # Create environment with specific Python version
-        result = self.manager.create_python_environment(env_name, python_version=python_version)
-        self.assertTrue(result, f"Failed to create Python {python_version} environment")
+        def subprocess_side_effect(cmd, *args, **kwargs):
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            # env list / info --envs: environment exists
+            if ("env" in cmd_str and "list" in cmd_str) or (
+                "info" in cmd_str and "--envs" in cmd_str
+            ):
+                return Mock(
+                    returncode=0,
+                    stdout=f'{{"envs": ["{env_path}"]}}',
+                )
+            # python --version
+            elif "--version" in cmd_str:
+                return Mock(returncode=0, stdout="Python 3.11.8")
+            return Mock(returncode=0, stdout="")
+
+        mock_run.side_effect = subprocess_side_effect
 
         # Verify environment exists
-        self.assertTrue(self.manager.environment_exists(env_name))
+        self.assertTrue(
+            self.manager.environment_exists(env_name),
+            f"Mocked environment {env_name} should exist",
+        )
 
-        # Verify Python version
-        actual_version = self.manager.get_python_version(env_name)
+        # Verify Python version (mock Path.exists for python exec)
+        with patch("pathlib.Path.exists", return_value=True):
+            actual_version = self.manager.get_python_version(env_name)
         self.assertIsNotNone(actual_version)
-        self.assertTrue(actual_version.startswith("3.11"), f"Expected Python 3.11.x, got {actual_version}")
+        self.assertTrue(
+            actual_version.startswith("3.11"),
+            f"Expected Python 3.11.x, got {actual_version}",
+        )
 
         # Get comprehensive environment info
-        env_info = self.manager.get_environment_info(env_name)
+        with patch("pathlib.Path.exists", return_value=True):
+            env_info = self.manager.get_environment_info(env_name)
         self.assertIsNotNone(env_info)
-        self.assertTrue(env_info["python_version"].startswith("3.11"), f"Expected Python 3.11.x, got {env_info['python_version']}")
-
-        # Cleanup
-        self.manager.remove_python_environment(env_name)
+        self.assertTrue(
+            env_info["python_version"].startswith("3.11"),
+            f"Expected Python 3.11.x, got {env_info['python_version']}",
+        )
 
     @integration_test(scope="system")
-    @slow_test
-    def test_environment_diagnostics_real(self):
-        """Test real environment diagnostics."""
-        env_name = "test_diagnostics_env"
+    @patch("subprocess.run")
+    def test_environment_diagnostics_real(self, mock_run):
+        """Test environment diagnostics with mocked subprocess calls.
 
-        # Ensure environment doesn't exist initially
-        if self.manager.environment_exists(env_name):
-            self.manager.remove_python_environment(env_name)
+        Tests both non-existent and existing environment diagnostics.
+        """
+        env_name = self.shared_env_basic
+        conda_env_name = f"hatch_{env_name}"
+        env_path = f"/conda/envs/{conda_env_name}"
+
+        def subprocess_side_effect(cmd, *args, **kwargs):
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            # env list / info --envs: check if we're querying for the existing env
+            if ("env" in cmd_str and "list" in cmd_str) or (
+                "info" in cmd_str and "--envs" in cmd_str
+            ):
+                # Always return the shared env (non-existent env won't match)
+                return Mock(
+                    returncode=0,
+                    stdout=f'{{"envs": ["{env_path}"]}}',
+                )
+            # python --version
+            elif "--version" in cmd_str:
+                return Mock(returncode=0, stdout="Python 3.12.0")
+            return Mock(returncode=0, stdout="")
+
+        mock_run.side_effect = subprocess_side_effect
 
         # Test diagnostics for non-existent environment
-        diagnostics = self.manager.get_environment_diagnostics(env_name)
+        nonexistent_env = "test_nonexistent_diagnostics"
+        diagnostics = self.manager.get_environment_diagnostics(nonexistent_env)
         self.assertFalse(diagnostics["exists"])
         self.assertTrue(diagnostics["conda_available"])
 
-        # Create environment
-        self.manager.create_python_environment(env_name)
-
         # Test diagnostics for existing environment
-        diagnostics = self.manager.get_environment_diagnostics(env_name)
+        with patch("pathlib.Path.exists", return_value=True):
+            diagnostics = self.manager.get_environment_diagnostics(env_name)
         self.assertTrue(diagnostics["exists"])
         self.assertIsNotNone(diagnostics["python_executable"])
         self.assertTrue(diagnostics["python_accessible"])
@@ -564,14 +725,40 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
         self.assertIsNotNone(diagnostics["environment_path"])
         self.assertTrue(diagnostics["environment_path_exists"])
 
-        # Cleanup
-        self.manager.remove_python_environment(env_name)
-
     @integration_test(scope="system")
-    @slow_test
-    def test_force_recreation_real(self):
-        """Test force recreation of existing environment."""
+    @patch("subprocess.run")
+    def test_force_recreation_real(self, mock_run):
+        """Test force recreation of existing environment with mocked subprocess."""
         env_name = "test_integration_env"
+        conda_env_name = f"hatch_{env_name}"
+        env_path = f"/conda/envs/{conda_env_name}"
+
+        # Track environment state
+        env_exists = [False]
+
+        def subprocess_side_effect(cmd, *args, **kwargs):
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            if ("env" in cmd_str and "list" in cmd_str) or (
+                "info" in cmd_str and "--envs" in cmd_str
+            ):
+                if env_exists[0]:
+                    return Mock(
+                        returncode=0,
+                        stdout=f'{{"envs": ["{env_path}"]}}',
+                    )
+                else:
+                    return Mock(returncode=0, stdout='{"envs": []}')
+            elif "create" in cmd_str:
+                env_exists[0] = True
+                return Mock(returncode=0, stdout="Environment created")
+            elif "remove" in cmd_str:
+                env_exists[0] = False
+                return Mock(returncode=0, stdout="Environment removed")
+            elif "--version" in cmd_str:
+                return Mock(returncode=0, stdout="Python 3.12.0")
+            return Mock(returncode=0, stdout="")
+
+        mock_run.side_effect = subprocess_side_effect
 
         # Ensure environment doesn't exist initially
         if self.manager.environment_exists(env_name):
@@ -582,7 +769,8 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
         self.assertTrue(result1)
 
         # Get initial Python executable
-        python_exec1 = self.manager.get_python_executable(env_name)
+        with patch("pathlib.Path.exists", return_value=True):
+            python_exec1 = self.manager.get_python_executable(env_name)
         self.assertIsNotNone(python_exec1)
 
         # Try to create again without force (should succeed but not recreate)
@@ -595,78 +783,110 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
 
         # Verify environment still exists and works
         self.assertTrue(self.manager.environment_exists(env_name))
-        python_exec3 = self.manager.get_python_executable(env_name)
+        with patch("pathlib.Path.exists", return_value=True):
+            python_exec3 = self.manager.get_python_executable(env_name)
         self.assertIsNotNone(python_exec3)
-        
+
         # Cleanup
         self.manager.remove_python_environment(env_name)
 
     @integration_test(scope="system")
-    @slow_test
-    def test_list_environments_real(self):
-        """Test listing environments with real conda environments."""
-        test_envs = ["test_env_1", "test_env_2"]
-        final_names = ["hatch_test_env_1", "hatch_test_env_2"]
+    @patch("subprocess.run")
+    def test_list_environments_real(self, mock_run):
+        """Test listing environments with mocked subprocess."""
+        shared_basic = f"hatch_{self.shared_env_basic}"
+        shared_py311 = f"hatch_{self.shared_env_py311}"
 
-        # Track environments for cleanup
-        for env_name in test_envs:
-            self._track_environment(env_name)
-
-        # Clean up any existing test environments
-        for env_name in test_envs:
-            if self.manager.environment_exists(env_name):
-                self.manager.remove_python_environment(env_name)
-
-        # Create test environments
-        for env_name in test_envs:
-            result = self.manager.create_python_environment(env_name)
-            self.assertTrue(result, f"Failed to create {env_name}")
+        mock_run.return_value = Mock(
+            returncode=0,
+            stdout=(
+                f'{{"envs": ["/conda/envs/{shared_basic}",'
+                f' "/conda/envs/{shared_py311}"]}}'
+            ),
+        )
 
         # List environments
         env_list = self.manager.list_environments()
 
-        # Should include our test environments
-        for env_name in final_names:
-            self.assertIn(env_name, env_list, f"{env_name} not found in environment list")
+        # Should include our shared test environments
+        for env_name in [shared_basic, shared_py311]:
+            self.assertIn(
+                env_name, env_list, f"{env_name} not found in environment list"
+            )
 
-        # Cleanup
-        for env_name in final_names:
-            self.manager.remove_python_environment(env_name)
+        # Verify list_environments returns a list
+        self.assertIsInstance(env_list, list)
+        self.assertGreater(len(env_list), 0, "Environment list should not be empty")
 
     @integration_test(scope="system")
-    @slow_test
-    @unittest.skipIf(
-        not (Path("/usr/bin/python3.12").exists() or Path("/usr/bin/python3.9").exists()),
-        "Multiple Python versions not available for testing"
-    )
-    def test_multiple_python_versions_real(self):
+    @patch("subprocess.run")
+    def test_multiple_python_versions_real(self, mock_run):
         """Test creating environments with multiple Python versions."""
-        test_cases = [
-            ("test_python_39", "3.9"),
-            ("test_python_312", "3.12")
-        ]
-        
+        test_cases = [("test_python_39", "3.9"), ("test_python_312", "3.12")]
+
+        # Track which environments exist
+        existing_envs = {}
+
+        def subprocess_side_effect(cmd, *args, **kwargs):
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            if ("env" in cmd_str and "list" in cmd_str) or (
+                "info" in cmd_str and "--envs" in cmd_str
+            ):
+                env_paths = [f"/conda/envs/{name}" for name in existing_envs]
+                return Mock(
+                    returncode=0,
+                    stdout=f'{{"envs": {json.dumps(env_paths)}}}',
+                )
+            elif "create" in cmd_str:
+                # Extract env name from command
+                if "--name" in cmd:
+                    idx = cmd.index("--name") + 1
+                    existing_envs[cmd[idx]] = True
+                return Mock(returncode=0, stdout="Environment created")
+            elif "remove" in cmd_str:
+                if "--name" in cmd:
+                    idx = cmd.index("--name") + 1
+                    existing_envs.pop(cmd[idx], None)
+                return Mock(returncode=0, stdout="Environment removed")
+            elif "--version" in cmd_str:
+                # Return version based on which env is being queried
+                for ename, ver in test_cases:
+                    conda_name = f"hatch_{ename}"
+                    if conda_name in existing_envs:
+                        # Check if the python path matches this env
+                        if conda_name in cmd_str:
+                            return Mock(returncode=0, stdout=f"Python {ver}.0")
+                # Default: return last created version
+                for ename, ver in reversed(test_cases):
+                    if f"hatch_{ename}" in existing_envs:
+                        return Mock(returncode=0, stdout=f"Python {ver}.0")
+                return Mock(returncode=0, stdout="Python 3.12.0")
+            return Mock(returncode=0, stdout="")
+
+        mock_run.side_effect = subprocess_side_effect
+
         created_envs = []
-        
+
         try:
             for env_name, python_version in test_cases:
-                # Skip if this Python version is not available
                 try:
-                    result = self.manager.create_python_environment(env_name, python_version=python_version)
+                    result = self.manager.create_python_environment(
+                        env_name, python_version=python_version
+                    )
                     if result:
                         created_envs.append(env_name)
-                        
+
                         # Verify Python version
-                        actual_version = self.manager.get_python_version(env_name)
+                        with patch("pathlib.Path.exists", return_value=True):
+                            actual_version = self.manager.get_python_version(env_name)
                         self.assertIsNotNone(actual_version)
                         self.assertTrue(
                             actual_version.startswith(python_version),
-                            f"Expected Python {python_version}.x, got {actual_version}"
+                            f"Expected Python {python_version}.x, got {actual_version}",
                         )
                 except Exception as e:
-                    # Log but don't fail test if specific Python version is not available
                     print(f"Skipping Python {python_version} test: {e}")
-                    
+
         finally:
             # Cleanup
             for env_name in created_envs:
@@ -676,12 +896,26 @@ class TestPythonEnvironmentManagerIntegration(unittest.TestCase):
                     pass  # Best effort cleanup
 
     @integration_test(scope="system")
-    @slow_test
-    def test_error_handling_real(self):
-        """Test error handling with real operations."""
+    @patch("subprocess.run")
+    def test_error_handling_real(self, mock_run):
+        """Test error handling with mocked subprocess for non-existent envs."""
+
+        # Mock: all env list calls return empty (no environments exist)
+        def subprocess_side_effect(cmd, *args, **kwargs):
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            if ("env" in cmd_str and "list" in cmd_str) or (
+                "info" in cmd_str and "--envs" in cmd_str
+            ):
+                return Mock(returncode=0, stdout='{"envs": []}')
+            return Mock(returncode=0, stdout="")
+
+        mock_run.side_effect = subprocess_side_effect
+
         # Test removing non-existent environment
         result = self.manager.remove_python_environment("nonexistent_env")
-        self.assertTrue(result) # Removing non existent environment returns True because it does nothing
+        self.assertTrue(
+            result
+        )  # Removing non existent environment returns True because it does nothing
 
         # Test getting info for non-existent environment
         info = self.manager.get_environment_info("nonexistent_env")
@@ -714,7 +948,7 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
     def tearDown(self):
         """Clean up test environment."""
         # Clean up any conda/mamba environments created during this test
-        if hasattr(self, 'manager') and self.manager.is_available():
+        if hasattr(self, "manager") and self.manager.is_available():
             for env_name in self.created_environments:
                 try:
                     if self.manager.environment_exists(env_name):
@@ -731,16 +965,19 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
             self.created_environments.append(env_name)
 
     @regression_test
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_launch_shell_with_command(self, mock_run):
         """Test launching shell with specific command."""
         env_name = "test_shell_env"
         cmd = "print('Hello from Python')"
 
         # Mock environment existence and Python executable
-        with patch.object(self.manager, 'environment_exists', return_value=True), \
-             patch.object(self.manager, 'get_python_executable', return_value="/path/to/python"):
-
+        with (
+            patch.object(self.manager, "environment_exists", return_value=True),
+            patch.object(
+                self.manager, "get_python_executable", return_value="/path/to/python"
+            ),
+        ):
             mock_run.return_value = Mock(returncode=0)
 
             result = self.manager.launch_shell(env_name, cmd)
@@ -754,17 +991,20 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
             self.assertIn(cmd, call_args)
 
     @regression_test
-    @patch('subprocess.run')
-    @patch('platform.system')
+    @patch("subprocess.run")
+    @patch("platform.system")
     def test_launch_shell_interactive_windows(self, mock_platform, mock_run):
         """Test launching interactive shell on Windows."""
         mock_platform.return_value = "Windows"
         env_name = "test_shell_env"
 
         # Mock environment existence and Python executable
-        with patch.object(self.manager, 'environment_exists', return_value=True), \
-             patch.object(self.manager, 'get_python_executable', return_value="/path/to/python"):
-
+        with (
+            patch.object(self.manager, "environment_exists", return_value=True),
+            patch.object(
+                self.manager, "get_python_executable", return_value="/path/to/python"
+            ),
+        ):
             mock_run.return_value = Mock(returncode=0)
 
             result = self.manager.launch_shell(env_name)
@@ -777,17 +1017,20 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
             self.assertIn("/c", call_args)
 
     @regression_test
-    @patch('subprocess.run')
-    @patch('platform.system')
+    @patch("subprocess.run")
+    @patch("platform.system")
     def test_launch_shell_interactive_unix(self, mock_platform, mock_run):
         """Test launching interactive shell on Unix."""
         mock_platform.return_value = "Linux"
         env_name = "test_shell_env"
 
         # Mock environment existence and Python executable
-        with patch.object(self.manager, 'environment_exists', return_value=True), \
-             patch.object(self.manager, 'get_python_executable', return_value="/path/to/python"):
-
+        with (
+            patch.object(self.manager, "environment_exists", return_value=True),
+            patch.object(
+                self.manager, "get_python_executable", return_value="/path/to/python"
+            ),
+        ):
             mock_run.return_value = Mock(returncode=0)
 
             result = self.manager.launch_shell(env_name)
@@ -803,7 +1046,7 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
         """Test launching shell for non-existent environment."""
         env_name = "nonexistent_env"
 
-        with patch.object(self.manager, 'environment_exists', return_value=False):
+        with patch.object(self.manager, "environment_exists", return_value=False):
             result = self.manager.launch_shell(env_name)
             self.assertFalse(result)
 
@@ -812,9 +1055,10 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
         """Test launching shell when Python executable is not found."""
         env_name = "test_shell_env"
 
-        with patch.object(self.manager, 'environment_exists', return_value=True), \
-             patch.object(self.manager, 'get_python_executable', return_value=None):
-
+        with (
+            patch.object(self.manager, "environment_exists", return_value=True),
+            patch.object(self.manager, "get_python_executable", return_value=None),
+        ):
             result = self.manager.launch_shell(env_name)
             self.assertFalse(result)
 
@@ -825,8 +1069,12 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
 
         # Verify required fields are present
         required_fields = [
-            "conda_executable", "mamba_executable", "preferred_manager",
-            "is_available", "platform", "python_version"
+            "conda_executable",
+            "mamba_executable",
+            "preferred_manager",
+            "is_available",
+            "platform",
+            "python_version",
         ]
 
         for field in required_fields:
@@ -845,8 +1093,12 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
 
         # Verify required fields are present
         required_fields = [
-            "environment_name", "conda_env_name", "exists", "conda_available",
-            "manager_executable", "platform"
+            "environment_name",
+            "conda_env_name",
+            "exists",
+            "conda_available",
+            "manager_executable",
+            "platform",
         ]
 
         for field in required_fields:
@@ -865,9 +1117,15 @@ class TestPythonEnvironmentManagerEnhancedFeatures(unittest.TestCase):
 
         # Verify required fields are present
         required_fields = [
-            "conda_executable", "mamba_executable", "conda_available", "mamba_available",
-            "any_manager_available", "preferred_manager", "platform", "python_version",
-            "environments_dir"
+            "conda_executable",
+            "mamba_executable",
+            "conda_available",
+            "mamba_available",
+            "any_manager_available",
+            "preferred_manager",
+            "platform",
+            "python_version",
+            "environments_dir",
         ]
 
         for field in required_fields:

@@ -40,9 +40,9 @@ class TestAdapterRegistry(unittest.TestCase):
             "lmstudio",
             "vscode",
         }
-        
+
         actual_hosts = set(self.registry.get_supported_hosts())
-        
+
         self.assertEqual(actual_hosts, expected_hosts)
 
     def test_AR02_get_adapter_returns_correct_type(self):
@@ -57,7 +57,7 @@ class TestAdapterRegistry(unittest.TestCase):
             ("lmstudio", LMStudioAdapter),
             ("vscode", VSCodeAdapter),
         ]
-        
+
         for host_name, expected_cls in test_cases:
             with self.subTest(host=host_name):
                 adapter = self.registry.get_adapter(host_name)
@@ -68,7 +68,7 @@ class TestAdapterRegistry(unittest.TestCase):
         """AR-03: get_adapter() raises KeyError for unknown host."""
         with self.assertRaises(KeyError) as context:
             self.registry.get_adapter("unknown-host")
-        
+
         self.assertIn("unknown-host", str(context.exception))
         self.assertIn("Supported hosts", str(context.exception))
 
@@ -84,24 +84,28 @@ class TestAdapterRegistry(unittest.TestCase):
 
     def test_AR06_register_adds_new_adapter(self):
         """AR-06: register() adds a new adapter to registry."""
+
         # Create a custom adapter for testing
         class CustomAdapter(BaseAdapter):
             @property
             def host_name(self):
                 return "custom-host"
-            
+
             def get_supported_fields(self):
                 return frozenset({"command", "args"})
-            
+
             def validate(self, config):
                 pass
-            
+
+            def validate_filtered(self, filtered):
+                pass
+
             def serialize(self, config):
                 return {"command": config.command}
-        
+
         custom = CustomAdapter()
         self.registry.register(custom)
-        
+
         self.assertTrue(self.registry.has_adapter("custom-host"))
         self.assertIs(self.registry.get_adapter("custom-host"), custom)
 
@@ -109,19 +113,19 @@ class TestAdapterRegistry(unittest.TestCase):
         """AR-07: register() raises ValueError for duplicate host name."""
         # Try to register another Claude adapter
         duplicate = ClaudeAdapter(variant="desktop")
-        
+
         with self.assertRaises(ValueError) as context:
             self.registry.register(duplicate)
-        
+
         self.assertIn("claude-desktop", str(context.exception))
         self.assertIn("already registered", str(context.exception))
 
     def test_AR08_unregister_removes_adapter(self):
         """AR-08: unregister() removes adapter from registry."""
         self.assertTrue(self.registry.has_adapter("claude-desktop"))
-        
+
         self.registry.unregister("claude-desktop")
-        
+
         self.assertFalse(self.registry.has_adapter("claude-desktop"))
 
     def test_unregister_raises_for_unknown(self):
@@ -137,13 +141,13 @@ class TestGlobalRegistryFunctions(unittest.TestCase):
         """get_default_registry() returns same instance on multiple calls."""
         registry1 = get_default_registry()
         registry2 = get_default_registry()
-        
+
         self.assertIs(registry1, registry2)
 
     def test_get_adapter_uses_default_registry(self):
         """get_adapter() function uses the default registry."""
         adapter = get_adapter("claude-desktop")
-        
+
         self.assertIsInstance(adapter, ClaudeAdapter)
         self.assertEqual(adapter.host_name, "claude-desktop")
 
@@ -155,4 +159,3 @@ class TestGlobalRegistryFunctions(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

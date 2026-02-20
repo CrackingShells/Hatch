@@ -53,7 +53,7 @@ No additional dependencies to install.
 Total packages to install: 1
 ============================================================
 
-Proceed with installation? [y/N]: 
+Proceed with installation? [y/N]:
 ```
 
 For automated scenarios, use `--auto-approve` to skip confirmation prompts:
@@ -163,5 +163,5 @@ YYYY-MM-DD HH:MM:SS - hatch.package_loader - INFO - Using cached package base_pk
 
 </details>
 
-> Previous: [Create Environment](02-create-env.md)  
+> Previous: [Create Environment](02-create-env.md)
 > Next: [Checkpoint](04-checkpoint.md)

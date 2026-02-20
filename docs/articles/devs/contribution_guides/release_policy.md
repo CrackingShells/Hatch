@@ -157,7 +157,7 @@ Examples of release-triggering commits:
 ```bash
 # Triggers patch version (0.7.0 → 0.7.1)
 feat: add new package registry support
-fix: resolve dependency resolution timeout  
+fix: resolve dependency resolution timeout
 docs: update package manager documentation
 refactor: simplify package installation logic
 style: fix code formatting

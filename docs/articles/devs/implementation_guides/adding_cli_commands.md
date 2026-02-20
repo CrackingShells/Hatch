@@ -51,7 +51,7 @@ def _setup_mycommand_command(subparsers):
 ```python
 def _setup_env_commands(subparsers):
     # ... existing code ...
-    
+
     # Add new subcommand
     env_newcmd_parser = env_subparsers.add_parser(
         "newcmd", help="New environment subcommand"
@@ -84,7 +84,7 @@ In the appropriate handler module (`cli_env.py`, `cli_package.py`, etc.), implem
 ```python
 def handle_mycommand(args: Namespace) -> int:
     """Handle 'hatch mycommand' command.
-    
+
     Args:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
@@ -92,7 +92,7 @@ def handle_mycommand(args: Namespace) -> int:
             - required_arg: Description of required argument
             - optional_flag: Description of optional flag
             - dry_run: Preview changes without execution
-    
+
     Returns:
         Exit code (0 for success, 1 for error)
     """
@@ -104,38 +104,38 @@ def handle_mycommand(args: Namespace) -> int:
         request_confirmation,
         format_info,
     )
-    
+
     # Extract arguments
     env_manager = args.env_manager
     required_arg = args.required_arg
     optional_flag = getattr(args, "optional_flag", False)
     dry_run = getattr(args, "dry_run", False)
-    
+
     # Create reporter for unified output
     reporter = ResultReporter("hatch mycommand", dry_run=dry_run)
-    
+
     # Add consequences (actions to be performed)
     reporter.add(ConsequenceType.CREATE, f"Resource '{required_arg}'")
-    
+
     # Handle dry-run
     if dry_run:
         reporter.report_result()
         return EXIT_SUCCESS
-    
+
     # Show prompt and request confirmation (for mutation commands)
     prompt = reporter.report_prompt()
     if prompt:
         print(prompt)
-    
+
     if not request_confirmation("Proceed?"):
         format_info("Operation cancelled")
         return EXIT_SUCCESS
-    
+
     # Execute operation
     try:
         # Call manager methods to perform actual work
         success = env_manager.some_operation(required_arg)
-        
+
         if success:
             reporter.report_result()
             return EXIT_SUCCESS
@@ -251,7 +251,7 @@ In `hatch/cli/__main__.py`, add routing for your command:
 ```python
 def main():
     # ... existing code ...
-    
+
     # Route commands
     if args.command == "mycommand":
         from hatch.cli.cli_system import handle_mycommand
@@ -267,12 +267,12 @@ def _route_env_command(args):
         # ... existing imports ...
         handle_env_newcmd,  # Add new handler
     )
-    
+
     # ... existing routes ...
-    
+
     elif args.env_command == "newcmd":
         return handle_env_newcmd(args)
-    
+
     # ... rest of routing ...
 ```
 
@@ -404,9 +404,9 @@ def test_handle_mycommand_success(mock_env_manager):
         optional_flag=False,
         dry_run=False,
     )
-    
+
     result = handle_mycommand(args)
-    
+
     assert result == EXIT_SUCCESS
     mock_env_manager.some_operation.assert_called_once_with("test")
 
@@ -417,9 +417,9 @@ def test_handle_mycommand_dry_run(mock_env_manager):
         required_arg="test",
         dry_run=True,
     )
-    
+
     result = handle_mycommand(args)
-    
+
     assert result == EXIT_SUCCESS
     mock_env_manager.some_operation.assert_not_called()
 ```

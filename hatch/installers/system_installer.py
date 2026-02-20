@@ -7,15 +7,18 @@ with support for Ubuntu/Debian platforms, version constraints, and comprehensive
 import platform
 import subprocess
 import logging
-import re
 import shutil
-import os
 from pathlib import Path
 from typing import Dict, Any, Optional, Callable, List
 from packaging.specifiers import SpecifierSet
 
 from .installer_base import DependencyInstaller, InstallationError
-from .installation_context import InstallationContext, InstallationResult, InstallationStatus
+from .installation_context import (
+    InstallationContext,
+    InstallationResult,
+    InstallationStatus,
+)
+from .registry import installer_registry
 
 
 class SystemInstaller(DependencyInstaller):
@@ -61,11 +64,11 @@ class SystemInstaller(DependencyInstaller):
         """
         if dependency.get("type") != self.installer_type:
             return False
-        
+
         # Check platform compatibility
         if not self._is_platform_supported():
             return False
-            
+
         # Check if apt is available
         return self._is_apt_available()
 
@@ -81,25 +84,35 @@ class SystemInstaller(DependencyInstaller):
         # Required fields per schema
         required_fields = ["name", "version_constraint"]
         if not all(field in dependency for field in required_fields):
-            self.logger.error(f"Missing required fields. Expected: {required_fields}, got: {list(dependency.keys())}")
+            self.logger.error(
+                f"Missing required fields. Expected: {required_fields}, got: {list(dependency.keys())}"
+            )
             return False
 
         # Validate package manager
         package_manager = dependency.get("package_manager", "apt")
         if package_manager != "apt":
-            self.logger.error(f"Unsupported package manager: {package_manager}. Only 'apt' is supported.")
+            self.logger.error(
+                f"Unsupported package manager: {package_manager}. Only 'apt' is supported."
+            )
             return False
 
         # Validate version constraint format
         version_constraint = dependency.get("version_constraint", "")
         if not self._validate_version_constraint(version_constraint):
-            self.logger.error(f"Invalid version constraint format: {version_constraint}")
+            self.logger.error(
+                f"Invalid version constraint format: {version_constraint}"
+            )
             return False
 
         return True
 
-    def install(self, dependency: Dict[str, Any], context: InstallationContext,
-                progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def install(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Install a system dependency using apt.
 
         Args:
@@ -120,58 +133,70 @@ class SystemInstaller(DependencyInstaller):
             raise InstallationError(
                 f"Invalid dependency: {dependency}",
                 dependency_name=dependency.get("name"),
-                error_code="INVALID_DEPENDENCY"
+                error_code="INVALID_DEPENDENCY",
             )
 
         package_name = dependency["name"]
         version_constraint = dependency["version_constraint"]
 
         if progress_callback:
-            progress_callback(f"Installing {package_name}", 0.0, "Starting installation")
+            progress_callback(
+                f"Installing {package_name}", 0.0, "Starting installation"
+            )
 
-        self.logger.info(f"Installing system package: {package_name} with constraint: {version_constraint}")
+        self.logger.info(
+            f"Installing system package: {package_name} with constraint: {version_constraint}"
+        )
 
         try:
             # Handle dry-run/simulation mode
             if context.simulation_mode:
-                return self._simulate_installation(dependency, context, progress_callback)
+                return self._simulate_installation(
+                    dependency, context, progress_callback
+                )
 
             # Run apt-get update first
             update_cmd = ["sudo", "apt-get", "update"]
             update_returncode = self._run_apt_subprocess(update_cmd)
             if update_returncode != 0:
                 raise InstallationError(
-                    f"apt-get update failed (see logs for details).",
+                    "apt-get update failed (see logs for details).",
                     dependency_name=package_name,
                     error_code="APT_UPDATE_FAILED",
-                    cause=None
+                    cause=None,
                 )
 
             # Build and execute apt install command
             cmd = self._build_apt_command(dependency, context)
-            
+
             if progress_callback:
-                progress_callback(f"Installing {package_name}", 25.0, "Executing apt command")
+                progress_callback(
+                    f"Installing {package_name}", 25.0, "Executing apt command"
+                )
 
             returncode = self._run_apt_subprocess(cmd)
             self.logger.debug(f"apt command: {cmd}\nreturn code: {returncode}")
-            
+
             if returncode != 0:
                 raise InstallationError(
                     f"Installation failed for {package_name} (see logs for details).",
                     dependency_name=package_name,
                     error_code="APT_INSTALL_FAILED",
-                    cause=None
+                    cause=None,
                 )
 
             if progress_callback:
-                progress_callback(f"Installing {package_name}", 75.0, "Verifying installation")
+                progress_callback(
+                    f"Installing {package_name}", 75.0, "Verifying installation"
+                )
 
             # Verify installation
             installed_version = self._verify_installation(package_name)
-            
+
             if progress_callback:
-                progress_callback(f"Installing {package_name}", 100.0, "Installation complete")
+                progress_callback(
+                    f"Installing {package_name}", 100.0, "Installation complete"
+                )
 
             return InstallationResult(
                 dependency_name=package_name,
@@ -182,9 +207,9 @@ class SystemInstaller(DependencyInstaller):
                     "command_executed": " ".join(cmd),
                     "platform": platform.platform(),
                     "automated": context.get_config("automated", False),
-                }
+                },
             )
-        
+
         except InstallationError as e:
             self.logger.error(f"Installation error for {package_name}: {str(e)}")
             raise e
@@ -195,11 +220,15 @@ class SystemInstaller(DependencyInstaller):
                 f"Unexpected error installing {package_name}: {str(e)}",
                 dependency_name=package_name,
                 error_code="UNEXPECTED_ERROR",
-                cause=e
+                cause=e,
             )
 
-    def uninstall(self, dependency: Dict[str, Any], context: InstallationContext,
-                  progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def uninstall(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Uninstall a system dependency using apt.
 
         Args:
@@ -227,13 +256,15 @@ class SystemInstaller(DependencyInstaller):
 
             # Build apt remove command
             cmd = ["sudo", "apt", "remove", package_name]
-            
+
             # Add automation flag if configured
             if context.get_config("automated", False):
                 cmd.append("-y")
-                
+
             if progress_callback:
-                progress_callback(f"Uninstalling {package_name}", 50.0, "Executing apt remove")
+                progress_callback(
+                    f"Uninstalling {package_name}", 50.0, "Executing apt remove"
+                )
 
             # Execute command
             returncode = self._run_apt_subprocess(cmd)
@@ -243,11 +274,13 @@ class SystemInstaller(DependencyInstaller):
                     f"Uninstallation failed for {package_name} (see logs for details).",
                     dependency_name=package_name,
                     error_code="APT_UNINSTALL_FAILED",
-                    cause=None
+                    cause=None,
                 )
 
             if progress_callback:
-                progress_callback(f"Uninstalling {package_name}", 100.0, "Uninstall complete")
+                progress_callback(
+                    f"Uninstalling {package_name}", 100.0, "Uninstall complete"
+                )
 
             return InstallationResult(
                 dependency_name=package_name,
@@ -257,7 +290,7 @@ class SystemInstaller(DependencyInstaller):
                     "package_manager": "apt",
                     "command_executed": " ".join(cmd),
                     "automated": context.get_config("automated", False),
-                }
+                },
             )
         except InstallationError as e:
             self.logger.error(f"Uninstallation error for {package_name}: {str(e)}")
@@ -269,7 +302,7 @@ class SystemInstaller(DependencyInstaller):
                 f"Unexpected error uninstalling {package_name}: {str(e)}",
                 dependency_name=package_name,
                 error_code="UNEXPECTED_ERROR",
-                cause=e
+                cause=e,
             )
 
     def _is_platform_supported(self) -> bool:
@@ -282,7 +315,7 @@ class SystemInstaller(DependencyInstaller):
             # Check if we're on a Debian-based system
             if Path("/etc/debian_version").exists():
                 return True
-            
+
             # Check platform string
             system = platform.system().lower()
             if system == "linux":
@@ -291,12 +324,12 @@ class SystemInstaller(DependencyInstaller):
                     with open("/etc/os-release", "r") as f:
                         content = f.read().lower()
                         return "ubuntu" in content or "debian" in content
-                
+
                 except FileNotFoundError:
                     pass
-            
+
             return False
-        
+
         except Exception:
             return False
 
@@ -320,16 +353,20 @@ class SystemInstaller(DependencyInstaller):
         try:
             if not version_constraint.strip():
                 return True
-            
+
             SpecifierSet(version_constraint)
-            
+
             return True
-        
+
         except Exception:
-            self.logger.error(f"Invalid version constraint format: {version_constraint}")
+            self.logger.error(
+                f"Invalid version constraint format: {version_constraint}"
+            )
             return False
 
-    def _build_apt_command(self, dependency: Dict[str, Any], context: InstallationContext) -> List[str]:
+    def _build_apt_command(
+        self, dependency: Dict[str, Any], context: InstallationContext
+    ) -> List[str]:
         """Build the apt install command for the dependency.
 
         Args:
@@ -341,14 +378,14 @@ class SystemInstaller(DependencyInstaller):
         """
         package_name = dependency["name"]
         version_constraint = dependency["version_constraint"]
-        
+
         # Start with base command
         command = ["sudo", "apt", "install"]
 
         # Add automation flag if configured
         if context.get_config("automated", False):
             command.append("-y")
-        
+
         # Handle version constraints
         # apt doesn't support complex version constraints directly,
         # but we can specify exact versions for == constraints
@@ -359,8 +396,10 @@ class SystemInstaller(DependencyInstaller):
         else:
             # For other constraints (>=, <=, !=), install latest and let apt handle it
             package_spec = package_name
-            self.logger.warning(f"Version constraint {version_constraint} simplified to latest version for {package_name}")
-        
+            self.logger.warning(
+                f"Version constraint {version_constraint} simplified to latest version for {package_name}"
+            )
+
         command.append(package_spec)
         return command
 
@@ -377,14 +416,9 @@ class SystemInstaller(DependencyInstaller):
             subprocess.TimeoutExpired: If the process times out.
             InstallationError: For unexpected errors.
         """
-        env = os.environ.copy()
+        # env = os.environ.copy()  # Reserved for future environment customization
         try:
-
-            process = subprocess.Popen(
-                cmd,
-                text=True,
-                universal_newlines=True
-            )
+            process = subprocess.Popen(cmd, text=True, universal_newlines=True)
 
             process.communicate()  # Set a timeout for the command
             process.wait()  # Ensure cleanup
@@ -393,13 +427,15 @@ class SystemInstaller(DependencyInstaller):
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait()  # Ensure cleanup
-            raise InstallationError("Apt subprocess timed out", error_code="TIMEOUT", cause=None)
-        
+            raise InstallationError(
+                "Apt subprocess timed out", error_code="TIMEOUT", cause=None
+            )
+
         except Exception as e:
             raise InstallationError(
                 f"Unexpected error running apt command: {e}",
                 error_code="APT_SUBPROCESS_ERROR",
-                cause=e
+                cause=e,
             )
 
     def _verify_installation(self, package_name: str) -> Optional[str]:
@@ -416,7 +452,7 @@ class SystemInstaller(DependencyInstaller):
                 ["apt-cache", "policy", package_name],
                 text=True,
                 capture_output=True,
-                check=False
+                check=False,
             )
             if result.returncode == 0:
                 for line in result.stdout.splitlines():
@@ -455,8 +491,12 @@ class SystemInstaller(DependencyInstaller):
         else:
             return f"Apt command failed: {error_output}"
 
-    def _simulate_installation(self, dependency: Dict[str, Any], context: InstallationContext,
-                             progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def _simulate_installation(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Simulate installation without making actual changes.
 
         Args:
@@ -468,30 +508,32 @@ class SystemInstaller(DependencyInstaller):
             InstallationResult: Simulated result.
         """
         package_name = dependency["name"]
-        
+
         if progress_callback:
             progress_callback(f"Simulating {package_name}", 0.5, "Running dry-run")
 
         try:
             # Use apt's dry-run functionality - need to use apt-get with --dry-run
             cmd = ["apt-get", "install", "--dry-run", dependency["name"]]
-            
+
             # Add automation flag if configured
             if context.get_config("automated", False):
                 cmd.append("-y")
-            
+
             returncode = self._run_apt_subprocess(cmd)
-            
+
             if returncode != 0:
                 raise InstallationError(
                     f"Simulation failed for {package_name} (see logs for details).",
                     dependency_name=package_name,
                     error_code="APT_SIMULATION_FAILED",
-                    cause=None
+                    cause=None,
                 )
 
             if progress_callback:
-                progress_callback(f"Simulating {package_name}", 1.0, "Simulation complete")
+                progress_callback(
+                    f"Simulating {package_name}", 1.0, "Simulation complete"
+                )
 
             return InstallationResult(
                 dependency_name=package_name,
@@ -501,11 +543,13 @@ class SystemInstaller(DependencyInstaller):
                     "command_simulated": " ".join(cmd),
                     "automated": context.get_config("automated", False),
                     "package_manager": "apt",
-                }
+                },
             )
 
         except InstallationError as e:
-            self.logger.error(f"Error during installation simulation for {package_name}: {e.message}")
+            self.logger.error(
+                f"Error during installation simulation for {package_name}: {e.message}"
+            )
             raise e
 
         except Exception as e:
@@ -517,12 +561,16 @@ class SystemInstaller(DependencyInstaller):
                     "simulation": True,
                     "simulation_error": e,
                     "command_simulated": " ".join(cmd),
-                    "automated": context.get_config("automated", False)
-                    }
+                    "automated": context.get_config("automated", False),
+                },
             )
 
-    def _simulate_uninstall(self, dependency: Dict[str, Any], context: InstallationContext,
-                          progress_callback: Optional[Callable[[str, float, str], None]] = None) -> InstallationResult:
+    def _simulate_uninstall(
+        self,
+        dependency: Dict[str, Any],
+        context: InstallationContext,
+        progress_callback: Optional[Callable[[str, float, str], None]] = None,
+    ) -> InstallationResult:
         """Simulate uninstall without making actual changes.
 
         Args:
@@ -534,25 +582,29 @@ class SystemInstaller(DependencyInstaller):
             InstallationResult: Simulated result.
         """
         package_name = dependency["name"]
-        
+
         if progress_callback:
-            progress_callback(f"Simulating uninstall {package_name}", 0.5, "Running dry-run")
+            progress_callback(
+                f"Simulating uninstall {package_name}", 0.5, "Running dry-run"
+            )
 
         try:
             # Use apt's dry-run functionality for remove - use apt-get with --dry-run
             cmd = ["apt-get", "remove", "--dry-run", dependency["name"]]
             returncode = self._run_apt_subprocess(cmd)
-            
+
             if returncode != 0:
                 raise InstallationError(
                     f"Uninstall simulation failed for {package_name} (see logs for details).",
                     dependency_name=package_name,
                     error_code="APT_UNINSTALL_SIMULATION_FAILED",
-                    cause=None
+                    cause=None,
                 )
 
             if progress_callback:
-                progress_callback(f"Simulating uninstall {package_name}", 1.0, "Simulation complete")
+                progress_callback(
+                    f"Simulating uninstall {package_name}", 1.0, "Simulation complete"
+                )
 
             return InstallationResult(
                 dependency_name=package_name,
@@ -561,12 +613,14 @@ class SystemInstaller(DependencyInstaller):
                     "operation": "uninstall",
                     "simulation": True,
                     "command_simulated": " ".join(cmd),
-                    "automated": context.get_config("automated", False)
-                }
+                    "automated": context.get_config("automated", False),
+                },
             )
-        
+
         except InstallationError as e:
-            self.logger.error(f"Uninstall simulation error for {package_name}: {str(e)}")
+            self.logger.error(
+                f"Uninstall simulation error for {package_name}: {str(e)}"
+            )
             raise e
 
         except Exception as e:
@@ -579,10 +633,10 @@ class SystemInstaller(DependencyInstaller):
                     "simulation": True,
                     "simulation_error": str(e),
                     "command_simulated": " ".join(cmd),
-                    "automated": context.get_config("automated", False)
-                }
+                    "automated": context.get_config("automated", False),
+                },
             )
 
+
 # Register this installer with the global registry
-from .registry import installer_registry
 installer_registry.register_installer("system", SystemInstaller)

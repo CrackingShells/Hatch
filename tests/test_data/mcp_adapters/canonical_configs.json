@@ -1,0 +1,78 @@
+{
+  "claude-desktop": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio"
+  },
+  "claude-code": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio"
+  },
+  "vscode": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio",
+    "envFile": ".env",
+    "inputs": [{"id": "api-key", "type": "promptString", "description": "API Key"}]
+  },
+  "cursor": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio",
+    "envFile": ".env"
+  },
+  "lmstudio": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio"
+  },
+  "gemini": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "httpUrl": null,
+    "timeout": 30000,
+    "trust": false,
+    "cwd": "/app",
+    "includeTools": ["tool1", "tool2"],
+    "excludeTools": ["tool3"]
+  },
+  "kiro": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "disabled": false,
+    "autoApprove": ["tool1"],
+    "disabledTools": ["tool2"]
+  },
+  "codex": {
+    "command": "python",
+    "arguments": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "http_headers": null,
+    "cwd": "/app",
+    "enabled_tools": ["tool1", "tool2"],
+    "disabled_tools": ["tool3"]
+  }
+}

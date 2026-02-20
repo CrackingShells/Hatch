@@ -98,5 +98,5 @@ hatch env python info --hatch_env my_first_env # hatch_mcp_server should now app
 
 In most use cases, you'll want to create environments with Python integration and the hatch_mcp_server wrapper. However, Hatch provides flexibility to customize your environments as needed.
 
-> Previous: [Installation](01-installation.md)  
+> Previous: [Installation](01-installation.md)
 > Next: [Install Package](03-install-package.md)

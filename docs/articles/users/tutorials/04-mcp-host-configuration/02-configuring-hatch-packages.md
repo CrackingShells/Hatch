@@ -4,7 +4,7 @@
 **Concepts covered:**
 
 - Hatch package deployment with automatic dependency resolution
-- `hatch package add --host` and `hatch package sync` commands  
+- `hatch package add --host` and `hatch package sync` commands
 - Guaranteed dependency installation (Python, apt, Docker, other Hatch packages)
 - Package-first deployment advantages over direct configuration
 
@@ -29,7 +29,7 @@ Hatch packages include complete dependency specifications that are automatically
 # Package deployment handles ALL dependencies automatically
 hatch package add my-weather-server --host claude-desktop
 # ✅ Installs Python dependencies (requests, numpy, etc.)
-# ✅ Installs system dependencies (curl, git, etc.) 
+# ✅ Installs system dependencies (curl, git, etc.)
 # ✅ Installs Docker containers if specified
 # ✅ Installs other Hatch package dependencies
 # ✅ Configures MCP server on Claude Desktop
@@ -46,7 +46,7 @@ hatch package add my-weather-server --host claude-desktop
 
 **Direct Configuration (Advanced)**:
 - ❌ Manual dependency management required
-- ❌ No compatibility guarantees  
+- ❌ No compatibility guarantees
 - ❌ Multiple setup steps
 - ❌ Potential environment conflicts
 - ❌ Limited rollback options
@@ -178,7 +178,7 @@ hatch package add . --host claude-desktop
 ### Production Environment
 
 ```bash
-# Switch to production environment  
+# Switch to production environment
 hatch env use production
 
 # Deploy with production settings

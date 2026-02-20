@@ -28,7 +28,7 @@ dependencies = [
 
   [project.optional-dependencies]
   docs = [ "mkdocs>=1.4.0", "mkdocstrings[python]>=0.20.0" ]
-  dev = [ "cs-wobble>=0.2.0", "pytest>=8.0.0" ]
+  dev = [ "cs-wobble>=0.2.0", "pytest>=8.0.0", "black>=23.0.0", "ruff>=0.1.9", "pre-commit>=3.0.0" ]
 
   [project.scripts]
   hatch = "hatch.cli:main"
@@ -42,3 +42,26 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = [ "." ]
+
+[tool.pytest.ini_options]
+pythonpath = ["tests"]
+
+[tool.ruff]
+exclude = [
+  ".git",
+  ".ruff_cache",
+  "__pycache__",
+  "node_modules",
+  "site",
+  "py-repo-template",
+  "cracking-shells-playbook",
+  "__reports__",
+  "__design__",
+  "tests/test_data",
+]
+
+[tool.ruff.lint]
+# Match the original baseline analysis scope: F (pyflakes) and E (pycodestyle errors)
+# Explicitly exclude E501 (line-too-long) which wasn't in the original baseline
+select = ["E", "F"]
+ignore = ["E501"]

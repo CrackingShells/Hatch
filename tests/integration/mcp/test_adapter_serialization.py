@@ -1,23 +1,31 @@
 """Integration tests for adapter serialization.
 
+DEPRECATED: This test file is deprecated and will be removed in v0.9.0.
+Replaced by: tests/integration/mcp/test_host_configuration.py (per-host)
+             tests/integration/mcp/test_cross_host_sync.py (cross-host)
+Reason: Migrating to data-driven test architecture (see 01-test-definition_v0.md)
+
 Test IDs: AS-01 to AS-10 (per 02-test_architecture_rebuild_v0.md)
 Scope: Full serialization flow for each adapter with realistic configs.
 """
 
 import unittest
 
+import pytest
+
 from hatch.mcp_host_config.models import MCPServerConfig
 from hatch.mcp_host_config.adapters import (
     ClaudeAdapter,
     CodexAdapter,
-    CursorAdapter,
     GeminiAdapter,
     KiroAdapter,
-    LMStudioAdapter,
     VSCodeAdapter,
 )
 
+DEPRECATION_REASON = "Deprecated - replaced by data-driven tests (test_host_configuration.py, test_cross_host_sync.py)"
 
+
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestClaudeAdapterSerialization(unittest.TestCase):
     """Integration tests for Claude adapter serialization."""
 
@@ -30,10 +38,10 @@ class TestClaudeAdapterSerialization(unittest.TestCase):
             env={"API_KEY": "secret"},
             type="stdio",
         )
-        
+
         adapter = ClaudeAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "python")
         self.assertEqual(result["args"], ["-m", "mcp_server"])
         self.assertEqual(result["env"], {"API_KEY": "secret"})
@@ -48,10 +56,10 @@ class TestClaudeAdapterSerialization(unittest.TestCase):
             headers={"Authorization": "Bearer token"},
             type="sse",
         )
-        
+
         adapter = ClaudeAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["url"], "https://api.example.com/mcp")
         self.assertEqual(result["headers"], {"Authorization": "Bearer token"})
         self.assertEqual(result["type"], "sse")
@@ -59,6 +67,7 @@ class TestClaudeAdapterSerialization(unittest.TestCase):
         self.assertNotIn("command", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestGeminiAdapterSerialization(unittest.TestCase):
     """Integration tests for Gemini adapter serialization."""
 
@@ -71,10 +80,10 @@ class TestGeminiAdapterSerialization(unittest.TestCase):
             cwd="/workspace",
             timeout=30000,
         )
-        
+
         adapter = GeminiAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "npx")
         self.assertEqual(result["args"], ["mcp-server"])
         self.assertEqual(result["cwd"], "/workspace")
@@ -89,16 +98,17 @@ class TestGeminiAdapterSerialization(unittest.TestCase):
             httpUrl="https://api.example.com/http",
             trust=True,
         )
-        
+
         adapter = GeminiAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["httpUrl"], "https://api.example.com/http")
         self.assertEqual(result["trust"], True)
         self.assertNotIn("name", result)
         self.assertNotIn("type", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestVSCodeAdapterSerialization(unittest.TestCase):
     """Integration tests for VS Code adapter serialization."""
 
@@ -111,16 +121,17 @@ class TestVSCodeAdapterSerialization(unittest.TestCase):
             envFile=".env",
             type="stdio",
         )
-        
+
         adapter = VSCodeAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "node")
         self.assertEqual(result["envFile"], ".env")
         self.assertEqual(result["type"], "stdio")
         self.assertNotIn("name", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestCodexAdapterSerialization(unittest.TestCase):
     """Integration tests for Codex adapter serialization."""
 
@@ -148,6 +159,7 @@ class TestCodexAdapterSerialization(unittest.TestCase):
         self.assertNotIn("type", result)
 
 
+@pytest.mark.skip(reason=DEPRECATION_REASON)
 class TestKiroAdapterSerialization(unittest.TestCase):
     """Integration tests for Kiro adapter serialization."""
 
@@ -158,10 +170,10 @@ class TestKiroAdapterSerialization(unittest.TestCase):
             command="npx",
             args=["@modelcontextprotocol/server"],
         )
-        
+
         adapter = KiroAdapter()
         result = adapter.serialize(config)
-        
+
         self.assertEqual(result["command"], "npx")
         self.assertEqual(result["args"], ["@modelcontextprotocol/server"])
         self.assertNotIn("name", result)
@@ -170,4 +182,3 @@ class TestKiroAdapterSerialization(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

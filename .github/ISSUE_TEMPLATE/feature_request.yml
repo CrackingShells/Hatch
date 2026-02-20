@@ -84,11 +84,11 @@ body:
         If this feature involves new CLI commands, describe the proposed command structure
       placeholder: |
         Propose the command syntax and options:
-        
+
         hatch package search <query> --filter <type>
         hatch env clone <source-env> <target-env>
         hatch template list --category <category>
-        
+
         Include:
         - Command names and subcommands
         - Required and optional arguments
@@ -121,7 +121,7 @@ body:
     attributes:
       label: Implementation Ideas
       description: |
-        Do you have any ideas about how this could be implemented? 
+        Do you have any ideas about how this could be implemented?
         (Optional - only if you have technical insights)
       placeholder: |
         If you have ideas about implementation approaches, technical details, or architecture:
