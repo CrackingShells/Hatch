@@ -596,18 +596,126 @@ In practice, calling `adapter.serialize(config)` is preferred since it executes 
 
 ## Testing Strategy
 
-The test architecture uses a data-driven approach with property-based assertions:
+The test architecture uses a data-driven approach with property-based assertions. Approximately 285 test cases are auto-generated from metadata in `fields.py` and fixture data in `canonical_configs.json`.
+
+### Three-Tier Test Structure
 
 | Tier | Location | Purpose | Approach |
 |------|----------|---------|----------|
 | Unit | `tests/unit/mcp/` | Adapter protocol, model validation, registry | Traditional |
 | Integration | `tests/integration/mcp/` | Cross-host sync (64 pairs), host config (8 hosts) | Data-driven |
-| Regression | `tests/regression/mcp/` | Validation bugs, field filtering (211+ tests) | Data-driven |
+| Regression | `tests/regression/mcp/` | Validation bugs, field filtering (~285 auto-generated) | Data-driven |
 
-**Data-driven infrastructure** (`tests/test_data/mcp_adapters/`):
+### Data-Driven Infrastructure
 
-- `canonical_configs.json`: Canonical config values for all 8 hosts
-- `host_registry.py`: HostRegistry derives metadata from fields.py
-- `assertions.py`: Property-based assertions verify adapter contracts
+The module at `tests/test_data/mcp_adapters/` contains three files that form the data-driven test infrastructure:
 
-Adding a new host requires zero test code changes — only a fixture entry and fields.py update.
+| File | Role |
+|------|------|
+| `canonical_configs.json` | Fixture data: canonical config values for all 8 hosts |
+| `host_registry.py` | Registry: derives host metadata from `fields.py`, generates test cases |
+| `assertions.py` | Assertions: reusable property checks encoding adapter contracts |
+
+### `HostSpec` Dataclass
+
+`HostSpec` is the per-host test specification. It combines minimal fixture data (config values) with complete metadata derived from `fields.py`:
+
+```python
+@dataclass
+class HostSpec:
+    host_name: str                           # e.g., "claude-desktop", "codex"
+    canonical_config: Dict[str, Any]         # Raw config values from fixture (host-native names)
+    supported_fields: FrozenSet[str]         # From fields.py (e.g., CLAUDE_FIELDS)
+    field_mappings: Dict[str, str]           # From fields.py (e.g., CODEX_FIELD_MAPPINGS)
+```
+
+Key methods:
+
+- `load_config()` -- Builds an `MCPServerConfig` from canonical config values, applying reverse field mappings for hosts with non-standard names (e.g., Codex `arguments` -> `args`)
+- `get_adapter()` -- Instantiates the correct adapter for this host (handles `ClaudeAdapter` variant dispatch)
+- `compute_expected_fields(input_fields)` -- Returns `(input_fields & supported_fields) - EXCLUDED_ALWAYS`, predicting which fields should survive filtering
+
+### `HostRegistry` Class
+
+`HostRegistry` bridges fixture data with `fields.py` metadata. At construction time, it loads `canonical_configs.json` and derives each host's `HostSpec` by looking up the corresponding field set in the `FIELD_SETS` mapping (which maps host names to `fields.py` constants like `CLAUDE_FIELDS`, `GEMINI_FIELDS`, etc.):
+
+```python
+registry = HostRegistry(Path("tests/test_data/mcp_adapters/canonical_configs.json"))
+```
+
+Methods:
+
+- `all_hosts()` -- Returns all `HostSpec` instances sorted by name
+- `get_host(name)` -- Returns a specific `HostSpec` by host name
+- `all_pairs()` -- Generates all `(from_host, to_host)` combinations for O(n^2) cross-host sync testing (8 x 8 = 64 pairs)
+- `hosts_supporting_field(field_name)` -- Finds hosts that support a specific field (e.g., all hosts supporting `httpUrl`)
+
+### Generator Functions
+
+Three generator functions create parameterized test cases from registry data. These are called at module level and fed directly to `pytest.mark.parametrize`:
+
+- `generate_sync_test_cases(registry)` -- Produces one `SyncTestCase` per (from, to) host pair (64 cases for 8 hosts)
+- `generate_validation_test_cases(registry)` -- Produces `ValidationTestCase` entries for transport mutual exclusion (all hosts) and tool list coexistence (hosts with tool list support)
+- `generate_unsupported_field_test_cases(registry)` -- For each host, computes the set of fields it does NOT support (from the union of all host field sets) and produces one `FilterTestCase` per unsupported field
+
+### Assertion Functions
+
+The `assertions.py` module contains 7 `assert_*` functions that encode adapter contracts as reusable property checks. Tests call these functions instead of writing inline assertions:
+
+| Function | Contract Verified |
+|----------|-------------------|
+| `assert_only_supported_fields()` | Result contains only fields from `fields.py` for this host (including mapped names) |
+| `assert_excluded_fields_absent()` | `EXCLUDED_ALWAYS` fields (e.g., `name`) are not in result |
+| `assert_transport_present()` | At least one transport field (`command`, `url`, `httpUrl`) is present |
+| `assert_transport_mutual_exclusion()` | Exactly one transport field is present |
+| `assert_field_mappings_applied()` | Universal field names are replaced by host-native names (e.g., no `args` in Codex output) |
+| `assert_tool_lists_coexist()` | Both allowlist and denylist fields are present when applicable |
+| `assert_unsupported_field_absent()` | A specific unsupported field was filtered out |
+
+### `canonical_configs.json` Structure
+
+The fixture file uses a flat JSON schema mapping host names to field-value pairs:
+
+```json
+{
+  "claude-desktop": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio"
+  },
+  "codex": {
+    "command": "python",
+    "arguments": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "http_headers": null,
+    "cwd": "/app",
+    "enabled_tools": ["tool1", "tool2"],
+    "disabled_tools": ["tool3"]
+  }
+}
+```
+
+Note that Codex entries use host-native field names (e.g., `arguments` instead of `args`, `http_headers` instead of `headers`). The `HostSpec.load_config()` method applies reverse mappings (`CODEX_REVERSE_MAPPINGS`) to convert these back to universal names when constructing `MCPServerConfig` objects.
+
+### Adding a New Host to Tests
+
+Adding a new host does not require changes to any test files. The generators automatically pick up the new host. The required steps are:
+
+1. Add a new entry in `canonical_configs.json` with representative config values using the host's native field names
+2. Add the host's field set to the `FIELD_SETS` mapping in `host_registry.py` (mapping the host name to the corresponding constant from `fields.py`)
+3. Update `fields.py` with the new host's field set constant
+
+No changes to actual test files (`test_cross_host_sync.py`, `test_host_configuration.py`, etc.) are needed -- the generators pick up the new host automatically via the registry.
+
+### Deprecated Test Files
+
+Two legacy test files are marked with `@pytest.mark.skip` and scheduled for removal in v0.9.0:
+
+- `tests/integration/mcp/test_adapter_serialization.py` -- Replaced by `test_host_configuration.py` (per-host) and `test_cross_host_sync.py` (cross-host)
+- `tests/regression/mcp/test_field_filtering.py` -- Replaced by `test_field_filtering_v2.py` (data-driven)
+
+These files remain in the codebase for reference during the migration period but are not executed in CI.
