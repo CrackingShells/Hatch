@@ -11,7 +11,7 @@ The Unified Adapter Architecture requires only **4 integration points**:
 | ☐ Host type enum | Always | `models.py` |
 | ☐ Adapter class | Always | `adapters/your_host.py`, `adapters/__init__.py` |
 | ☐ Strategy class | Always | `strategies.py` |
-| ☐ Test infrastructure | Always | `tests/unit/mcp/`, `tests/integration/mcp/` |
+| ☐ Test fixtures | Always | `tests/test_data/mcp_adapters/canonical_configs.json`, `host_registry.py` |
 
 > **Note:** No host-specific models, no `from_omni()` conversion, no model registry integration. The unified model handles all fields.
 
@@ -240,32 +240,76 @@ class YourHostStrategy(CursorBasedHostStrategy):
         return self.get_config_path().parent.exists()
 ```
 
-### Step 4: Add Tests
+### Step 4: Register Test Fixtures
 
-**Unit tests** (`tests/unit/mcp/test_your_host_adapter.py`):
+Hatch uses a **data-driven test infrastructure** that auto-generates parameterized tests for all adapters. Adding a new host requires fixture data updates, but **zero changes to test functions** themselves.
+
+#### a) Add canonical config to `tests/test_data/mcp_adapters/canonical_configs.json`
+
+Add an entry keyed by your host name, using **host-native field names** (i.e., the names your host's config file uses, after any field mappings). Values should represent a valid stdio-transport configuration:
+
+```json
+{
+  "your-host": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio"
+  }
+}
+```
+
+For hosts with field mappings (like Codex, which uses `arguments` instead of `args`), use the host-native names in the fixture:
+
+```json
+{
+  "codex": {
+    "command": "python",
+    "arguments": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "http_headers": null
+  }
+}
+```
+
+#### b) Add field set to `FIELD_SETS` in `tests/test_data/mcp_adapters/host_registry.py`
+
+Map your host name to its field set constant from `fields.py`:
 
 ```python
-class TestYourHostAdapter(unittest.TestCase):
-    def setUp(self):
-        self.adapter = YourHostAdapter()
-
-    def test_host_name(self):
-        self.assertEqual(self.adapter.host_name, "your-host")
-
-    def test_supported_fields(self):
-        fields = self.adapter.get_supported_fields()
-        self.assertIn("command", fields)
-
-    def test_validate_requires_transport(self):
-        config = MCPServerConfig(name="test")
-        with self.assertRaises(AdapterValidationError):
-            self.adapter.validate(config)
-
-    def test_serialize_filters_unsupported(self):
-        config = MCPServerConfig(name="test", command="python", httpUrl="http://x")
-        result = self.adapter.serialize(config)
-        self.assertNotIn("httpUrl", result)  # Assuming not supported
+FIELD_SETS: Dict[str, FrozenSet[str]] = {
+    # ... existing hosts ...
+    "your-host": YOUR_HOST_FIELDS,
+}
 ```
+
+#### c) Add reverse mappings if needed
+
+If your host uses field mappings (like Codex), add the reverse mappings so `HostSpec.load_config()` can convert host-native names back to `MCPServerConfig` field names:
+
+```python
+# Already defined for Codex:
+CODEX_REVERSE_MAPPINGS: Dict[str, str] = {v: k for k, v in CODEX_FIELD_MAPPINGS.items()}
+
+# Add similar for your host if it has field mappings
+```
+
+#### d) Auto-generated test coverage
+
+Once you add the fixture entry and field set mapping, the generator functions in `host_registry.py` will automatically pick up your new host and generate parameterized test cases:
+
+| Generator Function | What It Generates | Coverage |
+|--------------------|-------------------|----------|
+| `generate_sync_test_cases()` | All cross-host sync pairs (N x N) | Your host syncing to/from every other host |
+| `generate_validation_test_cases()` | Transport mutual exclusion, tool list coexistence | Validation contract tests for your host |
+| `generate_unsupported_field_test_cases()` | One test per unsupported field | Verifies your adapter filters correctly |
+
+No changes to test files (`test_cross_host_sync.py`, `test_field_filtering.py`, etc.) are needed. The tests consume data from the registry and assertions library.
+
+> **When to add bespoke tests:** Only write custom unit tests if your adapter has unusual behavior not covered by the data-driven infrastructure (e.g., complex field transformations, multi-step validation, variant support like `ClaudeAdapter`'s desktop/code split).
 
 ## Declaring Field Support
 
@@ -403,23 +447,49 @@ def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
 
 ## Testing Your Implementation
 
-### Test Categories
+### What Is Auto-Generated vs Manual
 
-| Category | What to Test |
-|----------|--------------|
-| **Protocol** | `host_name`, `get_supported_fields()` return correct values |
-| **Validation** | `validate()` accepts valid configs, rejects invalid |
-| **Serialization** | `serialize()` produces correct format, filters fields |
-| **Integration** | Adapter works with registry, strategy reads/writes files |
+| Category | Auto-Generated | Manual (if needed) |
+|----------|:--------------:|:------------------:|
+| **Adapter protocol** (host_name, fields) | Data-driven via `host_registry.py` | -- |
+| **Validation contracts** (transport rules) | `generate_validation_test_cases()` | Complex multi-field validation |
+| **Field filtering** (unsupported fields dropped) | `generate_unsupported_field_test_cases()` | -- |
+| **Cross-host sync** (N x N pairs) | `generate_sync_test_cases()` | -- |
+| **Serialization format** | Property-based assertions | Custom output structure |
+| **Strategy file I/O** | -- | Always manual (host-specific paths) |
+
+### Fixture Requirements
+
+To integrate with the data-driven test infrastructure, you need:
+
+1. **Fixture entry** in `tests/test_data/mcp_adapters/canonical_configs.json`
+2. **Field set mapping** in `tests/test_data/mcp_adapters/host_registry.py` (`FIELD_SETS` dict)
+3. **Reverse mappings** in `host_registry.py` (only if your host uses field mappings)
+
+Zero changes to test functions are needed for standard adapter behavior. The test infrastructure derives all expectations from `fields.py` through the `HostSpec` dataclass and property-based assertions in `assertions.py`.
+
+> **Cross-reference:** See the [Architecture Doc -- Testing Strategy](../architecture/mcp_host_configuration.md#testing-strategy) for the full testing infrastructure design, including the three test tiers (unit, integration, regression).
 
 ### Test File Location
 
 ```
 tests/
 ├── unit/mcp/
-│   └── test_your_host_adapter.py   # Protocol + validation + serialization
-└── integration/mcp/
-    └── test_your_host_strategy.py  # File I/O + end-to-end
+│   ├── test_adapter_protocol.py      # Protocol compliance (data-driven)
+│   ├── test_adapter_registry.py      # Registry operations
+│   └── test_config_model.py          # Unified model validation
+├── integration/mcp/
+│   ├── test_cross_host_sync.py       # N×N cross-host sync (data-driven)
+│   ├── test_host_configuration.py    # Strategy file I/O
+│   └── test_adapter_serialization.py # Serialization correctness
+├── regression/mcp/
+│   ├── test_field_filtering.py       # Unsupported field filtering (data-driven)
+│   ├── test_field_filtering_v2.py    # Extended field filtering
+│   └── test_validation_bugs.py       # Validation edge cases
+└── test_data/mcp_adapters/
+    ├── canonical_configs.json         # Fixture: canonical config per host
+    ├── host_registry.py               # HostRegistry + test case generators
+    └── assertions.py                  # Property-based assertion library
 ```
 
 ## Troubleshooting
@@ -464,6 +534,6 @@ Adding a new host is now a **4-step process**:
 1. **Add enum** to `MCPHostType`
 2. **Create adapter** with `validate_filtered()` + `serialize()` + `get_supported_fields()`
 3. **Create strategy** with `get_config_path()` + file I/O methods
-4. **Add tests** for adapter and strategy
+4. **Register test fixtures** in `canonical_configs.json` and `host_registry.py` (zero test code changes for standard adapters)
 
 The unified model handles all fields. Adapters filter and validate. Strategies handle files. No model conversion needed.
