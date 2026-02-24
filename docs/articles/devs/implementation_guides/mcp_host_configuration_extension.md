@@ -177,22 +177,67 @@ class YourHostStrategy(MCPHostStrategy):
         """Return the key containing MCP servers."""
         return "mcpServers"  # Most hosts use this
 
-    # read_configuration() and write_configuration()
-    # can inherit from a base class or implement from scratch
+    def get_adapter_host_name(self) -> str:
+        """Return the adapter host name for registry lookup."""
+        return "your-host"
+
+    def validate_server_config(self, server_config: MCPServerConfig) -> bool:
+        """Basic transport validation before adapter processing."""
+        return server_config.command is not None or server_config.url is not None
+
+    def read_configuration(self) -> HostConfiguration:
+        """Read and parse host configuration file."""
+        # Implement JSON/TOML parsing for your host's config format
+        ...
+
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
+        """Write configuration using adapter serialization."""
+        # Use get_adapter(self.get_adapter_host_name()) for serialization
+        ...
 ```
+
+**The `@register_host_strategy` decorator** registers the strategy class in a global dictionary (`MCPHostRegistry._strategies`) keyed by `MCPHostType`. This enables `MCPHostRegistry.get_strategy(host_type)` to look up and instantiate the correct strategy at runtime. The decorator is defined in `host_management.py` as a convenience wrapper around `MCPHostRegistry.register()`.
+
+#### MCPHostStrategy Interface
+
+The base `MCPHostStrategy` class (defined in `host_management.py`) provides the full strategy interface. The table below shows which methods typically need overriding vs which can be inherited from family base classes.
+
+| Method | Must Override | Can Inherit | Notes |
+|--------|:------------:|:-----------:|-------|
+| `get_config_path()` | Always | -- | Platform-specific path to config file |
+| `is_host_available()` | Always | -- | Check if host is installed on system |
+| `get_config_key()` | Usually | From family | Most hosts use `"mcpServers"` (default) |
+| `get_adapter_host_name()` | Usually | From family | Maps strategy to adapter registry entry |
+| `validate_server_config()` | Usually | From family | Basic transport presence check |
+| `read_configuration()` | Sometimes | From family | JSON read is identical across families |
+| `write_configuration()` | Sometimes | From family | JSON write with adapter serialization |
+
+> **Cross-reference:** See the [Architecture Doc -- MCPHostStrategy](../architecture/mcp_host_configuration.md#key-components) for the full interface specification.
 
 **Inheriting from existing strategy families:**
 
+If your host uses a standard JSON format, inherit from an existing family base class to get `read_configuration()`, `write_configuration()`, and shared validation for free:
+
 ```python
-# If similar to Claude (standard JSON format)
+# If similar to Claude (standard JSON format with mcpServers key)
+@register_host_strategy(MCPHostType.YOUR_HOST)
 class YourHostStrategy(ClaudeHostStrategy):
     def get_config_path(self) -> Optional[Path]:
         return Path.home() / ".your_host" / "config.json"
 
+    def is_host_available(self) -> bool:
+        return self.get_config_path().parent.exists()
+
 # If similar to Cursor (flexible path handling)
+@register_host_strategy(MCPHostType.YOUR_HOST)
 class YourHostStrategy(CursorBasedHostStrategy):
     def get_config_path(self) -> Optional[Path]:
         return Path.home() / ".your_host" / "config.json"
+
+    def is_host_available(self) -> bool:
+        return self.get_config_path().parent.exists()
 ```
 
 ### Step 4: Add Tests
