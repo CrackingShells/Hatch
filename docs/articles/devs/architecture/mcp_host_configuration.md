@@ -179,7 +179,17 @@ class BaseAdapter(ABC):
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
         """Convert config to host's expected format."""
         ...
+
+    def filter_fields(self, config: MCPServerConfig) -> Dict[str, Any]:
+        """Filter config to only include supported, non-excluded, non-None fields."""
+        ...
+
+    def get_excluded_fields(self) -> FrozenSet[str]:
+        """Return fields that should always be excluded (default: EXCLUDED_ALWAYS)."""
+        ...
 ```
+
+**Validation migration note:** `validate()` is retained as an abstract method for backward compatibility, but `validate_filtered()` is the current contract used by `serialize()`. All existing adapters implement both methods, but new adapters should implement `validate_filtered()` as the primary validation path. The `validate()` method will be removed in v0.9.0.
 
 **Serialization pattern (validate-after-filter):**
 
@@ -189,6 +199,67 @@ filter_fields(config) → validate_filtered(filtered) → apply_transformations(
 
 This pattern ensures validation only checks fields the host actually supports,
 preventing false rejections during cross-host sync operations.
+
+### MCPHostStrategy Interface
+
+The strategy layer handles file I/O and host detection. All strategy classes inherit from `MCPHostStrategy` (defined in `host_management.py`) and are auto-registered using the `@register_host_strategy` decorator:
+
+```python
+class MCPHostStrategy:
+    """Abstract base class for host configuration strategies."""
+
+    def get_config_path(self) -> Optional[Path]:
+        """Get configuration file path for this host."""
+        ...
+
+    def is_host_available(self) -> bool:
+        """Check if host is available on system."""
+        ...
+
+    def get_config_key(self) -> str:
+        """Get the root configuration key for MCP servers (default: 'mcpServers')."""
+        ...
+
+    def read_configuration(self) -> HostConfiguration:
+        """Read and parse host configuration."""
+        ...
+
+    def write_configuration(self, config: HostConfiguration, no_backup: bool = False) -> bool:
+        """Write configuration to host file."""
+        ...
+
+    def validate_server_config(self, server_config: MCPServerConfig) -> bool:
+        """Validate server configuration for this host."""
+        ...
+```
+
+**Auto-registration with `@register_host_strategy`:**
+
+The `@register_host_strategy` decorator (a convenience wrapper around `MCPHostRegistry.register()`) registers a strategy class at import time. When `strategies.py` is imported, each decorated class is automatically added to the `MCPHostRegistry`, making it available via `MCPHostRegistry.get_strategy(host_type)`:
+
+```python
+from hatch.mcp_host_config.host_management import MCPHostStrategy, register_host_strategy
+from hatch.mcp_host_config.models import MCPHostType
+
+@register_host_strategy(MCPHostType.YOUR_HOST)
+class YourHostStrategy(MCPHostStrategy):
+    def get_config_path(self) -> Optional[Path]:
+        return Path.home() / ".your-host" / "config.json"
+
+    def is_host_available(self) -> bool:
+        return self.get_config_path().parent.exists()
+
+    # ... remaining methods
+```
+
+This decorator-based registration follows the same pattern used throughout Hatch. No manual registry wiring is needed — adding the decorator is sufficient.
+
+**Strategy families:**
+
+Some strategies share implementation through base classes:
+
+- `ClaudeHostStrategy`: Base for `ClaudeDesktopStrategy` and `ClaudeCodeStrategy` (shared JSON read/write, `_preserve_claude_settings()`)
+- `CursorBasedHostStrategy`: Base for `CursorHostStrategy` and `LMStudioHostStrategy` (shared Cursor-format JSON read/write)
 
 ### Field Constants
 
@@ -442,6 +513,36 @@ CODEX_FIELD_MAPPINGS = {
 
 The last two entries (`includeTools` -> `enabled_tools`, `excludeTools` -> `disabled_tools`) enable transparent cross-host sync from Gemini to Codex: a Gemini config containing `includeTools` will be serialized as `enabled_tools` in the Codex output.
 
+### Adapter Variant Pattern
+
+When two hosts share the same field set and validation logic but differ only in identity, a single adapter class can serve both via a `variant` constructor parameter. This avoids code duplication without introducing an inheritance hierarchy.
+
+`ClaudeAdapter` demonstrates this pattern. Claude Desktop and Claude Code share identical field support (`CLAUDE_FIELDS`) and validation rules, so a single class handles both:
+
+```python
+class ClaudeAdapter(BaseAdapter):
+    def __init__(self, variant: str = "desktop"):
+        if variant not in ("desktop", "code"):
+            raise ValueError(f"Invalid Claude variant: {variant}")
+        self._variant = variant
+
+    @property
+    def host_name(self) -> str:
+        return f"claude-{self._variant}"  # "claude-desktop" or "claude-code"
+
+    def get_supported_fields(self) -> FrozenSet[str]:
+        return CLAUDE_FIELDS  # Same field set for both variants
+```
+
+The `AdapterRegistry` registers two entries pointing to different instances of the same class:
+
+```python
+ClaudeAdapter(variant="desktop")  # registered as "claude-desktop"
+ClaudeAdapter(variant="code")     # registered as "claude-code"
+```
+
+Use this pattern when adding a new host that is functionally identical to an existing one but requires a distinct host name in the registry.
+
 ### Atomic Operations Pattern
 
 All configuration changes use atomic operations:
@@ -484,11 +585,14 @@ The system uses both exceptions and result objects:
 
 ```python
 try:
-    adapter.validate(config)
+    filtered = adapter.filter_fields(config)
+    adapter.validate_filtered(filtered)
 except AdapterValidationError as e:
     print(f"Validation failed: {e.message}")
     print(f"Field: {e.field}, Host: {e.host_name}")
 ```
+
+In practice, calling `adapter.serialize(config)` is preferred since it executes the full filter-validate-transform pipeline and will raise `AdapterValidationError` on validation failure.
 
 ## Testing Strategy
 
