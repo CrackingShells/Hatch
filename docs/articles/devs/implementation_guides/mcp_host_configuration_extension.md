@@ -30,8 +30,10 @@ The Unified Adapter Architecture separates concerns:
 
 | Component | Responsibility | Interface |
 |-----------|----------------|-----------|
-| **Adapter** | Validation + Serialization | `validate()`, `serialize()`, `get_supported_fields()` |
+| **Adapter** | Validation + Serialization | `validate_filtered()`, `serialize()`, `get_supported_fields()` |
 | **Strategy** | File I/O | `read_configuration()`, `write_configuration()`, `get_config_path()` |
+
+> **Note:** `validate()` is deprecated (will be removed in v0.9.0). All new adapters should implement `validate_filtered()` for the validate-after-filter pattern. See [Architecture Doc](../architecture/mcp_host_configuration.md#baseadapter-protocol) for details.
 
 ```
 MCPServerConfig (unified model)
@@ -92,22 +94,44 @@ class YourHostAdapter(BaseAdapter):
         })
 
     def validate(self, config: MCPServerConfig) -> None:
-        """Validate configuration for Your Host."""
-        # Check transport requirements
-        if not config.command and not config.url:
+        """DEPRECATED: Will be removed in v0.9.0. Use validate_filtered() instead.
+
+        Still required by BaseAdapter's abstract interface. Implement as a
+        pass-through until the abstract method is removed.
+        """
+        pass
+
+    def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+        """Validate ONLY fields that survived filtering.
+
+        This is the primary validation method. It receives a dictionary
+        of fields that have already been filtered to only those this host
+        supports, with None values and excluded fields removed.
+        """
+        has_command = "command" in filtered
+        has_url = "url" in filtered
+
+        if not has_command and not has_url:
             raise AdapterValidationError(
                 "Either 'command' (local) or 'url' (remote) required",
-                host_name=self.host_name
+                host_name=self.host_name,
             )
 
         # Add any host-specific validation
-        # if config.command and config.url:
+        # if has_command and has_url:
         #     raise AdapterValidationError("Cannot have both", ...)
 
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
-        """Serialize configuration for Your Host format."""
-        self.validate(config)
-        return self.filter_fields(config)
+        """Serialize configuration for Your Host format.
+
+        Follows the validate-after-filter pattern:
+        1. Filter to supported fields
+        2. Validate filtered fields
+        3. Return filtered (or apply transformations if needed)
+        """
+        filtered = self.filter_fields(config)
+        self.validate_filtered(filtered)
+        return filtered
 ```
 
 **Then register in `hatch/mcp_host_config/adapters/__init__.py`:**
@@ -249,19 +273,22 @@ mcp_configure_parser.add_argument(
 
 ## Field Mappings (Optional)
 
-If your host uses different names for standard fields:
+If your host uses different names for standard fields, override `apply_transformations()`:
 
 ```python
 # In your adapter
-def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
-    self.validate(config)
-    result = self.filter_fields(config)
-
-    # Apply mappings (e.g., 'args' → 'arguments')
+def apply_transformations(self, filtered: Dict[str, Any]) -> Dict[str, Any]:
+    """Apply field name mappings after validation."""
+    result = filtered.copy()
     if "args" in result:
         result["arguments"] = result.pop("args")
-
     return result
+
+def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
+    filtered = self.filter_fields(config)
+    self.validate_filtered(filtered)
+    transformed = self.apply_transformations(filtered)
+    return transformed
 ```
 
 Or define mappings centrally in `fields.py`:
@@ -280,17 +307,21 @@ YOUR_HOST_FIELD_MAPPINGS = {
 Some hosts (like Gemini) support multiple transports:
 
 ```python
-def validate(self, config: MCPServerConfig) -> None:
-    transports = sum([
-        config.command is not None,
-        config.url is not None,
-        config.httpUrl is not None,
-    ])
+def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+    has_command = "command" in filtered
+    has_url = "url" in filtered
+    has_http_url = "httpUrl" in filtered
 
-    if transports == 0:
+    transport_count = sum([has_command, has_url, has_http_url])
+
+    if transport_count == 0:
         raise AdapterValidationError("At least one transport required")
 
-    # Allow multiple transports if your host supports it
+    # Gemini requires exactly one transport (not multiple)
+    if transport_count > 1:
+        raise AdapterValidationError(
+            "Only one transport allowed: command, url, or httpUrl"
+        )
 ```
 
 ### Strict Single Transport
@@ -298,9 +329,9 @@ def validate(self, config: MCPServerConfig) -> None:
 Some hosts (like Claude) require exactly one transport:
 
 ```python
-def validate(self, config: MCPServerConfig) -> None:
-    has_command = config.command is not None
-    has_url = config.url is not None
+def validate_filtered(self, filtered: Dict[str, Any]) -> None:
+    has_command = "command" in filtered
+    has_url = "url" in filtered
 
     if not has_command and not has_url:
         raise AdapterValidationError("Need command or url")
@@ -315,14 +346,14 @@ Override `serialize()` for custom output format:
 
 ```python
 def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
-    self.validate(config)
-    result = self.filter_fields(config)
+    filtered = self.filter_fields(config)
+    self.validate_filtered(filtered)
 
     # Transform to your host's expected structure
-    if config.type == "stdio":
-        result["transport"] = {"type": "stdio", "command": result.pop("command")}
+    if "command" in filtered:
+        filtered["transport"] = {"type": "stdio", "command": filtered.pop("command")}
 
-    return result
+    return filtered
 ```
 
 ## Testing Your Implementation
@@ -354,7 +385,7 @@ tests/
 |-------|-------|----------|
 | Adapter not found | Not registered in registry | Add to `_register_defaults()` |
 | Field not serialized | Not in `get_supported_fields()` | Add field to set |
-| Validation always fails | Logic error in `validate()` | Check conditions |
+| Validation always fails | Logic error in `validate_filtered()` | Check conditions |
 | Name appears in output | Not filtering excluded fields | Use `filter_fields()` |
 
 ### Debugging Tips
@@ -386,7 +417,7 @@ Study these for patterns:
 Adding a new host is now a **4-step process**:
 
 1. **Add enum** to `MCPHostType`
-2. **Create adapter** with `validate()` + `serialize()` + `get_supported_fields()`
+2. **Create adapter** with `validate_filtered()` + `serialize()` + `get_supported_fields()`
 3. **Create strategy** with `get_config_path()` + file I/O methods
 4. **Add tests** for adapter and strategy
 
