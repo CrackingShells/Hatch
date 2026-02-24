@@ -63,9 +63,9 @@ class MCPServerConfig(BaseModel):
     name: Optional[str] = None
 
     # Transport fields
-    command: Optional[str] = None      # stdio transport
-    url: Optional[str] = None          # sse transport
-    httpUrl: Optional[str] = None      # http transport (Gemini)
+    command: Optional[str] = None          # stdio transport
+    url: Optional[str] = None              # sse transport
+    httpUrl: Optional[str] = None          # http transport (Gemini)
 
     # Universal fields (all hosts)
     args: Optional[List[str]] = None
@@ -73,11 +73,42 @@ class MCPServerConfig(BaseModel):
     headers: Optional[Dict[str, str]] = None
     type: Optional[Literal["stdio", "sse", "http"]] = None
 
-    # Host-specific fields
-    envFile: Optional[str] = None      # VSCode/Cursor
-    disabled: Optional[bool] = None    # Kiro
-    trust: Optional[bool] = None       # Gemini
-    # ... additional fields per host
+    # VSCode/Cursor fields
+    envFile: Optional[str] = None          # Path to environment file
+    inputs: Optional[List[Dict]] = None    # Input variable definitions (VSCode only)
+
+    # Gemini fields (16 total including OAuth)
+    cwd: Optional[str] = None              # Working directory (Gemini/Codex)
+    timeout: Optional[int] = None          # Request timeout in milliseconds
+    trust: Optional[bool] = None           # Bypass tool call confirmations
+    includeTools: Optional[List[str]] = None   # Tools to include (allowlist)
+    excludeTools: Optional[List[str]] = None   # Tools to exclude (blocklist)
+    oauth_enabled: Optional[bool] = None       # Enable OAuth for this server
+    oauth_clientId: Optional[str] = None       # OAuth client identifier
+    oauth_clientSecret: Optional[str] = None   # OAuth client secret
+    oauth_authorizationUrl: Optional[str] = None  # OAuth authorization endpoint
+    oauth_tokenUrl: Optional[str] = None       # OAuth token endpoint
+    oauth_scopes: Optional[List[str]] = None   # Required OAuth scopes
+    oauth_redirectUri: Optional[str] = None    # Custom redirect URI
+    oauth_tokenParamName: Optional[str] = None # Query parameter name for tokens
+    oauth_audiences: Optional[List[str]] = None  # OAuth audiences
+    authProviderType: Optional[str] = None     # Authentication provider type
+
+    # Kiro fields
+    disabled: Optional[bool] = None        # Whether server is disabled
+    autoApprove: Optional[List[str]] = None   # Auto-approved tool names
+    disabledTools: Optional[List[str]] = None  # Disabled tool names
+
+    # Codex fields (10 host-specific)
+    env_vars: Optional[List[str]] = None       # Environment variables to whitelist/forward
+    startup_timeout_sec: Optional[int] = None  # Server startup timeout
+    tool_timeout_sec: Optional[int] = None     # Tool execution timeout
+    enabled: Optional[bool] = None             # Enable/disable server
+    enabled_tools: Optional[List[str]] = None  # Allow-list of tools
+    disabled_tools: Optional[List[str]] = None # Deny-list of tools
+    bearer_token_env_var: Optional[str] = None # Env var containing bearer token
+    http_headers: Optional[Dict[str, str]] = None   # HTTP headers (Codex naming)
+    env_http_headers: Optional[Dict[str, str]] = None  # Header names to env var names
 ```
 
 **Design principles:**
@@ -161,21 +192,38 @@ preventing false rejections during cross-host sync operations.
 
 ### Field Constants
 
-Field support is defined in `fields.py`:
+Field support is defined in `fields.py` as the single source of truth. Every host's field set is built by extending `UNIVERSAL_FIELDS` with host-specific additions:
 
 ```python
-# Universal fields (all hosts)
+# Universal fields (supported by ALL hosts) — 5 fields
 UNIVERSAL_FIELDS = frozenset({"command", "args", "env", "url", "headers"})
 
-# Host-specific field sets
-CLAUDE_FIELDS = UNIVERSAL_FIELDS | frozenset({"type"})
-VSCODE_FIELDS = CLAUDE_FIELDS | frozenset({"envFile", "inputs"})
-GEMINI_FIELDS = UNIVERSAL_FIELDS | frozenset({"httpUrl", "timeout", "trust", ...})
-KIRO_FIELDS = UNIVERSAL_FIELDS | frozenset({"disabled", "autoApprove", ...})
+# Hosts that support the 'type' discriminator field
+TYPE_SUPPORTING_HOSTS = frozenset({"claude-desktop", "claude-code", "vscode", "cursor"})
+
+# Host-specific field sets — 7 constants, 8 hosts
+CLAUDE_FIELDS   = UNIVERSAL_FIELDS | {"type"}                              # 6 fields
+VSCODE_FIELDS   = CLAUDE_FIELDS   | {"envFile", "inputs"}                  # 8 fields
+CURSOR_FIELDS   = CLAUDE_FIELDS   | {"envFile"}                            # 7 fields
+LMSTUDIO_FIELDS = CLAUDE_FIELDS                                            # 6 fields (alias)
+GEMINI_FIELDS   = UNIVERSAL_FIELDS | {"httpUrl", "timeout", "trust", "cwd",
+                    "includeTools", "excludeTools",
+                    "oauth_enabled", "oauth_clientId", "oauth_clientSecret",
+                    "oauth_authorizationUrl", "oauth_tokenUrl", "oauth_scopes",
+                    "oauth_redirectUri", "oauth_tokenParamName",
+                    "oauth_audiences", "authProviderType"}                  # 21 fields
+KIRO_FIELDS     = UNIVERSAL_FIELDS | {"disabled", "autoApprove",
+                    "disabledTools"}                                        # 8 fields
+CODEX_FIELDS    = UNIVERSAL_FIELDS | {"cwd", "env_vars", "startup_timeout_sec",
+                    "tool_timeout_sec", "enabled", "enabled_tools",
+                    "disabled_tools", "bearer_token_env_var",
+                    "http_headers", "env_http_headers"}                     # 15 fields
 
 # Metadata fields (never serialized or reported)
 EXCLUDED_ALWAYS = frozenset({"name"})
 ```
+
+Note that `LMSTUDIO_FIELDS` is a direct alias for `CLAUDE_FIELDS` — LM Studio supports the same field set as Claude Desktop and Claude Code.
 
 ### Reporting System
 
@@ -210,17 +258,53 @@ This ensures that:
 
 ## Field Support Matrix
 
-| Field | Claude | VSCode | Cursor | Gemini | Kiro | Codex |
-|-------|--------|--------|--------|--------|------|-------|
-| command, args, env | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| url, headers | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| type | ✓ | ✓ | ✓ | - | - | - |
-| envFile | - | ✓ | ✓ | - | - | - |
-| inputs | - | ✓ | - | - | - | - |
-| httpUrl | - | - | - | ✓ | - | - |
-| trust, timeout | - | - | - | ✓ | - | - |
-| disabled, autoApprove | - | - | - | - | ✓ | - |
-| enabled, enabled_tools | - | - | - | - | - | ✓ |
+The matrix below lists every field present in any host's field set (defined in `fields.py`). Claude Desktop, Claude Code, and LM Studio share the same field set (`CLAUDE_FIELDS`), so LM Studio is shown in its own column to make this explicit.
+
+| Field | Claude Desktop/Code | VSCode | Cursor | LM Studio | Gemini | Kiro | Codex |
+|-------|:-------------------:|:------:|:------:|:---------:|:------:|:----:|:-----:|
+| **Universal fields** | | | | | | | |
+| command | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| args | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| env | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| url | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| headers | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Transport discriminator** | | | | | | | |
+| type | ✓ | ✓ | ✓ | ✓ | - | - | - |
+| **VSCode/Cursor fields** | | | | | | | |
+| envFile | - | ✓ | ✓ | - | - | - | - |
+| inputs | - | ✓ | - | - | - | - | - |
+| **Gemini fields** | | | | | | | |
+| httpUrl | - | - | - | - | ✓ | - | - |
+| timeout | - | - | - | - | ✓ | - | - |
+| trust | - | - | - | - | ✓ | - | - |
+| cwd | - | - | - | - | ✓ | - | ✓ |
+| includeTools | - | - | - | - | ✓ | - | - |
+| excludeTools | - | - | - | - | ✓ | - | - |
+| **Gemini OAuth fields** | | | | | | | |
+| oauth_enabled | - | - | - | - | ✓ | - | - |
+| oauth_clientId | - | - | - | - | ✓ | - | - |
+| oauth_clientSecret | - | - | - | - | ✓ | - | - |
+| oauth_authorizationUrl | - | - | - | - | ✓ | - | - |
+| oauth_tokenUrl | - | - | - | - | ✓ | - | - |
+| oauth_scopes | - | - | - | - | ✓ | - | - |
+| oauth_redirectUri | - | - | - | - | ✓ | - | - |
+| oauth_tokenParamName | - | - | - | - | ✓ | - | - |
+| oauth_audiences | - | - | - | - | ✓ | - | - |
+| authProviderType | - | - | - | - | ✓ | - | - |
+| **Kiro fields** | | | | | | | |
+| disabled | - | - | - | - | - | ✓ | - |
+| autoApprove | - | - | - | - | - | ✓ | - |
+| disabledTools | - | - | - | - | - | ✓ | - |
+| **Codex fields** | | | | | | | |
+| env_vars | - | - | - | - | - | - | ✓ |
+| startup_timeout_sec | - | - | - | - | - | - | ✓ |
+| tool_timeout_sec | - | - | - | - | - | - | ✓ |
+| enabled | - | - | - | - | - | - | ✓ |
+| enabled_tools | - | - | - | - | - | - | ✓ |
+| disabled_tools | - | - | - | - | - | - | ✓ |
+| bearer_token_env_var | - | - | - | - | - | - | ✓ |
+| http_headers | - | - | - | - | - | - | ✓ |
+| env_http_headers | - | - | - | - | - | - | ✓ |
 
 ## Integration Points
 
@@ -345,14 +429,18 @@ The base class provides `filter_fields()` which:
 
 ### Field Mappings (Optional)
 
-If your host uses different field names:
+If your host uses different field names, define a mapping dict in `fields.py`. During serialization, the adapter's `apply_transformations()` method renames fields from the universal schema to the host-native names. Codex is currently the only host that requires this:
 
 ```python
 CODEX_FIELD_MAPPINGS = {
-    "args": "arguments",       # Universal → Codex naming
-    "headers": "http_headers", # Universal → Codex naming
+    "args": "arguments",           # Universal → Codex naming
+    "headers": "http_headers",     # Universal → Codex naming
+    "includeTools": "enabled_tools",  # Gemini naming → Codex naming (cross-host sync)
+    "excludeTools": "disabled_tools", # Gemini naming → Codex naming (cross-host sync)
 }
 ```
+
+The last two entries (`includeTools` -> `enabled_tools`, `excludeTools` -> `disabled_tools`) enable transparent cross-host sync from Gemini to Codex: a Gemini config containing `includeTools` will be serialized as `enabled_tools` in the Codex output.
 
 ### Atomic Operations Pattern
 
