@@ -10,7 +10,7 @@ Validate skill structure and produce the distributable `.skill` package.
 
 ## Pre-conditions
 
-- [ ] All 5 depth-0 leaves merged into milestone
+- [x] All 5 depth-0 leaves merged into milestone
 
 ## Success Gates
 
@@ -21,7 +21,7 @@ Validate skill structure and produce the distributable `.skill` package.
 
 ```mermaid
 graph TD
-    package_skill[Package Skill]:::planned
+    package_skill[Package Skill]:::done
 
     classDef done fill:#166534,color:#bbf7d0
     classDef inprogress fill:#854d0e,color:#fef08a
@@ -34,7 +34,7 @@ graph TD
 
 | Node | Type | Status |
 |:-----|:-----|:-------|
-| `package_skill.md` | Leaf Task | Planned |
+| `package_skill.md` | Leaf Task | Done |
 
 ## Amendment Log
 
@@ -45,3 +45,4 @@ graph TD
 
 | Node | Branch | Commits | Notes |
 |:-----|:-------|:--------|:------|
+| `package_skill.md` | `task/package-skill` | 1 | Validated + packaged |

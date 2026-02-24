@@ -40,12 +40,12 @@ Produce a packaged `adding-mcp-hosts.skill` file that an agent can use to add su
 
 ```mermaid
 graph TD
-    write_discovery_guide[Write Discovery Guide]:::planned
-    write_adapter_contract[Write Adapter Contract]:::planned
-    write_strategy_contract[Write Strategy Contract]:::planned
-    write_testing_fixtures[Write Testing Fixtures]:::planned
-    write_skill_md[Write Skill MD]:::planned
-    package[Package]:::planned
+    write_discovery_guide[Write Discovery Guide]:::done
+    write_adapter_contract[Write Adapter Contract]:::done
+    write_strategy_contract[Write Strategy Contract]:::done
+    write_testing_fixtures[Write Testing Fixtures]:::done
+    write_skill_md[Write Skill MD]:::done
+    package[Package]:::done
 
     classDef done fill:#166534,color:#bbf7d0
     classDef inprogress fill:#854d0e,color:#fef08a
@@ -58,12 +58,12 @@ graph TD
 
 | Node | Type | Status |
 |:-----|:-----|:-------|
-| `write_discovery_guide.md` | Leaf Task | Planned |
-| `write_adapter_contract.md` | Leaf Task | Planned |
-| `write_strategy_contract.md` | Leaf Task | Planned |
-| `write_testing_fixtures.md` | Leaf Task | Planned |
-| `write_skill_md.md` | Leaf Task | Planned |
-| `package/` | Directory | Planned |
+| `write_discovery_guide.md` | Leaf Task | Done |
+| `write_adapter_contract.md` | Leaf Task | Done |
+| `write_strategy_contract.md` | Leaf Task | Done |
+| `write_testing_fixtures.md` | Leaf Task | Done |
+| `write_skill_md.md` | Leaf Task | Done |
+| `package/` | Directory | Done |
 
 ## Amendment Log
 
@@ -74,3 +74,9 @@ graph TD
 
 | Node | Branch | Commits | Notes |
 |:-----|:-------|:--------|:------|
+| `write_discovery_guide.md` | `task/write-discovery-guide` | 1 | 218 lines, 5 sections |
+| `write_adapter_contract.md` | `task/write-adapter-contract` | 1 | 157 lines, 7 subsections |
+| `write_strategy_contract.md` | `task/write-strategy-contract` | 1 | 226 lines, 5 sections |
+| `write_testing_fixtures.md` | `task/write-testing-fixtures` | 1 | 121 lines, 5 sections |
+| `write_skill_md.md` | `task/write-skill-md` | 1 | 202 lines, 5-step workflow |
+| `package/package_skill.md` | `task/package-skill` | 1 | Validated + packaged .skill |
