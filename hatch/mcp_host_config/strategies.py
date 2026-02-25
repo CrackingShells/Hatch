@@ -8,6 +8,7 @@ strategies with decorator registration following Hatchling patterns.
 
 import platform
 import json
+import re
 import tomllib  # Python 3.11+ built-in
 import tomli_w  # TOML writing
 from pathlib import Path
@@ -18,6 +19,7 @@ from .host_management import MCPHostStrategy, register_host_strategy
 from .models import MCPHostType, MCPServerConfig, HostConfiguration
 from .backup import MCPHostConfigBackupManager, AtomicFileOperations
 from .adapters import get_adapter
+from .adapters.opencode import OpenCodeAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -880,3 +882,174 @@ class CodexHostStrategy(MCPHostStrategy):
             result["http_headers"] = result.pop("headers")
 
         return result
+
+
+@register_host_strategy(MCPHostType.OPENCODE)
+class OpenCodeHostStrategy(MCPHostStrategy):
+    """Configuration strategy for OpenCode AI editor.
+
+    OpenCode stores MCP configuration in opencode.json under the 'mcp' key.
+    The config file may contain JSONC-style // comments which are stripped
+    before JSON parsing.
+
+    OpenCode uses a discriminated-union format that differs from canonical form:
+    - 'type' is 'local' or 'remote' (not 'stdio'/'sse')
+    - 'command' is an array: [executable, ...args]
+    - 'env' is 'environment' in the file
+    - OAuth is nested under an 'oauth' key, or set to false to disable
+
+    The pre-processor in read_configuration() normalises raw server data back
+    into MCPServerConfig-compatible form before Pydantic construction.
+    """
+
+    def get_adapter_host_name(self) -> str:
+        """Return the adapter host name for OpenCode."""
+        return "opencode"
+
+    def get_config_path(self) -> Optional[Path]:
+        """Get OpenCode configuration path (platform-aware)."""
+        system = platform.system()
+        if system == "Windows":
+            return Path.home() / "AppData" / "Roaming" / "opencode" / "opencode.json"
+        # macOS and Linux both use XDG-style ~/.config/
+        return Path.home() / ".config" / "opencode" / "opencode.json"
+
+    def get_config_key(self) -> str:
+        """OpenCode uses 'mcp' key."""
+        return "mcp"
+
+    def is_host_available(self) -> bool:
+        """Check if OpenCode is available by checking for its config directory."""
+        config_path = self.get_config_path()
+        return config_path is not None and config_path.parent.exists()
+
+    def validate_server_config(self, server_config: MCPServerConfig) -> bool:
+        """OpenCode validation - supports both local and remote servers."""
+        return server_config.command is not None or server_config.url is not None
+
+    @staticmethod
+    def _pre_process_server(raw: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalise a raw OpenCode server entry into MCPServerConfig-compatible form.
+
+        Transforms:
+        - Strips 'type' key (raw values 'local'/'remote' are invalid for MCPServerConfig)
+        - Splits command array: command[0] → command str, command[1:] → args list
+        - Renames 'environment' → 'env'
+        - Unnests 'oauth' dict → oauth_clientId, oauth_clientSecret, opencode_oauth_scope
+        - oauth: false → opencode_oauth_disable=True
+
+        Args:
+            raw: Raw server dict read from opencode.json
+
+        Returns:
+            Dict suitable for MCPServerConfig(**result) construction
+        """
+        data = dict(raw)
+
+        # Strip transport type discriminator (opencode uses 'local'/'remote')
+        data.pop("type", None)
+
+        # Split command array into command string + args list
+        if "command" in data and isinstance(data["command"], list):
+            command_list = data["command"]
+            data["command"] = command_list[0] if command_list else ""
+            if len(command_list) > 1:
+                data["args"] = command_list[1:]
+
+        # Rename environment → env
+        if "environment" in data:
+            data["env"] = data.pop("environment")
+
+        # Unnest oauth
+        oauth_value = data.pop("oauth", None)
+        if oauth_value is False:
+            data["opencode_oauth_disable"] = True
+        elif isinstance(oauth_value, dict):
+            if "clientId" in oauth_value:
+                data["oauth_clientId"] = oauth_value["clientId"]
+            if "clientSecret" in oauth_value:
+                data["oauth_clientSecret"] = oauth_value["clientSecret"]
+            if "scope" in oauth_value:
+                data["opencode_oauth_scope"] = oauth_value["scope"]
+
+        return data
+
+    def read_configuration(self) -> HostConfiguration:
+        """Read OpenCode configuration file with JSONC comment stripping."""
+        config_path = self.get_config_path()
+        if not config_path or not config_path.exists():
+            return HostConfiguration()
+
+        try:
+            raw_text = config_path.read_text(encoding="utf-8")
+
+            # Strip // line comments (JSONC support) — only strip lines that
+            # START with optional whitespace + //, never inside string values
+            stripped = re.sub(r"(?m)^\s*//[^\n]*", "", raw_text)
+
+            config_data = json.loads(stripped)
+            mcp_servers = config_data.get(self.get_config_key(), {})
+
+            servers = {}
+            for name, server_data in mcp_servers.items():
+                try:
+                    processed = self._pre_process_server(server_data)
+                    servers[name] = MCPServerConfig(**processed)
+                except Exception as e:
+                    logger.warning(f"Invalid OpenCode server config for {name}: {e}")
+                    continue
+
+            return HostConfiguration(servers=servers)
+
+        except Exception as e:
+            logger.error(f"Failed to read OpenCode configuration: {e}")
+            return HostConfiguration()
+
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
+        """Write OpenCode configuration with read-before-write to preserve other keys."""
+        config_path = self.get_config_path()
+        if not config_path:
+            return False
+
+        try:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Read existing config to preserve non-mcp keys (theme, model, etc.)
+            existing_data: Dict[str, Any] = {}
+            if config_path.exists():
+                try:
+                    raw_text = config_path.read_text(encoding="utf-8")
+                    stripped = re.sub(r"(?m)^\s*//[^\n]*", "", raw_text)
+                    existing_data = json.loads(stripped)
+                except Exception:
+                    pass
+
+            # Serialize all servers using the OpenCode adapter, then apply
+            # structural transforms to produce OpenCode-native file format
+            adapter = get_adapter(self.get_adapter_host_name())
+            servers_dict = {}
+            for name, server_config in config.servers.items():
+                canonical = adapter.serialize(server_config)
+                servers_dict[name] = OpenCodeAdapter.to_native_format(canonical)
+
+            existing_data[self.get_config_key()] = servers_dict
+
+            # Write atomically with backup support
+            backup_manager = MCPHostConfigBackupManager()
+            atomic_ops = AtomicFileOperations()
+
+            atomic_ops.atomic_write_with_backup(
+                file_path=config_path,
+                data=existing_data,
+                backup_manager=backup_manager,
+                hostname="opencode",
+                skip_backup=no_backup,
+            )
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to write OpenCode configuration: {e}")
+            return False
