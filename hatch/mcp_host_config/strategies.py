@@ -1021,7 +1021,7 @@ class OpenCodeHostStrategy(MCPHostStrategy):
             if config_path.exists():
                 try:
                     raw_text = config_path.read_text(encoding="utf-8")
-                    stripped = re.sub(r"//[^\n]*", "", raw_text)
+                    stripped = re.sub(r"(?m)^\s*//[^\n]*", "", raw_text)
                     existing_data = json.loads(stripped)
                 except Exception:
                     pass
