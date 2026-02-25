@@ -74,5 +74,16 @@
     "cwd": "/app",
     "enabled_tools": ["tool1", "tool2"],
     "disabled_tools": ["tool3"]
+  },
+  "opencode": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    "env": {"MY_VAR": "value"},
+    "url": null,
+    "headers": null,
+    "enabled": true,
+    "timeout": 5000,
+    "opencode_oauth_scope": null,
+    "opencode_oauth_disable": null
   }
 }
