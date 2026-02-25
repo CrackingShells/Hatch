@@ -13,6 +13,7 @@ from hatch.mcp_host_config.adapters.cursor import CursorAdapter
 from hatch.mcp_host_config.adapters.gemini import GeminiAdapter
 from hatch.mcp_host_config.adapters.kiro import KiroAdapter
 from hatch.mcp_host_config.adapters.lmstudio import LMStudioAdapter
+from hatch.mcp_host_config.adapters.opencode import OpenCodeAdapter
 from hatch.mcp_host_config.adapters.vscode import VSCodeAdapter
 
 
@@ -53,6 +54,7 @@ class AdapterRegistry:
         self.register(GeminiAdapter())
         self.register(KiroAdapter())
         self.register(CodexAdapter())
+        self.register(OpenCodeAdapter())
 
     def register(self, adapter: BaseAdapter) -> None:
         """Register an adapter instance.
