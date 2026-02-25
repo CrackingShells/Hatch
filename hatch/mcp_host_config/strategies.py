@@ -19,6 +19,7 @@ from .host_management import MCPHostStrategy, register_host_strategy
 from .models import MCPHostType, MCPServerConfig, HostConfiguration
 from .backup import MCPHostConfigBackupManager, AtomicFileOperations
 from .adapters import get_adapter
+from .adapters.opencode import OpenCodeAdapter
 
 logger = logging.getLogger(__name__)
 
@@ -1024,11 +1025,13 @@ class OpenCodeHostStrategy(MCPHostStrategy):
                 except Exception:
                     pass
 
-            # Serialize all servers using the OpenCode adapter
+            # Serialize all servers using the OpenCode adapter, then apply
+            # structural transforms to produce OpenCode-native file format
             adapter = get_adapter(self.get_adapter_host_name())
             servers_dict = {}
             for name, server_config in config.servers.items():
-                servers_dict[name] = adapter.serialize(server_config)
+                canonical = adapter.serialize(server_config)
+                servers_dict[name] = OpenCodeAdapter.to_native_format(canonical)
 
             existing_data[self.get_config_key()] = servers_dict
 

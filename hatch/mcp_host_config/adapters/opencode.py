@@ -90,34 +90,43 @@ class OpenCodeAdapter(BaseAdapter):
             )
 
     def serialize(self, config: MCPServerConfig) -> Dict[str, Any]:
-        """Serialize configuration to OpenCode format.
+        """Serialize configuration for OpenCode (canonical form).
 
-        OpenCode structural transforms:
-        1. Filter to supported fields
-        2. Validate transport mutual exclusion
-        3. Build output dict with OpenCode-native structure:
-           - Derive type: 'local' (command present) or 'remote' (url present)
-           - Local: merge command + args into command array, rename env→environment
-           - Remote: preserve url and headers as-is
-           - Both: include enabled, timeout if set
-           - OAuth: emit oauth: false if disabled, or oauth: {...} object if configured
+        Returns a filtered, validated dict using MCPServerConfig field names.
+        Structural transforms (command array merge, env→environment rename,
+        type derivation, oauth nesting) are applied by the strategy's
+        write_configuration() via to_native_format().
 
         Args:
             config: The MCPServerConfig to serialize
 
         Returns:
-            Dictionary in OpenCode's expected format
+            Filtered dict with MCPServerConfig-canonical field names
         """
-        # Filter to supported fields
         filtered = self.filter_fields(config)
-
-        # Validate transport mutual exclusion
         self.validate_filtered(filtered)
+        return filtered
 
+    @staticmethod
+    def to_native_format(filtered: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert canonical-form dict to OpenCode-native file format.
+
+        Applies OpenCode structural transforms:
+        - Derives type: 'local' (command present) or 'remote' (url present)
+        - Local: merges command + args into command array, renames env→environment
+        - Remote: preserves url and headers as-is
+        - Handles enabled, timeout if present
+        - OAuth: emits oauth: false or oauth: {clientId, clientSecret, scope}
+
+        Args:
+            filtered: Canonical-form dict from serialize()
+
+        Returns:
+            Dict in OpenCode's native file format
+        """
         result: Dict[str, Any] = {}
 
         if "command" in filtered:
-            # Local transport: derive type, merge command+args, rename env
             result["type"] = "local"
             command = filtered["command"]
             args = filtered.get("args") or []
@@ -125,19 +134,16 @@ class OpenCodeAdapter(BaseAdapter):
             if "env" in filtered:
                 result["environment"] = filtered["env"]
         else:
-            # Remote transport: derive type, preserve url and headers
             result["type"] = "remote"
             result["url"] = filtered["url"]
             if "headers" in filtered:
                 result["headers"] = filtered["headers"]
 
-        # Optional shared fields
         if "enabled" in filtered:
             result["enabled"] = filtered["enabled"]
         if "timeout" in filtered:
             result["timeout"] = filtered["timeout"]
 
-        # OAuth configuration
         if filtered.get("opencode_oauth_disable"):
             result["oauth"] = False
         else:
