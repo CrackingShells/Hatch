@@ -5,45 +5,20 @@ Produces a Host Spec YAML artifact consumed by all subsequent steps.
 
 ---
 
-## 1. Tool Priority Ladder
+## 1. Research Tools
 
-Research the target host in order. Fall through when the current level yields no definitive answer.
+Use all available tools. Web search and Context7 are complementary — do not treat either as a fallback for the other.
 
-### Level 1: Web Search + Fetch
+| Tool | What to find |
+|------|-------------|
+| Web search (multiple queries) | Official docs; changelog; known issues mentioning config changes |
+| Page fetch | Config type definitions in source (`types.ts`, `*.schema.json`) — source code beats docs pages |
+| Context7 (`resolve-library-id` + query) | SDK-level field names, types, validation rules |
+| Codebase retrieval (Hatch repo) | Fields and strategy families already in `models.py`, `fields.py`, `strategies.py` |
 
-| Action | Detail |
-|--------|--------|
-| Search query | `"<host-name> MCP server configuration" site:github.com OR site:docs.*` |
-| Fetch targets | Official docs page, README, or config schema file |
-| Success | Config path, format, root key, and supported fields are all documented |
-| Fall through | Docs missing, incomplete, or ambiguous on field support |
+A single docs page is not enough. After finding the docs, locate the config type definition in the host's source and use it to verify field names, types, and optionality. If two sources disagree, fetch a third or escalate — never guess.
 
-### Level 2: Context7 Library Docs
-
-| Action | Detail |
-|--------|--------|
-| Resolve library | `resolve-library-id` with the host package name |
-| Query | `"MCP server configuration format and supported fields"` |
-| Success | Field names, types, and validation rules documented |
-| Fall through | Host not indexed, or MCP config undocumented |
-
-### Level 3: Codebase Retrieval
-
-| Action | Detail |
-|--------|--------|
-| Query | `"configuration strategy for <host-name>"` against project root |
-| Inspect | `hatch/mcp_host_config/strategies.py`, `fields.py`, `models.py` |
-| Success | Existing strategy, adapter, or field set provides needed data |
-| Fall through | Host is entirely new with no existing references |
-
-### Level 4: User Escalation
-
-| Action | Detail |
-|--------|--------|
-| Start with | Tier 1 (blocking questions) |
-| Expand to | Tier 2 if Tier 1 reveals non-standard behavior |
-| Ask Tier 3 | Only for remaining ambiguities after Tiers 1-2 |
-| Success | All blocking questions answered; remaining gaps have safe defaults |
+Use the questionnaire (§2) only for information that research could not resolve.
 
 ---
 
@@ -216,3 +191,13 @@ Validate the completed spec against these rules before proceeding:
 - If `field_mappings` is non-empty, verify each source field exists in another host's field set
 - If `architecture.variant_of` is set, confirm the named adapter exists in the registry
 - If `architecture.strategy_family` is set, confirm the named base class exists in `strategies.py`
+
+---
+
+## 6. Output Files
+
+Write both files to `__reports__/<host-name>/` before proceeding to Step 2. Do not summarize findings only in chat.
+
+**`00-parameter_analysis_v0.md`** — field-level discovery: what the host config actually looks like, field names and types per transport, serialization requirements, and the resulting `HOSTNAME_FIELDS` contract.
+
+**`01-architecture_analysis_v0.md`** — integration analysis: current state inventory of the Hatch codebase, how the new host fits the adapter/strategy pattern, NO-GO assessment with any implementation-critical invariants, component contracts, and risk register.

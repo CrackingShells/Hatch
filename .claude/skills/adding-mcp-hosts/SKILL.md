@@ -27,17 +27,17 @@ description: |
 
 Read [references/discovery-guide.md](references/discovery-guide.md) for the full discovery workflow.
 
-Use web search and fetch tools to find the target host's official MCP configuration docs.
-Identify: config file path per platform, config format (JSON/JSONC/TOML), top-level key
-wrapping server entries, every supported field name and type, and any field name differences
-from the universal set (`command`, `args`, `env`, `url`, `headers`).
+Use web search, Context7, and codebase retrieval to find the target host's MCP
+configuration: config file path per platform, format (JSON/JSONC/TOML), top-level key,
+every supported field name and type, and any field name differences from the universal
+set (`command`, `args`, `env`, `url`, `headers`).
 
-If web tools are unavailable or return insufficient data, present the structured
-questionnaire from the discovery guide to the user.
+If research leaves blockers unresolved, present the structured questionnaire from the
+discovery guide to the user.
 
-Produce a Host Spec YAML block capturing: host slug, config paths (macOS/Linux/Windows),
-config format, supported fields, field mappings, and strategy family. This output feeds
-all subsequent steps.
+Write `__reports__/<host-name>/00-parameter_analysis_v0.md` (field-level discovery) and
+`__reports__/<host-name>/01-architecture_analysis_v0.md` (integration analysis and NO-GO
+assessment). Also produce the Host Spec YAML block — it feeds all subsequent steps.
 
 ---
 
