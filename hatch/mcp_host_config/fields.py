@@ -116,6 +116,21 @@ CODEX_FIELDS: FrozenSet[str] = UNIVERSAL_FIELDS | frozenset(
 )
 
 
+# Fields supported by OpenCode (no type field; uses local/remote type derivation,
+# command array merge, environment rename, and oauth nesting)
+OPENCODE_FIELDS: FrozenSet[str] = UNIVERSAL_FIELDS | frozenset(
+    {
+        "args",  # Merged with command into command array (I-2: must stay in field set)
+        "enabled",  # Enable/disable server without deleting config
+        "timeout",  # Request timeout in milliseconds
+        "oauth_clientId",  # OAuth client identifier (nested under 'oauth' key)
+        "oauth_clientSecret",  # OAuth client secret (nested under 'oauth' key)
+        "opencode_oauth_scope",  # OAuth scope (nested under 'oauth.scope')
+        "opencode_oauth_disable",  # Disable OAuth (serializes as oauth: false)
+    }
+)
+
+
 # ============================================================================
 # Field Mappings (universal name → host-specific name)
 # ============================================================================
