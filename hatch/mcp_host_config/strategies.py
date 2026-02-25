@@ -983,8 +983,9 @@ class OpenCodeHostStrategy(MCPHostStrategy):
         try:
             raw_text = config_path.read_text(encoding="utf-8")
 
-            # Strip // line comments (JSONC support)
-            stripped = re.sub(r"//[^\n]*", "", raw_text)
+            # Strip // line comments (JSONC support) — only strip lines that
+            # START with optional whitespace + //, never inside string values
+            stripped = re.sub(r"(?m)^\s*//[^\n]*", "", raw_text)
 
             config_data = json.loads(stripped)
             mcp_servers = config_data.get(self.get_config_key(), {})
