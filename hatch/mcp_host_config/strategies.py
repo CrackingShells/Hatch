@@ -1053,3 +1053,33 @@ class OpenCodeHostStrategy(MCPHostStrategy):
         except Exception as e:
             logger.error(f"Failed to write OpenCode configuration: {e}")
             return False
+
+
+@register_host_strategy(MCPHostType.AUGMENT)
+class AugmentHostStrategy(ClaudeHostStrategy):
+    """Configuration strategy for Augment Code (auggie CLI + extensions).
+
+    Augment Code stores MCP configuration in ~/.augment/settings.json under
+    the 'mcpServers' key -- the same format as Claude. The settings.json file
+    may contain other non-MCP Augment settings which are preserved via the
+    inherited _preserve_claude_settings() mechanism.
+    """
+
+    def get_adapter_host_name(self) -> str:
+        """Return the adapter host name for Augment Code."""
+        return "augment"
+
+    def get_config_path(self) -> Optional[Path]:
+        """Get Augment Code configuration path.
+
+        Same path on macOS, Linux, and Windows WSL.
+        Native Windows (non-WSL) is not yet confirmed and returns None.
+        """
+        system = platform.system()
+        if system in ("Darwin", "Linux"):
+            return Path.home() / ".augment" / "settings.json"
+        return None
+
+    def is_host_available(self) -> bool:
+        """Check if Augment Code is installed by checking for ~/.augment/ directory."""
+        return (Path.home() / ".augment").exists()
