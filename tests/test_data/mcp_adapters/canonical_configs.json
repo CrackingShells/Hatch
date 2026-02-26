@@ -75,6 +75,14 @@
     "enabled_tools": ["tool1", "tool2"],
     "disabled_tools": ["tool3"]
   },
+  "augment": {
+    "command": "python",
+    "args": ["-m", "mcp_server"],
+    "env": {"API_KEY": "test_key"},
+    "url": null,
+    "headers": null,
+    "type": "stdio"
+  },
   "opencode": {
     "command": "npx",
     "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],

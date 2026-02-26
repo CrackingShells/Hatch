@@ -6,6 +6,7 @@ The registry maps host names to adapter instances and provides factory methods.
 
 from typing import Dict, List, Optional
 
+from hatch.mcp_host_config.adapters.augment import AugmentAdapter
 from hatch.mcp_host_config.adapters.base import BaseAdapter
 from hatch.mcp_host_config.adapters.claude import ClaudeAdapter
 from hatch.mcp_host_config.adapters.codex import CodexAdapter
@@ -55,6 +56,7 @@ class AdapterRegistry:
         self.register(KiroAdapter())
         self.register(CodexAdapter())
         self.register(OpenCodeAdapter())
+        self.register(AugmentAdapter())
 
     def register(self, adapter: BaseAdapter) -> None:
         """Register an adapter instance.

@@ -31,6 +31,7 @@ class MCPHostType(str, Enum):
     KIRO = "kiro"
     CODEX = "codex"
     OPENCODE = "opencode"
+    AUGMENT = "augment"
 
 
 class MCPServerConfig(BaseModel):
@@ -366,6 +367,7 @@ class EnvironmentPackageEntry(BaseModel):
             "gemini",
             "kiro",
             "opencode",
+            "augment",
         }
         for host_name in v.keys():
             if host_name not in supported_hosts:

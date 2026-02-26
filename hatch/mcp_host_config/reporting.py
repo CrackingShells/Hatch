@@ -74,6 +74,7 @@ def _get_adapter_host_name(host_type: MCPHostType) -> str:
         MCPHostType.KIRO: "kiro",
         MCPHostType.CODEX: "codex",
         MCPHostType.OPENCODE: "opencode",
+        MCPHostType.AUGMENT: "augment",
     }
     return mapping.get(host_type, host_type.value)
 
