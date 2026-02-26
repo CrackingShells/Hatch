@@ -366,6 +366,7 @@ class EnvironmentPackageEntry(BaseModel):
             "lmstudio",
             "gemini",
             "kiro",
+            "codex",
             "opencode",
             "augment",
         }

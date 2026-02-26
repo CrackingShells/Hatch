@@ -34,7 +34,7 @@ class AdapterRegistry:
         'claude-desktop'
 
         >>> registry.get_supported_hosts()
-        ['claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'lmstudio', 'vscode']
+        ['augment', 'claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'lmstudio', 'opencode', 'vscode']
     """
 
     def __init__(self):
