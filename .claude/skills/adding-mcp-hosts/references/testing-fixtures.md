@@ -27,7 +27,33 @@ Minimal example (modeled on the `lmstudio` entry, which uses `CLAUDE_FIELDS`):
 
 For hosts with extra fields, add them alongside the universals (see `gemini` or `codex` entries for examples with `httpUrl`, `timeout`, `includeTools`, `cwd`, etc.).
 
-## 2. host_registry.py entries
+## 2. test_adapter_protocol.py entries
+
+`tests/unit/mcp/test_adapter_protocol.py` has two **static** lists that are NOT auto-updated by the data-driven infrastructure. Both must be updated manually:
+
+**`ALL_ADAPTERS`** -- append the new adapter class:
+
+```python
+ALL_ADAPTERS = [
+    # ... existing entries ...
+    NewHostAdapter,
+]
+```
+
+**`HOST_ADAPTER_MAP`** -- add the `MCPHostType → adapter class` mapping:
+
+```python
+HOST_ADAPTER_MAP = {
+    # ... existing entries ...
+    MCPHostType.NEW_HOST: NewHostAdapter,
+}
+```
+
+Import `NewHostAdapter` and `MCPHostType.NEW_HOST` at the top of the file alongside the existing imports. Missing either entry means the AP-01…AP-06 protocol compliance tests silently skip the new adapter — they pass without covering it.
+
+---
+
+## 3. host_registry.py entries
 
 Make three additions in `tests/test_data/mcp_adapters/host_registry.py`.
 
