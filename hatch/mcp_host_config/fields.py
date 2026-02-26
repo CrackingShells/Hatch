@@ -34,6 +34,7 @@ TYPE_SUPPORTING_HOSTS: FrozenSet[str] = frozenset(
         "claude-code",
         "vscode",
         "cursor",
+        "augment",
     }
 )
 
@@ -115,6 +116,10 @@ CODEX_FIELDS: FrozenSet[str] = UNIVERSAL_FIELDS | frozenset(
     }
 )
 
+
+# Fields supported by Augment Code (auggie CLI + extensions); same as Claude fields
+# Config: ~/.augment/settings.json, key: mcpServers
+AUGMENT_FIELDS: FrozenSet[str] = CLAUDE_FIELDS
 
 # Fields supported by OpenCode (no type field; uses local/remote type derivation,
 # command array merge, environment rename, and oauth nesting)
