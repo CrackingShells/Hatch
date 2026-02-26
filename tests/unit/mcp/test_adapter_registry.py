@@ -38,6 +38,7 @@ class TestAdapterRegistry(unittest.TestCase):
             "gemini",
             "kiro",
             "lmstudio",
+            "opencode",
             "vscode",
         }
 

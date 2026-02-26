@@ -30,6 +30,7 @@ class MCPHostType(str, Enum):
     GEMINI = "gemini"
     KIRO = "kiro"
     CODEX = "codex"
+    OPENCODE = "opencode"
 
 
 class MCPServerConfig(BaseModel):
@@ -164,6 +165,17 @@ class MCPServerConfig(BaseModel):
     )
     env_http_headers: Optional[Dict[str, str]] = Field(
         None, description="Header names to env var names"
+    )
+
+    # ========================================================================
+    # OpenCode-Specific Fields
+    # ========================================================================
+    opencode_oauth_scope: Optional[str] = Field(
+        None, description="OAuth scope for OpenCode server (maps to oauth.scope)"
+    )
+    opencode_oauth_disable: Optional[bool] = Field(
+        None,
+        description="Disable OAuth for OpenCode server (serializes as oauth: false)",
     )
 
     # ========================================================================
@@ -353,6 +365,7 @@ class EnvironmentPackageEntry(BaseModel):
             "lmstudio",
             "gemini",
             "kiro",
+            "opencode",
         }
         for host_name in v.keys():
             if host_name not in supported_hosts:

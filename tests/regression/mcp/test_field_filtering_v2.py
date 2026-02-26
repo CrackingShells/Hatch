@@ -77,6 +77,9 @@ FIELD_TEST_VALUES = {
     "env_vars": ["VAR1"],
     "enabled_tools": ["tool1"],
     "disabled_tools": ["tool2"],
+    # OpenCode-specific fields
+    "opencode_oauth_disable": False,
+    "opencode_oauth_scope": "read",
     # Dict fields
     "env": {"TEST": "value"},
     "headers": {"X-Test": "value"},
