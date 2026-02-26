@@ -31,6 +31,7 @@ class TestAdapterRegistry(unittest.TestCase):
     def test_AR01_registry_has_all_default_hosts(self):
         """AR-01: Registry initializes with all default host adapters."""
         expected_hosts = {
+            "augment",
             "claude-desktop",
             "claude-code",
             "codex",
