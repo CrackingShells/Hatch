@@ -33,7 +33,6 @@ class SystemInstaller(DependencyInstaller):
     def __init__(self):
         """Initialize the SystemInstaller."""
         self.logger = logging.getLogger("hatch.installers.system_installer")
-        self.logger.setLevel(logging.INFO)
 
     @property
     def installer_type(self) -> str:
