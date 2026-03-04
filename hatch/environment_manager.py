@@ -62,7 +62,6 @@ class HatchEnvironmentManager:
         """
 
         self.logger = logging.getLogger("hatch.environment_manager")
-        self.logger.setLevel(logging.INFO)
         # Set up environment directories
         self.environments_dir = environments_dir or (Path.home() / ".hatch" / "envs")
         self.environments_dir.mkdir(exist_ok=True)

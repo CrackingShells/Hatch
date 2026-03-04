@@ -31,7 +31,6 @@ class HatchPackageLoader:
                 Defaults to ~/.hatch/packages.
         """
         self.logger = logging.getLogger("hatch.package_loader")
-        self.logger.setLevel(logging.INFO)
 
         # Set up cache directory
         if cache_dir is None:

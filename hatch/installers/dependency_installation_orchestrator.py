@@ -67,7 +67,6 @@ class DependencyInstallerOrchestrator:
             registry_data (Dict[str, Any]): Registry data for dependency resolution.
         """
         self.logger = logging.getLogger("hatch.dependency_orchestrator")
-        self.logger.setLevel(logging.INFO)
         self.package_loader = package_loader
         self.registry_service = registry_service
         self.registry_data = registry_data
