@@ -1,3 +1,22 @@
+## <small>0.8.1-dev.2 (2026-03-04)</small>
+
+* Merge branch 'feat/augment-mcp-host-support' into dev ([67bb767](https://github.com/CrackingShells/Hatch/commit/67bb767))
+* Merge branch `milestone/fix-logging-clutter` into dev ([5fd15dd](https://github.com/CrackingShells/Hatch/commit/5fd15dd))
+* Merge pull request #48 from LittleCoinCoin/dev ([0bc06fb](https://github.com/CrackingShells/Hatch/commit/0bc06fb)), closes [#48](https://github.com/CrackingShells/Hatch/issues/48)
+* docs(adding-mcp-hosts): add test_adapter_protocol.py to fixture guide ([3a58908](https://github.com/CrackingShells/Hatch/commit/3a58908))
+* docs(logging): expose --log-level flag in CLI reference global options ([5aa2e9d](https://github.com/CrackingShells/Hatch/commit/5aa2e9d))
+* feat(cli): add --log-level flag and default log output to WARNING ([1e3817f](https://github.com/CrackingShells/Hatch/commit/1e3817f))
+* feat(mcp-augment): add enum value and constant ([8b22594](https://github.com/CrackingShells/Hatch/commit/8b22594))
+* feat(mcp-augment): implement AugmentAdapter ([5af34d1](https://github.com/CrackingShells/Hatch/commit/5af34d1))
+* feat(mcp-augment): implement AugmentHostStrategy ([b13d9d0](https://github.com/CrackingShells/Hatch/commit/b13d9d0))
+* feat(mcp-augment): wire AugmentAdapter into integration points ([367b736](https://github.com/CrackingShells/Hatch/commit/367b736))
+* feat(registry): add transient dim status on cache refresh ([09dd517](https://github.com/CrackingShells/Hatch/commit/09dd517))
+* refactor(logging): remove forced setLevel(INFO) from all module loggers ([fb2ee4c](https://github.com/CrackingShells/Hatch/commit/fb2ee4c))
+* refactor(registry): demote startup and fetch INFO logs to DEBUG ([df97e58](https://github.com/CrackingShells/Hatch/commit/df97e58))
+* fix(mcp-hosts): close validation and test coverage gaps ([9d7f0e5](https://github.com/CrackingShells/Hatch/commit/9d7f0e5))
+* test(mcp-augment): register test fixtures and update tests ([294d0d8](https://github.com/CrackingShells/Hatch/commit/294d0d8))
+* chore: clean up temporary reports ([038be8c](https://github.com/CrackingShells/Hatch/commit/038be8c))
+
 ## <small>0.8.1-dev.1 (2026-02-26)</small>
 
 * Merge branch 'feat/opencode-mcp-host-support' into dev ([793707d](https://github.com/CrackingShells/Hatch/commit/793707d))
