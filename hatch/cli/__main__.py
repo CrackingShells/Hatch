@@ -972,7 +972,7 @@ def main() -> int:
     """
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.WARNING,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
 
@@ -1010,8 +1010,15 @@ def main() -> int:
         default=Path.home() / ".hatch" / "cache",
         help="Directory to store cached packages",
     )
+    parser.add_argument(
+        "--log-level",
+        default="WARNING",
+        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+        help="Log verbosity level (default: WARNING)",
+    )
 
     args = parser.parse_args()
+    logging.getLogger().setLevel(getattr(logging, args.log_level))
 
     # Initialize managers (lazy - only when needed)
     from hatch.environment_manager import HatchEnvironmentManager
