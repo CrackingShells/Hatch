@@ -6,10 +6,21 @@ supporting both online and simulation modes with caching at file system and in-m
 
 import json
 import logging
+import sys
 import requests
 import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+
+def _print_registry_status(msg: str) -> None:
+    if sys.stderr.isatty():
+        print(f"\033[2m{msg}\033[0m", end="\r", file=sys.stderr, flush=True)
+
+
+def _clear_registry_status() -> None:
+    if sys.stderr.isatty():
+        print(" " * 60, end="\r", file=sys.stderr, flush=True)
 
 
 class RegistryRetriever:
@@ -297,8 +308,9 @@ class RegistryRetriever:
                 # In simulation mode, we must have a local registry file
                 registry_data = self._read_local_cache()
             else:
-                # In online mode, fetch from remote URL
+                _print_registry_status("  Refreshing registry cache...")
                 registry_data = self._fetch_remote_registry()
+                _clear_registry_status()
 
             # Update local cache
             # Note that in case of simulation mode AND default cache path,
