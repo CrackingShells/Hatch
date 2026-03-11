@@ -16,6 +16,7 @@ from hatch.mcp_host_config.adapters import (
     GeminiAdapter,
     KiroAdapter,
     LMStudioAdapter,
+    MistralVibeAdapter,
     VSCodeAdapter,
 )
 from hatch.mcp_host_config.adapters.opencode import OpenCodeAdapter
@@ -29,6 +30,7 @@ ALL_ADAPTERS = [
     GeminiAdapter,
     KiroAdapter,
     LMStudioAdapter,
+    MistralVibeAdapter,
     OpenCodeAdapter,
     VSCodeAdapter,
 ]
@@ -43,6 +45,7 @@ HOST_ADAPTER_MAP = {
     MCPHostType.GEMINI: GeminiAdapter,
     MCPHostType.KIRO: KiroAdapter,
     MCPHostType.LMSTUDIO: LMStudioAdapter,
+    MCPHostType.MISTRAL_VIBE: MistralVibeAdapter,
     MCPHostType.OPENCODE: OpenCodeAdapter,
     MCPHostType.VSCODE: VSCodeAdapter,
 }

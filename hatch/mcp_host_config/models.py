@@ -30,6 +30,7 @@ class MCPHostType(str, Enum):
     GEMINI = "gemini"
     KIRO = "kiro"
     CODEX = "codex"
+    MISTRAL_VIBE = "mistral-vibe"
     OPENCODE = "opencode"
     AUGMENT = "augment"
 
@@ -61,6 +62,10 @@ class MCPServerConfig(BaseModel):
     # Transport type discriminator (Claude/VSCode/Cursor only, NOT Gemini/Kiro/Codex)
     type: Optional[Literal["stdio", "sse", "http"]] = Field(
         None, description="Transport type (stdio for local, sse/http for remote)"
+    )
+    transport: Optional[Literal["stdio", "http", "streamable-http"]] = Field(
+        None,
+        description="Host-native transport discriminator (e.g. Mistral Vibe)",
     )
 
     # stdio transport (local server)
@@ -138,15 +143,15 @@ class MCPServerConfig(BaseModel):
     disabledTools: Optional[List[str]] = Field(None, description="Disabled tool names")
 
     # ========================================================================
-    # Codex-Specific Fields
+    # Codex / Mistral Vibe-Specific Fields
     # ========================================================================
     env_vars: Optional[List[str]] = Field(
         None, description="Environment variables to whitelist/forward"
     )
-    startup_timeout_sec: Optional[int] = Field(
+    startup_timeout_sec: Optional[float] = Field(
         None, description="Server startup timeout in seconds"
     )
-    tool_timeout_sec: Optional[int] = Field(
+    tool_timeout_sec: Optional[float] = Field(
         None, description="Tool execution timeout in seconds"
     )
     enabled: Optional[bool] = Field(
@@ -166,6 +171,19 @@ class MCPServerConfig(BaseModel):
     )
     env_http_headers: Optional[Dict[str, str]] = Field(
         None, description="Header names to env var names"
+    )
+    prompt: Optional[str] = Field(None, description="Per-server prompt override")
+    sampling_enabled: Optional[bool] = Field(
+        None, description="Whether sampling is enabled for tool calls"
+    )
+    api_key_env: Optional[str] = Field(
+        None, description="Env var containing API key for remote server auth"
+    )
+    api_key_header: Optional[str] = Field(
+        None, description="HTTP header name used for API key injection"
+    )
+    api_key_format: Optional[str] = Field(
+        None, description="Formatting template for API key header values"
     )
 
     # ========================================================================
@@ -239,6 +257,8 @@ class MCPServerConfig(BaseModel):
             1. Explicit type="stdio" field takes precedence
             2. Otherwise, presence of 'command' field indicates stdio
         """
+        if self.transport is not None:
+            return self.transport == "stdio"
         if self.type is not None:
             return self.type == "stdio"
         return self.command is not None
@@ -253,6 +273,8 @@ class MCPServerConfig(BaseModel):
             1. Explicit type="sse" field takes precedence
             2. Otherwise, presence of 'url' field indicates SSE
         """
+        if self.transport is not None:
+            return False
         if self.type is not None:
             return self.type == "sse"
         return self.url is not None
@@ -267,6 +289,8 @@ class MCPServerConfig(BaseModel):
             1. Explicit type="http" field takes precedence
             2. Otherwise, presence of 'httpUrl' field indicates HTTP streaming
         """
+        if self.transport is not None:
+            return self.transport in ("http", "streamable-http")
         if self.type is not None:
             return self.type == "http"
         return self.httpUrl is not None
@@ -278,8 +302,12 @@ class MCPServerConfig(BaseModel):
             "stdio" for command-based local servers
             "sse" for URL-based remote servers (SSE transport)
             "http" for httpUrl-based remote servers (Gemini HTTP streaming)
+            "streamable-http" for hosts that expose that transport natively
             None if transport cannot be determined
         """
+        if self.transport is not None:
+            return self.transport
+
         # Explicit type takes precedence
         if self.type is not None:
             return self.type
@@ -367,6 +395,7 @@ class EnvironmentPackageEntry(BaseModel):
             "gemini",
             "kiro",
             "codex",
+            "mistral-vibe",
             "opencode",
             "augment",
         }

@@ -30,6 +30,7 @@ class MCPHostRegistry:
     _family_mappings: Dict[str, List[MCPHostType]] = {
         "claude": [MCPHostType.CLAUDE_DESKTOP, MCPHostType.CLAUDE_CODE],
         "cursor": [MCPHostType.CURSOR, MCPHostType.LMSTUDIO],
+        "mistral": [MCPHostType.MISTRAL_VIBE],
     }
 
     @classmethod

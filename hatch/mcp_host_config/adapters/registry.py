@@ -14,6 +14,7 @@ from hatch.mcp_host_config.adapters.cursor import CursorAdapter
 from hatch.mcp_host_config.adapters.gemini import GeminiAdapter
 from hatch.mcp_host_config.adapters.kiro import KiroAdapter
 from hatch.mcp_host_config.adapters.lmstudio import LMStudioAdapter
+from hatch.mcp_host_config.adapters.mistral_vibe import MistralVibeAdapter
 from hatch.mcp_host_config.adapters.opencode import OpenCodeAdapter
 from hatch.mcp_host_config.adapters.vscode import VSCodeAdapter
 
@@ -34,7 +35,7 @@ class AdapterRegistry:
         'claude-desktop'
 
         >>> registry.get_supported_hosts()
-        ['augment', 'claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'lmstudio', 'opencode', 'vscode']
+        ['augment', 'claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'lmstudio', 'mistral-vibe', 'opencode', 'vscode']
     """
 
     def __init__(self):
@@ -55,6 +56,7 @@ class AdapterRegistry:
         self.register(GeminiAdapter())
         self.register(KiroAdapter())
         self.register(CodexAdapter())
+        self.register(MistralVibeAdapter())
         self.register(OpenCodeAdapter())
         self.register(AugmentAdapter())
 

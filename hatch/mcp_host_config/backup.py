@@ -48,6 +48,7 @@ class BackupInfo(BaseModel):
             "gemini",
             "kiro",
             "codex",
+            "mistral-vibe",
             "opencode",
             "augment",
         }
