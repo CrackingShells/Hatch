@@ -57,6 +57,11 @@ FIELD_TEST_VALUES = {
     "oauth_redirectUri": "http://localhost:3000/callback",
     "oauth_tokenParamName": "access_token",
     "bearer_token_env_var": "BEARER_TOKEN",
+    "prompt": "Be concise.",
+    "api_key_env": "MISTRAL_API_KEY",
+    "api_key_header": "Authorization",
+    "api_key_format": "Bearer {api_key}",
+    "transport": "streamable-http",
     # Integer fields
     "timeout": 30000,
     "startup_timeout_sec": 10,
@@ -66,6 +71,7 @@ FIELD_TEST_VALUES = {
     "oauth_enabled": False,
     "disabled": False,
     "enabled": True,
+    "sampling_enabled": True,
     # List[str] fields
     "args": ["--test"],
     "includeTools": ["tool1"],

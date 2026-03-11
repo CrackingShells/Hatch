@@ -75,6 +75,21 @@
     "enabled_tools": ["tool1", "tool2"],
     "disabled_tools": ["tool3"]
   },
+  "mistral-vibe": {
+    "command": null,
+    "args": null,
+    "env": null,
+    "url": "https://example.com/mcp",
+    "headers": {"Authorization": "Bearer test-token"},
+    "transport": "streamable-http",
+    "prompt": "Use concise answers.",
+    "startup_timeout_sec": 15,
+    "tool_timeout_sec": 90,
+    "sampling_enabled": true,
+    "api_key_env": "MISTRAL_API_KEY",
+    "api_key_header": "Authorization",
+    "api_key_format": "Bearer {api_key}"
+  },
   "augment": {
     "command": "python",
     "args": ["-m", "mcp_server"],
