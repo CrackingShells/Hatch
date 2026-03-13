@@ -162,8 +162,8 @@ class ClaudeAdapter(BaseAdapter):
         self.validate_filtered(filtered)
 
         # Claude's URL-based remote configs should explicitly declare HTTP
-        # transport when callers omit the type field.
-        if "url" in filtered and "type" not in filtered:
+        # transport in serialized output.
+        if "url" in filtered:
             filtered = filtered.copy()
             filtered["type"] = "http"
 
