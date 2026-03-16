@@ -57,6 +57,7 @@ Hatch currently supports configuration for these MCP host platforms:
 - [**Codex**](https://github.com/openai/codex) - OpenAI Codex with MCP server configuration support
 - [**LM Studio**](https://lmstudio.ai/) - Local language model interface
 - [**Gemini**](https://github.com/google-gemini/gemini-cli) - Google's AI Command Line Interface
+- [**Mistral Vibe**](https://mistral.ai/vibe) - Mistral Vibe IDE with MCP support
 
 ## Configuration Management Workflow
 
