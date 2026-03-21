@@ -38,7 +38,7 @@ class TestClaudeTransportSerialization:
     @pytest.mark.parametrize(
         "test_case",
         FIXTURES["remote_http"],
-        ids=lambda tc: tc["host"],
+        ids=lambda tc: f'{tc["host"]}-{tc["case"]}',
     )
     @regression_test
     def test_remote_url_defaults_to_http_type(self, test_case):
@@ -53,7 +53,7 @@ class TestClaudeTransportSerialization:
     @pytest.mark.parametrize(
         "test_case",
         FIXTURES["stdio_without_type"],
-        ids=lambda tc: tc["host"],
+        ids=lambda tc: f'{tc["host"]}-{tc["case"]}',
     )
     @regression_test
     def test_stdio_config_does_not_require_type_input(self, test_case):
