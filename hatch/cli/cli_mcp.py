@@ -1586,18 +1586,6 @@ def handle_mcp_configure(args: Namespace) -> int:
             )
             return EXIT_ERROR
 
-        # Validate Claude Desktop/Code transport restrictions (Issue 2)
-        if host_type in (MCPHostType.CLAUDE_DESKTOP, MCPHostType.CLAUDE_CODE):
-            if url is not None:
-                format_validation_error(
-                    ValidationError(
-                        f"{host} does not support remote servers (--url)",
-                        field="--url",
-                        suggestion="Only local servers with --command are supported for this host",
-                    )
-                )
-                return EXIT_ERROR
-
         # Validate argument dependencies
         if command and header:
             format_validation_error(
