@@ -1,3 +1,19 @@
+## <small>0.8.1-dev.3 (2026-03-23)</small>
+
+* Merge pull request #49 from LittleCoinCoin/dev ([73666d9](https://github.com/CrackingShells/Hatch/commit/73666d9)), closes [#49](https://github.com/CrackingShells/Hatch/issues/49)
+* fix(mcp-hosts): add explicit HTTP transport type for Claude URL-based co ([62f99cf](https://github.com/CrackingShells/Hatch/commit/62f99cf))
+* fix(mcp-hosts): always set HTTP transport type for Claude URL-based conf ([904f22b](https://github.com/CrackingShells/Hatch/commit/904f22b))
+* fix(mcp-hosts): remove redundant Claude Desktop/Code URL validation ([d6a75a8](https://github.com/CrackingShells/Hatch/commit/d6a75a8))
+* test(mcp-hosts): keep mistral vibe in shared adapter coverage ([1a81ae0](https://github.com/CrackingShells/Hatch/commit/1a81ae0))
+* test(mcp): add fixture for claude remote setup ([d1cc2b0](https://github.com/CrackingShells/Hatch/commit/d1cc2b0))
+* test(mcp): fix whitespace in Claude transport serialization test ([b5c7191](https://github.com/CrackingShells/Hatch/commit/b5c7191))
+* docs: correct Mistral Vibe terminology to CLI coding agent ([bfa8b9b](https://github.com/CrackingShells/Hatch/commit/bfa8b9b))
+* docs(mcp-hosts): add mistral vibe to supported platforms ([5130c84](https://github.com/CrackingShells/Hatch/commit/5130c84))
+* docs(mcp-hosts): capture mistral vibe host analysis ([4ff2758](https://github.com/CrackingShells/Hatch/commit/4ff2758))
+* feat(cli): let shared mcp configure target mistral vibe ([0e801d0](https://github.com/CrackingShells/Hatch/commit/0e801d0))
+* feat(mcp-hosts): let hatch manage mistral vibe configs ([f213971](https://github.com/CrackingShells/Hatch/commit/f213971))
+* ci: semantic-release streamlining ([db0fb91](https://github.com/CrackingShells/Hatch/commit/db0fb91))
+
 ## <small>0.8.1-dev.2 (2026-03-04)</small>
 
 * Merge branch 'feat/augment-mcp-host-support' into dev ([67bb767](https://github.com/CrackingShells/Hatch/commit/67bb767))
