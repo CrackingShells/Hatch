@@ -1,3 +1,7 @@
+## <small>0.8.1-dev.5 (2026-03-23)</small>
+
+* fix(ci): inline pypi publish jobs to satisfy trusted publishing ([fc81e78](https://github.com/CrackingShells/Hatch/commit/fc81e78))
+
 ## <small>0.8.1-dev.4 (2026-03-23)</small>
 
 * fix(ci): rename caller workflow to match pypi trusted publisher ([7d2634d](https://github.com/CrackingShells/Hatch/commit/7d2634d))
