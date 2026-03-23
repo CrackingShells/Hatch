@@ -17,6 +17,7 @@ from hatch.mcp_host_config.adapters import (
     GeminiAdapter,
     KiroAdapter,
     LMStudioAdapter,
+    MistralVibeAdapter,
     VSCodeAdapter,
 )
 
@@ -39,6 +40,7 @@ class TestAdapterRegistry(unittest.TestCase):
             "gemini",
             "kiro",
             "lmstudio",
+            "mistral-vibe",
             "opencode",
             "vscode",
         }
@@ -57,6 +59,7 @@ class TestAdapterRegistry(unittest.TestCase):
             ("gemini", GeminiAdapter),
             ("kiro", KiroAdapter),
             ("lmstudio", LMStudioAdapter),
+            ("mistral-vibe", MistralVibeAdapter),
             ("vscode", VSCodeAdapter),
         ]
 

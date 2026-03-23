@@ -143,6 +143,7 @@ supported = registry.get_supported_hosts()  # List all hosts
 - `claude-desktop`, `claude-code`
 - `vscode`, `cursor`, `lmstudio`
 - `gemini`, `kiro`, `codex`
+- `mistral-vibe`
 
 ### BaseAdapter Protocol
 

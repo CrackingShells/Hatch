@@ -585,10 +585,10 @@ def _setup_mcp_commands(subparsers):
     )
     server_type_group.add_argument(
         "--url",
-        help="Server URL for remote MCP servers (SSE transport) [hosts: all except claude-desktop, claude-code]",
+        help="Server URL for remote MCP servers (SSE/streamable transport) [hosts: all except claude-desktop, claude-code]",
     )
     server_type_group.add_argument(
-        "--http-url", help="HTTP streaming endpoint URL [hosts: gemini]"
+        "--http-url", help="HTTP streaming endpoint URL [hosts: gemini, mistral-vibe]"
     )
 
     mcp_configure_parser.add_argument(
@@ -667,12 +667,12 @@ def _setup_mcp_commands(subparsers):
     mcp_configure_parser.add_argument(
         "--startup-timeout",
         type=int,
-        help="Server startup timeout in seconds (default: 10) [hosts: codex]",
+        help="Server startup timeout in seconds (default: 10) [hosts: codex, mistral-vibe]",
     )
     mcp_configure_parser.add_argument(
         "--tool-timeout",
         type=int,
-        help="Tool execution timeout in seconds (default: 60) [hosts: codex]",
+        help="Tool execution timeout in seconds (default: 60) [hosts: codex, mistral-vibe]",
     )
     mcp_configure_parser.add_argument(
         "--enabled",
@@ -683,12 +683,35 @@ def _setup_mcp_commands(subparsers):
     mcp_configure_parser.add_argument(
         "--bearer-token-env-var",
         type=str,
-        help="Name of environment variable containing bearer token for Authorization header [hosts: codex]",
+        help="Name of environment variable containing bearer token for Authorization header [hosts: codex, mistral-vibe]",
     )
     mcp_configure_parser.add_argument(
         "--env-header",
         action="append",
-        help="HTTP header from environment variable in KEY=ENV_VAR_NAME format [hosts: codex]",
+        help="HTTP header from environment variable in KEY=ENV_VAR_NAME format [hosts: codex, mistral-vibe]",
+    )
+
+    # Mistral Vibe-specific arguments
+    mcp_configure_parser.add_argument(
+        "--prompt", help="Per-server prompt override [hosts: mistral-vibe]"
+    )
+    mcp_configure_parser.add_argument(
+        "--sampling-enabled",
+        action="store_true",
+        default=None,
+        help="Enable model sampling for tool calls [hosts: mistral-vibe]",
+    )
+    mcp_configure_parser.add_argument(
+        "--api-key-env",
+        help="Environment variable containing API key for remote auth [hosts: mistral-vibe]",
+    )
+    mcp_configure_parser.add_argument(
+        "--api-key-header",
+        help="HTTP header name used for API key injection [hosts: mistral-vibe]",
+    )
+    mcp_configure_parser.add_argument(
+        "--api-key-format",
+        help="Formatting template for API key header values [hosts: mistral-vibe]",
     )
 
     mcp_configure_parser.add_argument(

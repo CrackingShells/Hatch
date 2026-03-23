@@ -1055,6 +1055,154 @@ class OpenCodeHostStrategy(MCPHostStrategy):
             return False
 
 
+@register_host_strategy(MCPHostType.MISTRAL_VIBE)
+class MistralVibeHostStrategy(MCPHostStrategy):
+    """Configuration strategy for Mistral Vibe's TOML-based MCP settings."""
+
+    def get_adapter_host_name(self) -> str:
+        """Return the adapter host name for Mistral Vibe."""
+        return "mistral-vibe"
+
+    def _project_config_path(self) -> Path:
+        return Path.cwd() / ".vibe" / "config.toml"
+
+    def _global_config_path(self) -> Path:
+        return Path.home() / ".vibe" / "config.toml"
+
+    def get_config_path(self) -> Optional[Path]:
+        """Get Mistral Vibe configuration path.
+
+        Vibe prefers project-local `./.vibe/config.toml` when it exists, and
+        otherwise falls back to the user-global `~/.vibe/config.toml`.
+        """
+        project_path = self._project_config_path()
+        global_path = self._global_config_path()
+
+        if project_path.exists():
+            return project_path
+        if global_path.exists():
+            return global_path
+        if project_path.parent.exists():
+            return project_path
+        return global_path
+
+    def get_config_key(self) -> str:
+        """Mistral Vibe uses the `mcp_servers` top-level key."""
+        return "mcp_servers"
+
+    def is_host_available(self) -> bool:
+        """Check if Mistral Vibe is available by checking config directories."""
+        return (
+            self._project_config_path().parent.exists()
+            or self._global_config_path().parent.exists()
+        )
+
+    def validate_server_config(self, server_config: MCPServerConfig) -> bool:
+        """Vibe supports local stdio and remote HTTP transports."""
+        return any(
+            value is not None
+            for value in (
+                server_config.command,
+                server_config.url,
+                server_config.httpUrl,
+            )
+        )
+
+    def read_configuration(self) -> HostConfiguration:
+        """Read Mistral Vibe TOML configuration."""
+        config_path = self.get_config_path()
+        if not config_path or not config_path.exists():
+            return HostConfiguration(servers={})
+
+        try:
+            with open(config_path, "rb") as f:
+                toml_data = tomllib.load(f)
+
+            raw_servers = toml_data.get(self.get_config_key(), [])
+            if not isinstance(raw_servers, list):
+                logger.warning(
+                    "Invalid Mistral Vibe configuration: mcp_servers must be a list"
+                )
+                return HostConfiguration(servers={})
+
+            servers = {}
+            for server_data in raw_servers:
+                try:
+                    normalized = dict(server_data)
+                    name = normalized.pop("name", None)
+                    if not name:
+                        logger.warning("Skipping unnamed Mistral Vibe MCP server entry")
+                        continue
+
+                    transport = normalized.get("transport")
+                    if transport == "stdio":
+                        normalized.setdefault("type", "stdio")
+                    elif transport in ("http", "streamable-http"):
+                        normalized.setdefault("type", "http")
+
+                    servers[name] = MCPServerConfig(name=name, **normalized)
+                except Exception as e:
+                    logger.warning(f"Invalid Mistral Vibe server config: {e}")
+                    continue
+
+            return HostConfiguration(servers=servers)
+        except Exception as e:
+            logger.error(f"Failed to read Mistral Vibe configuration: {e}")
+            return HostConfiguration(servers={})
+
+    def write_configuration(
+        self, config: HostConfiguration, no_backup: bool = False
+    ) -> bool:
+        """Write Mistral Vibe TOML configuration while preserving other keys."""
+        config_path = self.get_config_path()
+        if not config_path:
+            return False
+
+        try:
+            config_path.parent.mkdir(parents=True, exist_ok=True)
+
+            existing_data: Dict[str, Any] = {}
+            if config_path.exists():
+                try:
+                    with open(config_path, "rb") as f:
+                        existing_data = tomllib.load(f)
+                except Exception:
+                    pass
+
+            adapter = get_adapter(self.get_adapter_host_name())
+            servers_data = []
+            for name, server_config in config.servers.items():
+                serialized = adapter.serialize(server_config)
+                servers_data.append({"name": name, **serialized})
+
+            final_data = {
+                key: value
+                for key, value in existing_data.items()
+                if key != self.get_config_key()
+            }
+            final_data[self.get_config_key()] = servers_data
+
+            backup_manager = MCPHostConfigBackupManager()
+            atomic_ops = AtomicFileOperations()
+
+            def toml_serializer(data: Any, f: TextIO) -> None:
+                f.write(tomli_w.dumps(data))
+
+            atomic_ops.atomic_write_with_serializer(
+                file_path=config_path,
+                data=final_data,
+                serializer=toml_serializer,
+                backup_manager=backup_manager,
+                hostname="mistral-vibe",
+                skip_backup=no_backup,
+            )
+
+            return True
+        except Exception as e:
+            logger.error(f"Failed to write Mistral Vibe configuration: {e}")
+            return False
+
+
 @register_host_strategy(MCPHostType.AUGMENT)
 class AugmentHostStrategy(ClaudeHostStrategy):
     """Configuration strategy for Augment Code (auggie CLI + extensions).

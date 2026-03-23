@@ -24,6 +24,7 @@ This module provides handlers for:
 - codex: OpenAI Codex
 - lm-studio: LM Studio
 - gemini: Google Gemini
+- mistral-vibe: Mistral Vibe CLI coding agent
 
 ## Handler Functions
 

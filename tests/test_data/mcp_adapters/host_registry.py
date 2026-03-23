@@ -27,6 +27,7 @@ from hatch.mcp_host_config.adapters.cursor import CursorAdapter
 from hatch.mcp_host_config.adapters.gemini import GeminiAdapter
 from hatch.mcp_host_config.adapters.kiro import KiroAdapter
 from hatch.mcp_host_config.adapters.lmstudio import LMStudioAdapter
+from hatch.mcp_host_config.adapters.mistral_vibe import MistralVibeAdapter
 from hatch.mcp_host_config.adapters.opencode import OpenCodeAdapter
 from hatch.mcp_host_config.adapters.vscode import VSCodeAdapter
 from hatch.mcp_host_config.fields import (
@@ -39,6 +40,7 @@ from hatch.mcp_host_config.fields import (
     GEMINI_FIELDS,
     KIRO_FIELDS,
     LMSTUDIO_FIELDS,
+    MISTRAL_VIBE_FIELDS,
     OPENCODE_FIELDS,
     TYPE_SUPPORTING_HOSTS,
     VSCODE_FIELDS,
@@ -59,6 +61,7 @@ FIELD_SETS: Dict[str, FrozenSet[str]] = {
     "gemini": GEMINI_FIELDS,
     "kiro": KIRO_FIELDS,
     "codex": CODEX_FIELDS,
+    "mistral-vibe": MISTRAL_VIBE_FIELDS,
     "opencode": OPENCODE_FIELDS,
     "augment": AUGMENT_FIELDS,
 }
@@ -99,6 +102,7 @@ class HostSpec:
             "gemini": GeminiAdapter,
             "kiro": KiroAdapter,
             "codex": CodexAdapter,
+            "mistral-vibe": MistralVibeAdapter,
             "opencode": OpenCodeAdapter,
             "augment": AugmentAdapter,
         }
@@ -358,6 +362,7 @@ def generate_unsupported_field_test_cases(
         | GEMINI_FIELDS
         | KIRO_FIELDS
         | CODEX_FIELDS
+        | MISTRAL_VIBE_FIELDS
         | OPENCODE_FIELDS
         | AUGMENT_FIELDS
     )

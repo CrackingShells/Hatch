@@ -27,7 +27,7 @@ UNIVERSAL_FIELDS: FrozenSet[str] = frozenset(
 # ============================================================================
 
 # Hosts that support the 'type' discriminator field (stdio/sse/http)
-# Note: Gemini, Kiro, Codex do NOT support this field
+# Note: Gemini, Kiro, Codex, and Mistral Vibe do NOT support this field
 TYPE_SUPPORTING_HOSTS: FrozenSet[str] = frozenset(
     {
         "claude-desktop",
@@ -113,6 +113,21 @@ CODEX_FIELDS: FrozenSet[str] = UNIVERSAL_FIELDS | frozenset(
         "bearer_token_env_var",  # Env var containing bearer token
         "http_headers",  # HTTP headers (Codex naming)
         "env_http_headers",  # Header names to env var names mapping
+    }
+)
+
+
+# Fields supported by Mistral Vibe (TOML array-of-tables with explicit transport)
+MISTRAL_VIBE_FIELDS: FrozenSet[str] = UNIVERSAL_FIELDS | frozenset(
+    {
+        "transport",  # Vibe transport discriminator: stdio/http/streamable-http
+        "prompt",  # Optional per-server prompt override
+        "sampling_enabled",  # Enable model sampling for tool calls
+        "api_key_env",  # Env var containing API key for remote servers
+        "api_key_header",  # Header name for API key injection
+        "api_key_format",  # Header formatting template for API key injection
+        "startup_timeout_sec",  # Server startup timeout
+        "tool_timeout_sec",  # Tool execution timeout
     }
 )
 

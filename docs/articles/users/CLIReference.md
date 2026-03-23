@@ -1017,6 +1017,7 @@ Available MCP Host Platforms:
   claude-desktop      ✓ Available      /Users/user/.config/claude/...
   cursor              ✓ Available      /Users/user/.cursor/mcp.json
   vscode              ✗ Not Found      -
+  mistral-vibe        ✓ Available      /Users/user/.config/mistral/mcp.toml
 ```
 
 **Key Details**:
@@ -1039,6 +1040,8 @@ Available MCP host platforms:
     Config path: ~/.cursor/config.json
   vscode: ✗ Not detected
     Config path: ~/.vscode/config.json
+  mistral-vibe: ✓ Available
+    Config path: ~/.config/mistral/mcp.toml
 ```
 
 #### `hatch mcp discover servers`

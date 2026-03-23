@@ -73,6 +73,7 @@ def _get_adapter_host_name(host_type: MCPHostType) -> str:
         MCPHostType.GEMINI: "gemini",
         MCPHostType.KIRO: "kiro",
         MCPHostType.CODEX: "codex",
+        MCPHostType.MISTRAL_VIBE: "mistral-vibe",
         MCPHostType.OPENCODE: "opencode",
         MCPHostType.AUGMENT: "augment",
     }

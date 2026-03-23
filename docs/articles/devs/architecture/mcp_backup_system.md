@@ -146,6 +146,7 @@ The system supports all MCP host platforms:
 | `cursor` | Cursor IDE MCP integration |
 | `lmstudio` | LM Studio MCP support |
 | `gemini` | Google Gemini MCP integration |
+| `mistral-vibe` | Mistral Vibe CLI coding agent |
 
 ## Performance Characteristics
 
