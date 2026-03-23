@@ -1,3 +1,7 @@
+## <small>0.8.1-dev.4 (2026-03-23)</small>
+
+* fix(ci): rename caller workflow to match pypi trusted publisher ([7d2634d](https://github.com/CrackingShells/Hatch/commit/7d2634d))
+
 ## <small>0.8.1-dev.3 (2026-03-23)</small>
 
 * Merge pull request #49 from LittleCoinCoin/dev ([73666d9](https://github.com/CrackingShells/Hatch/commit/73666d9)), closes [#49](https://github.com/CrackingShells/Hatch/issues/49)
