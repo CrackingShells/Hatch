@@ -1,0 +1,199 @@
+/* =============================================================
+   CrackingShells Brand Themes
+   Two custom MkDocs Material palette schemes:
+     - egg-shell  (light)  — custom scheme, fully standalone
+     - slate      (dark)   — Material built-in base + brand overrides
+   ============================================================= */
+
+/* ── Light: Egg Shell ──────────────────────────────────────── */
+[data-md-color-scheme="egg-shell"] {
+
+  /* Primary — egg yolk amber nav/header, dark green text on it */
+  --md-primary-fg-color:              #E8B84B;
+  --md-primary-fg-color--light:       #F0D060;
+  --md-primary-fg-color--dark:        #D4952A;
+  --md-primary-bg-color:              #1D3328;
+  --md-primary-bg-color--light:       rgba(29, 51, 40, 0.7);
+
+  /* Accent — warm amber */
+  --md-accent-fg-color:               #D4952A;
+  --md-accent-fg-color--transparent:  rgba(212, 149, 42, 0.15);
+  --md-accent-bg-color:               #F0E8C8;
+  --md-accent-bg-color--light:        #f5f0e0;
+
+  /* Page & surface backgrounds — warm cream */
+  --md-default-bg-color:              #F7F3EA;
+  --md-default-bg-color--light:       #EDE8DC;
+  --md-default-bg-color--lighter:     #F0EBE0;
+  --md-default-bg-color--lightest:    #faf7f2;
+
+  /* Body text — deep dark green */
+  --md-default-fg-color:              #1D3328;
+  --md-default-fg-color--light:       #3D5148;
+  --md-default-fg-color--lighter:     #4A6B58;
+  --md-default-fg-color--lightest:    rgba(29, 51, 40, 0.12);
+
+  /* Links */
+  --md-typeset-a-color:               #D4952A;
+
+  /* Code blocks */
+  --md-code-fg-color:                 #1D3328;
+  --md-code-bg-color:                 #EDE5CE;
+
+  /* Admonitions */
+  --md-admonition-fg-color:           #1D3328;
+  --md-admonition-bg-color:           #f3edd8;
+
+  /* Footer */
+  --md-footer-fg-color:               #F0E8C8;
+  --md-footer-fg-color--light:        rgba(240, 232, 200, 0.7);
+  --md-footer-fg-color--lighter:      rgba(240, 232, 200, 0.45);
+  --md-footer-bg-color:               #1D3328;
+  --md-footer-bg-color--dark:         #111D18;
+
+  /* Keyboard key */
+  --md-typeset-kbd-color:             #EDE8DC;
+  --md-typeset-kbd-accent-color:      #D4952A;
+  --md-typeset-kbd-border-color:      #C8B898;
+
+  /* Tables */
+  --md-typeset-table-color:           rgba(29, 51, 40, 0.12);
+  --md-typeset-table-color--light:    rgba(29, 51, 40, 0.035);
+
+  /* Sidebar scroll track */
+  --md-scrollbar-thumb-bg-color:      rgba(61, 81, 72, 0.35);
+}
+
+/* Override logo for light scheme */
+[data-md-color-scheme="egg-shell"] .md-header__button.md-logo img {
+  content: url("../resources/images/cs_wide_light_bg.png");
+}
+
+
+/* ── Dark: Hatch Night (scheme: slate) ────────────────────── */
+[data-md-color-scheme="slate"] {
+
+  /* Primary — deep green nav/header */
+  --md-primary-fg-color:              #2A3D32;
+  --md-primary-fg-color--light:       #3D5148;
+  --md-primary-fg-color--dark:        #1D2B24;
+  --md-primary-bg-color:              #F0E8C8;
+  --md-primary-bg-color--light:       rgba(240, 232, 200, 0.7);
+
+  /* Accent — golden amber */
+  --md-accent-fg-color:               #E8B84B;
+  --md-accent-fg-color--transparent:  rgba(232, 184, 75, 0.15);
+  --md-accent-bg-color:               #1D2B24;
+  --md-accent-bg-color--light:        #243525;
+
+  /* Page & surface backgrounds — near-black green */
+  --md-default-bg-color:              #111D18;
+  --md-default-bg-color--light:       #1D2B24;
+  --md-default-bg-color--lighter:     #162318;
+  --md-default-bg-color--lightest:    rgba(255, 255, 255, 0.05);
+
+  /* Body text — warm off-white */
+  --md-default-fg-color:              #E8DFC8;
+  --md-default-fg-color--light:       rgba(232, 223, 200, 0.75);
+  --md-default-fg-color--lighter:     rgba(232, 223, 200, 0.45);
+  --md-default-fg-color--lightest:    rgba(232, 223, 200, 0.12);
+
+  /* Links */
+  --md-typeset-a-color:               #E8B84B;
+
+  /* Code blocks */
+  --md-code-fg-color:                 #F0E8C8;
+  --md-code-bg-color:                 #1A2B22;
+
+  /* Admonitions */
+  --md-admonition-fg-color:           #E8DFC8;
+  --md-admonition-bg-color:           #1D2B24;
+
+  /* Footer */
+  --md-footer-fg-color:               #F0E8C8;
+  --md-footer-fg-color--light:        rgba(240, 232, 200, 0.7);
+  --md-footer-fg-color--lighter:      rgba(240, 232, 200, 0.45);
+  --md-footer-bg-color:               #0D1710;
+  --md-footer-bg-color--dark:         #080F0A;
+
+  /* Keyboard key */
+  --md-typeset-kbd-color:             #1D2B24;
+  --md-typeset-kbd-accent-color:      #E8B84B;
+  --md-typeset-kbd-border-color:      #3D5148;
+
+  /* Tables */
+  --md-typeset-table-color:           rgba(232, 184, 75, 0.12);
+  --md-typeset-table-color--light:    rgba(232, 184, 75, 0.035);
+
+  /* Sidebar scroll track */
+  --md-scrollbar-thumb-bg-color:      rgba(232, 184, 75, 0.25);
+}
+
+/* Override logo for dark scheme */
+[data-md-color-scheme="slate"] .md-header__button.md-logo img {
+  content: url("../resources/images/cs_wide_dark_bg.png");
+}
+
+/* Explicit link/nav/toc overrides — variables alone lose to Material's slate defaults */
+
+/* Body content links */
+[data-md-color-scheme="slate"] .md-typeset a {
+  color: #E8B84B;
+}
+[data-md-color-scheme="slate"] .md-typeset a:hover,
+[data-md-color-scheme="slate"] .md-typeset a:focus {
+  color: #F0D060;
+}
+
+/* Left sidebar nav — active, hover, focus states */
+[data-md-color-scheme="slate"] .md-nav__link:focus,
+[data-md-color-scheme="slate"] .md-nav__link:hover,
+[data-md-color-scheme="slate"] .md-nav__link--active,
+[data-md-color-scheme="slate"] .md-nav__item--active > .md-nav__link {
+  color: #E8B84B;
+}
+
+/* Right TOC — active / focused section */
+[data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:focus,
+[data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link:hover,
+[data-md-color-scheme="slate"] .md-nav--secondary .md-nav__link--active {
+  color: #E8B84B;
+}
+
+/* Top navigation tabs — inactive, active, hover */
+[data-md-color-scheme="slate"] .md-tabs__link {
+  color: rgba(240, 232, 200, 0.65);
+  opacity: 1;
+}
+[data-md-color-scheme="slate"] .md-tabs__link--active,
+[data-md-color-scheme="slate"] .md-tabs__link:hover {
+  color: #F0D060;
+  opacity: 1;
+}
+
+
+/* ── Shared tweaks ─────────────────────────────────────────── */
+
+/* Slightly reduce logo height in the header so it sits comfortably */
+.md-header__button.md-logo img {
+  height: 1.8rem;
+  width: auto;
+}
+
+/* Admonition title bars — use brand green for note, amber for warning/tip */
+[data-md-color-scheme="egg-shell"] .admonition.note > .admonition-title,
+[data-md-color-scheme="egg-shell"] .admonition.info > .admonition-title {
+  background-color: rgba(61, 81, 72, 0.18);
+}
+[data-md-color-scheme="egg-shell"] .admonition.warning > .admonition-title,
+[data-md-color-scheme="egg-shell"] .admonition.tip > .admonition-title {
+  background-color: rgba(212, 149, 42, 0.2);
+}
+[data-md-color-scheme="slate"] .admonition.note > .admonition-title,
+[data-md-color-scheme="slate"] .admonition.info > .admonition-title {
+  background-color: rgba(61, 81, 72, 0.45);
+}
+[data-md-color-scheme="slate"] .admonition.warning > .admonition-title,
+[data-md-color-scheme="slate"] .admonition.tip > .admonition-title {
+  background-color: rgba(232, 184, 75, 0.22);
+}
