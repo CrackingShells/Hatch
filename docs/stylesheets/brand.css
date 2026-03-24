@@ -66,7 +66,7 @@
 
 /* Override logo for light scheme */
 [data-md-color-scheme="egg-shell"] .md-header__button.md-logo img {
-  content: url("../resources/images/cs_wide_light_bg.png");
+  content: url(https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/hatch_wide_light_bg_transparent.png);
 }
 
 
@@ -131,7 +131,7 @@
 
 /* Override logo for dark scheme */
 [data-md-color-scheme="slate"] .md-header__button.md-logo img {
-  content: url("../resources/images/cs_wide_dark_bg.png");
+  content: url(https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/hatch_wide_dark_bg_transparent.png);
 }
 
 /* Explicit link/nav/toc overrides — variables alone lose to Material's slate defaults */
