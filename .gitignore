@@ -12,6 +12,9 @@ __temp__/
 ## VS Code
 .vscode/
 
+## macOS
+.DS_Store
+
 
 # vvvvvvv  Default Python Ignore vvvvvvvv
 # Byte-compiled / optimized / DLL files
