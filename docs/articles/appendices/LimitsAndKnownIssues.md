@@ -1,34 +1,14 @@
 # Limits and Known Issues
 
-This appendix documents current limitations and known issues in Hatch v0.4.2, organized by impact severity and architectural domain.
+This appendix documents current limitations and known issues in Hatch v0.8.1, organized by impact severity and architectural domain.
 
 ## Critical Limitations (High Impact)
-
-### Non-Interactive Environment Handling
-
-**Issue**: The dependency installation orchestrator can block indefinitely in non-TTY environments.
-
-**Code Location**: `hatch/installers/dependency_installation_orchestrator.py:501` (`_request_user_consent`)
-
-**Symptoms**:
-
-- Hangs in CI/CD pipelines when TTY is unavailable
-- Docker container execution may hang indefinitely
-- Programmatic integration requires foreknowledge of `--auto-approve` parameter
-
-**Workaround**: Use `--auto-approve` flag for automated scenarios
-
-```bash
-hatch package add my-package --auto-approve
-```
-
-**Root Cause**: Blocking `input()` call without TTY detection or environment variable fallback mechanisms.
 
 ### System Package Version Constraint Simplification
 
 **Issue**: Complex version constraints for system packages are reduced to "install latest" with only warning messages.
 
-**Code Location**: `hatch/installers/system_installer.py:332-365` (`_build_apt_command`)
+**Code Location**: `hatch/installers/system_installer.py:366-403` (`_build_apt_command`)
 
 **Symptoms**:
 
@@ -46,8 +26,9 @@ hatch package add my-package --auto-approve
 
 **Code Locations**:
 
-- `hatch/environment_manager.py:85-90`
-- `hatch/package_loader.py:80-85`
+- `hatch/environment_manager.py:172-179` (`_save_environments`)
+- `hatch/environment_manager.py:220` (`set_current_environment`, `current_env` file write)
+- `hatch/package_loader.py:139-145` (cache write in `download_package`)
 
 **Symptoms**:
 
@@ -63,25 +44,25 @@ hatch package add my-package --auto-approve
 
 ### Registry Fetch Fragility
 
-**Issue**: Registry fetching uses date-based URL construction with limited fallback robustness.
+**Issue**: Registry fetching has no retry logic for transient network failures.
 
-**Code Location**: `hatch/registry_retriever.py:45-65`
+**Code Location**: `hatch/registry_retriever.py:200-231` (`_fetch_remote_registry`)
 
 **Symptoms**:
 
-- Package discovery breaks when registry publishing is delayed
+- A single transient network error causes the fetch to fail immediately with no retry
 - Poor error messages during network connectivity issues
-- Development workflow disruption during registry maintenance
+- Development workflow disruption during registry unavailability
 
 **Workaround**: Use local packages (`hatch package add ./local-package`) when registry is unavailable
 
-**Root Cause**: Registry URL construction assumes daily publishing schedule without robust fallback strategies.
+**Root Cause**: Network requests are single-attempt with no retry strategy or back-off logic.
 
 ### Package Integrity Verification Gap
 
 **Issue**: Downloaded packages are not cryptographically verified for integrity.
 
-**Code Location**: `hatch/package_loader.py:75-125` (`download_package`)
+**Code Location**: `hatch/package_loader.py:56-157` (`download_package`)
 
 **Symptoms**:
 
@@ -95,25 +76,25 @@ hatch package add my-package --auto-approve
 
 ### Cross-Platform Python Environment Detection
 
-**Issue**: Hard-coded path assumptions limit Python environment detection across different platforms and installations.
+**Issue**: Hard-coded path assumptions limit Python environment detection for non-standard conda/mamba installations.
 
-**Code Location**: `hatch/python_environment_manager.py:85-120` (`_detect_conda_mamba`)
+**Code Location**: `hatch/python_environment_manager.py:65-125` (`_detect_manager`)
 
 **Symptoms**:
 
-- Inconsistent behavior across different conda installations
-- Silent feature degradation when Python environments unavailable
-- User confusion about Python integration capabilities
+- Inconsistent behavior with custom conda/mamba installation locations
+- Silent feature degradation when conda/mamba is not in a standard path
+- User confusion about Python integration capabilities on non-standard setups
 
-**Workaround**: Ensure conda/mamba are in system PATH or use explicit paths
+**Workaround**: Set the `CONDA_EXE` or `MAMBA_EXE` environment variable to point to your conda/mamba executable, or ensure it is in your system PATH
 
-**Root Cause**: Platform-specific path assumptions and limited environment variable checking.
+**Root Cause**: Hard-coded fallback paths cover only common installation locations (`~/miniconda3`, `~/anaconda3`, `/opt/conda`). `PATH` and `CONDA_EXE`/`MAMBA_EXE` environment variables are checked first but may not cover all installation scenarios.
 
 ### Error Recovery and Rollback Gaps
 
 **Issue**: Limited transactional semantics during multi-dependency installation.
 
-**Code Location**: `hatch/installers/dependency_installation_orchestrator.py:550-580` (`_execute_install_plan`)
+**Code Location**: `hatch/installers/dependency_installation_orchestrator.py:605-681` (`_execute_install_plan`)
 
 **Symptoms**:
 
@@ -147,7 +128,7 @@ hatch package add my-package --auto-approve
 
 **Issue**: Templates assume specific MCP server structure and dependencies.
 
-**Code Location**: `hatch/template_generator.py:130-140`
+**Code Location**: `hatch/template_generator.py` (particularly `generate_mcp_server_py:33`, `generate_hatch_mcp_server_entry_py:63`, `generate_metadata_json:87`)
 
 **Symptoms**:
 
@@ -163,17 +144,17 @@ hatch package add my-package --auto-approve
 
 **Issue**: Limited handling of circular dependencies and complex version constraints.
 
-**Code Location**: `hatch/installers/dependency_installation_orchestrator.py:290-320`
+**Code Location**: `hatch/installers/dependency_installation_orchestrator.py:337-358` (`_get_install_ready_hatch_dependencies`)
 
 **Symptoms**:
 
-- Potential infinite loops during dependency resolution
+- Potential failures during dependency resolution for circular or deeply nested graphs
 - Unclear error messages for complex dependency conflicts
 - Unexpected behavior with deeply nested dependency trees
 
 **Workaround**: Simplify dependency structures and avoid circular dependencies
 
-**Root Cause**: Dependency graph builder lacks edge case handling for complex scenarios.
+**Root Cause**: Dependency graph resolution is delegated to `hatch_validator.utils.hatch_dependency_graph.HatchDependencyGraphBuilder`; edge case robustness depends on that external library.
 
 ## Minor Limitations (Quality of Life)
 
@@ -181,7 +162,7 @@ hatch package add my-package --auto-approve
 
 **Issue**: System package installation assumes `sudo` availability without proper validation.
 
-**Code Location**: `hatch/installers/system_installer.py:365-380`
+**Code Location**: `hatch/installers/system_installer.py:382-403` (`_build_apt_command`, `install`)
 
 **Symptoms**:
 
@@ -192,16 +173,22 @@ hatch package add my-package --auto-approve
 
 ### Simulation and Dry-Run Gaps
 
-**Issue**: Inconsistent simulation mode implementation across installers.
+**Issue**: Simulation mode infrastructure exists but is not yet wired through the orchestrator.
 
-**Code Locations**: Various installer modules
+**Code Locations**:
+
+- `hatch/installers/dependency_installation_orchestrator.py:635` (`simulation_mode=False`, marked "Future enhancement")
+- `hatch/installers/system_installer.py:152` (simulation mode fully implemented at installer level)
 
 **Symptoms**:
 
-- No unified dry-run capability across all dependency types
+- No dry-run capability reachable through normal `hatch package add` flow
+- `SystemInstaller` has full `apt-get --dry-run` support ready but not yet exposed
 - Limited preview capabilities for complex installation plans
 
 **Workaround**: Test installations in isolated environments first
+
+**Root Cause**: Planned feature not yet implemented. `InstallationContext` supports `simulation_mode` and individual installers handle it, but the orchestrator does not yet accept or pass through a simulation flag.
 
 ### Cache Management Strategy
 
@@ -209,35 +196,21 @@ hatch package add my-package --auto-approve
 
 **Code Locations**:
 
-- `hatch/package_loader.py:40-50`
-- `hatch/registry_retriever.py:35-45`
+- `hatch/registry_retriever.py:37` (24-hour TTL constant)
+- `hatch/package_loader.py` (presence-only caching, no TTL or size limits)
 
 **Symptoms**:
 
-- Fixed 24-hour TTL regardless of registry update frequency
+- Fixed 24-hour TTL for registry data regardless of registry update frequency
+- Package cache never expires — only invalidated by `force_download=True`
 - No automatic cache cleanup for disk space management
 - Force refresh only available at operation level
 
 **Workaround**: Manually clear cache directory when needed:
 
 ```bash
-rm -rf ~/.hatch/cache/*
+rm -rf ~/.hatch/packages/*
 ```
-
-### External Dependency Coupling
-
-**Issue**: Validator dependency fetched via git URL with network requirements.
-
-**Code Location**: `pyproject.toml:24`
-
-**Details**: `hatch_validator @ git+https://github.com/CrackingShells/Hatch-Validator.git@v0.6.3`
-
-**Symptoms**:
-
-- Build-time network access required
-- Dependency on repository and tag availability
-
-**Workaround**: Ensure network access during installation or consider local installation methods
 
 ### Documentation and Schema Evolution
 
@@ -257,20 +230,19 @@ rm -rf ~/.hatch/cache/*
 
 | Severity | Automation | Reliability | Development |
 |----------|------------|-------------|-------------|
-| **Critical** | Non-interactive handling | Concurrent access, System constraints | - |
+| **Critical** | - | Concurrent access, System constraints | - |
 | **Significant** | Registry fragility, Error recovery | Package integrity, Python detection | - |
 | **Moderate** | - | - | Observability, Templates, Dependency resolution |
-| **Minor** | Simulation gaps | Security context, Cache strategy | External coupling, Schema evolution |
+| **Minor** | Simulation gaps | Security context, Cache strategy | Schema evolution |
 
 ## Recommended Mitigation Strategies
 
 ### For Production Use
 
-1. **Always use `--auto-approve`** for automated deployments
-2. **Avoid concurrent operations** until race conditions are resolved
-3. **Use exact version constraints** for system packages when possible
-4. **Implement external monitoring** for installation operations
-5. **Regularly backup environment configurations**
+1. **Avoid concurrent operations** until race conditions are resolved
+2. **Use exact version constraints** for system packages when possible
+3. **Implement external monitoring** for installation operations
+4. **Regularly backup environment configurations**
 
 ### For Development
 
@@ -290,7 +262,7 @@ rm -rf ~/.hatch/cache/*
 
 The Hatch team is aware of these limitations and they are prioritized for future releases:
 
-**Phase 1 (Stability)**: Address concurrent access, non-interactive handling, and error recovery
+**Phase 1 (Stability)**: Address concurrent access and error recovery
 **Phase 2 (Security)**: Implement package integrity verification and security context validation
 **Phase 3 (Robustness)**: Improve cross-platform consistency and system package handling
 **Phase 4 (Quality)**: Enhance observability, caching, and template flexibility
