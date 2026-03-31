@@ -22,9 +22,11 @@ This module provides handlers for:
 - vscode: Visual Studio Code with Copilot
 - kiro: Kiro IDE
 - codex: OpenAI Codex
-- lm-studio: LM Studio
+- lmstudio: LM Studio
 - gemini: Google Gemini
 - mistral-vibe: Mistral Vibe CLI coding agent
+- opencode: OpenCode AI coding assistant
+- augment: Augment Code AI assistant
 
 ## Handler Functions
 

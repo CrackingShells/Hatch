@@ -58,6 +58,8 @@ Hatch currently supports configuration for these MCP host platforms:
 - [**LM Studio**](https://lmstudio.ai/) - Local language model interface
 - [**Gemini**](https://github.com/google-gemini/gemini-cli) - Google's AI Command Line Interface
 - [**Mistral Vibe**](https://mistral.ai/vibe) - Mistral Vibe CLI coding agent
+- [**OpenCode**](https://opencode.ai) - OpenCode AI coding assistant
+- [**Augment**](https://www.augmentcode.com/) - Augment Code AI assistant
 
 ## Configuration Management Workflow
 

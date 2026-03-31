@@ -10,7 +10,7 @@ This article covers:
 
 ## Overview
 
-The MCP host configuration system manages Model Context Protocol server configurations across multiple host platforms (Claude Desktop, VS Code, Cursor, Gemini, Kiro, Codex, LM Studio). It uses the **Unified Adapter Architecture**: a single data model with host-specific adapters for validation and serialization.
+The MCP host configuration system manages Model Context Protocol server configurations across multiple host platforms (Claude Desktop, Claude Code, VS Code, Cursor, LM Studio, Gemini, Kiro, Codex, Mistral Vibe, OpenCode, Augment). It uses the **Unified Adapter Architecture**: a single data model with host-specific adapters for validation and serialization.
 
 > **Adding a new host?** See the [Implementation Guide](../implementation_guides/mcp_host_configuration_extension.md) for step-by-step instructions.
 
