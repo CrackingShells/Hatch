@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block scripts %}
+  {{ super() }}
+  <script>
+    /* Swap the header logo src whenever the color scheme changes. */
+    (function () {
+      var LOGOS = {
+        "egg-shell":   "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/hatch_wide_light_bg_transparent.png",
+        "slate":        "https://raw.githubusercontent.com/CrackingShells/.github/main/resources/images/hatch_wide_dark_bg_transparent.png"
+      };
+
+      function applyLogo() {
+        var scheme = document.body.getAttribute("data-md-color-scheme") || "egg-shell";
+        var src = LOGOS[scheme] || LOGOS["egg-shell"];
+        var imgs = document.querySelectorAll(".md-header__button.md-logo img");
+        imgs.forEach(function (img) { if (img.src !== src) img.src = src; });
+      }
+
+      /* Run on load */
+      document.addEventListener("DOMContentLoaded", applyLogo);
+
+      /* Watch for scheme attribute changes (theme toggle click) */
+      var observer = new MutationObserver(applyLogo);
+      observer.observe(document.body, {
+        attributes: true,
+        attributeFilter: ["data-md-color-scheme"]
+      });
+    })();
+  </script>
+{% endblock %}
