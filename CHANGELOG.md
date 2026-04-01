@@ -1,3 +1,14 @@
+## <small>0.8.1-dev.6 (2026-04-01)</small>
+
+* Merge pull request #50 from LittleCoinCoin/dev ([8f6c5f8](https://github.com/CrackingShells/Hatch/commit/8f6c5f8)), closes [#50](https://github.com/CrackingShells/Hatch/issues/50)
+* docs(cli): update to match current CLI state ([2d75bcd](https://github.com/CrackingShells/Hatch/commit/2d75bcd))
+* docs(entry-docs): refresh content for primary use case identification ([d4d0bb9](https://github.com/CrackingShells/Hatch/commit/d4d0bb9))
+* docs(known-issues): sync appendix with v0.8.1 codebase state ([ed98ea4](https://github.com/CrackingShells/Hatch/commit/ed98ea4))
+* docs(mcp-host-config): surface opencode and augment in all host lists ([dbdba35](https://github.com/CrackingShells/Hatch/commit/dbdba35))
+* style(docs): add CrackingShells brand theme stylesheets for MkDocs ([c5cec5b](https://github.com/CrackingShells/Hatch/commit/c5cec5b))
+* style(docs): apply CrackingShells org theme to MkDocs ([7749d48](https://github.com/CrackingShells/Hatch/commit/7749d48))
+* chore(git): add .DS_Store to .gitignore ([cff376a](https://github.com/CrackingShells/Hatch/commit/cff376a))
+
 ## <small>0.8.1-dev.5 (2026-03-23)</small>
 
 * fix(ci): inline pypi publish jobs to satisfy trusted publishing ([fc81e78](https://github.com/CrackingShells/Hatch/commit/fc81e78))
