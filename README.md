@@ -54,9 +54,10 @@ hatch mcp configure github-mcp --host gemini \
   --httpUrl https://api.github.com/mcp \
   --header Authorization="Bearer $GIT_PAT_TOKEN"
 
-# Register the same server on multiple hosts at once
-hatch mcp configure my-server --host claude-desktop,cursor,vscode \
+# Register the same server on multiple hosts using sync
+hatch mcp configure my-server --host claude-desktop \
   --command python --args "-m my_server"
+hatch mcp sync --from-host claude-desktop --to-host cursor,vscode
 ```
 
 ### Inspect what is configured
@@ -65,8 +66,11 @@ hatch mcp configure my-server --host claude-desktop,cursor,vscode \
 # See all servers across all hosts
 hatch mcp list servers
 
+# Filter servers by name
+hatch mcp list servers weather
+
 # See all hosts a specific server is registered on
-hatch mcp show servers --server "context7"
+hatch mcp show servers context7
 
 # Detect which MCP host platforms are installed
 hatch mcp discover hosts

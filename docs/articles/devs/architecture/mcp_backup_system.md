@@ -192,10 +192,9 @@ Designed for future CLI command integration:
 
 ```bash
 # Future CLI commands
-hatch mcp backup create --host vscode
-hatch mcp backup restore --host vscode --timestamp 20250921_100000_123456
-hatch mcp backup list --host cursor
-hatch mcp backup clean --host claude-desktop --older-than-days 30
+hatch mcp backup restore vscode --backup-file backup_20250921_100000_123456.json
+hatch mcp backup list cursor
+hatch mcp backup clean claude-desktop --older-than-days 30
 ```
 
 ## Testing Architecture

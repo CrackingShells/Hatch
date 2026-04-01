@@ -31,16 +31,22 @@ This module provides handlers for:
 ## Handler Functions
 
 ### Discovery
-- `handle_mcp_discover_hosts()`: Detect available MCP host platforms
-- `handle_mcp_discover_servers()`: Find MCP servers in packages (deprecated)
+- `handle_mcp_discover_hosts(args)`: Detect available MCP host platforms
+  - `filter_name`: Optional positional argument to filter by host name (regex pattern)
+- `handle_mcp_discover_servers(args)`: Find MCP servers in packages (deprecated)
+  - `filter_name`: Optional positional argument to filter by server name (regex pattern)
 
 ### Listing
-- `handle_mcp_list_hosts()`: Host-centric server listing (shows all servers on hosts)
-- `handle_mcp_list_servers()`: Server-centric host listing (shows all hosts for servers)
+- `handle_mcp_list_hosts(args)`: Host-centric server listing (shows all servers on hosts)
+  - `filter_name`: Optional positional argument to filter by host name (regex pattern)
+- `handle_mcp_list_servers(args)`: Server-centric host listing (shows all hosts for servers)
+  - `filter_name`: Optional positional argument to filter by server name (regex pattern)
 
 ### Show Commands
-- `handle_mcp_show_hosts()`: Detailed hierarchical view of host configurations
-- `handle_mcp_show_servers()`: Detailed hierarchical view of server configurations
+- `handle_mcp_show_hosts(args)`: Detailed hierarchical view of host configurations
+  - `filter_name`: Optional positional argument to filter by host name (regex pattern)
+- `handle_mcp_show_servers(args)`: Detailed hierarchical view of server configurations
+  - `filter_name`: Optional positional argument to filter by server name (regex pattern)
 
 ### Configuration
 - `handle_mcp_configure()`: Configure MCP server on host with all host-specific arguments
@@ -69,6 +75,7 @@ def handle_mcp_command(args: Namespace) -> int:
         args: Namespace with:
             - env_manager: HatchEnvironmentManager instance
             - mcp_manager: MCPHostConfigurationManager instance
+            - filter_name: Optional positional argument to filter by name (regex pattern)
             - <command-specific arguments>
 
     Returns:
