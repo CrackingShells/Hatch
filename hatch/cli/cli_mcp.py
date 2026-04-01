@@ -13,6 +13,7 @@ Supported Hosts:
     - codex: OpenAI Codex
     - lm-studio: LM Studio
     - gemini: Google Gemini
+    - mistral-vibe: Mistral Vibe CLI
 
 Command Groups:
     Discovery:
@@ -69,6 +70,72 @@ from hatch.cli.cli_utils import (
     format_info,
     ResultReporter,
 )
+
+
+def _apply_mistral_vibe_cli_mappings(
+    config_data: dict,
+    *,
+    command: Optional[str],
+    url: Optional[str],
+    http_url: Optional[str],
+    bearer_token_env_var: Optional[str],
+    env_header: Optional[list],
+    api_key_env: Optional[str],
+    api_key_header: Optional[str],
+    api_key_format: Optional[str],
+) -> dict:
+    """Map generic CLI flags to Mistral Vibe's host-native MCP fields."""
+    result = dict(config_data)
+    result.pop("cwd", None)
+
+    if command is not None:
+        result["transport"] = "stdio"
+    elif http_url is not None:
+        result.pop("httpUrl", None)
+        result["url"] = http_url
+        result["transport"] = "http"
+    elif url is not None:
+        result["transport"] = "streamable-http"
+
+    if env_header and len(env_header) > 1:
+        raise ValidationError(
+            "mistral-vibe supports at most one --env-header mapping",
+            field="--env-header",
+            suggestion=(
+                "Use a single KEY=ENV_VAR pair or the dedicated --api-key-* flags"
+            ),
+        )
+
+    mapped_api_key_env = api_key_env
+    mapped_api_key_header = api_key_header
+    mapped_api_key_format = api_key_format
+
+    if env_header:
+        header_name, env_var_name = env_header[0].split("=", 1)
+        if mapped_api_key_header is None:
+            mapped_api_key_header = header_name
+        if mapped_api_key_env is None:
+            mapped_api_key_env = env_var_name
+
+    if bearer_token_env_var is not None:
+        if mapped_api_key_env is None:
+            mapped_api_key_env = bearer_token_env_var
+        if mapped_api_key_header is None:
+            mapped_api_key_header = "Authorization"
+        if mapped_api_key_format is None:
+            mapped_api_key_format = "Bearer {api_key}"
+
+    if mapped_api_key_env is not None:
+        result["api_key_env"] = mapped_api_key_env
+    if mapped_api_key_header is not None:
+        result["api_key_header"] = mapped_api_key_header
+    if mapped_api_key_format is not None:
+        result["api_key_format"] = mapped_api_key_format
+
+    result.pop("bearer_token_env_var", None)
+    result.pop("env_http_headers", None)
+
+    return result
 
 
 def handle_mcp_discover_hosts(args: Namespace) -> int:
@@ -1493,6 +1560,11 @@ def handle_mcp_configure(args: Namespace) -> int:
         startup_timeout: Optional[int] = getattr(args, "startup_timeout", None)
         tool_timeout: Optional[int] = getattr(args, "tool_timeout", None)
         enabled: Optional[bool] = getattr(args, "enabled", None)
+        prompt: Optional[str] = getattr(args, "prompt", None)
+        sampling_enabled: Optional[bool] = getattr(args, "sampling_enabled", None)
+        api_key_env: Optional[str] = getattr(args, "api_key_env", None)
+        api_key_header: Optional[str] = getattr(args, "api_key_header", None)
+        api_key_format: Optional[str] = getattr(args, "api_key_format", None)
         bearer_token_env_var: Optional[str] = getattr(
             args, "bearer_token_env_var", None
         )
@@ -1513,18 +1585,6 @@ def handle_mcp_configure(args: Namespace) -> int:
                 )
             )
             return EXIT_ERROR
-
-        # Validate Claude Desktop/Code transport restrictions (Issue 2)
-        if host_type in (MCPHostType.CLAUDE_DESKTOP, MCPHostType.CLAUDE_CODE):
-            if url is not None:
-                format_validation_error(
-                    ValidationError(
-                        f"{host} does not support remote servers (--url)",
-                        field="--url",
-                        suggestion="Only local servers with --command are supported for this host",
-                    )
-                )
-                return EXIT_ERROR
 
         # Validate argument dependencies
         if command and header:
@@ -1604,7 +1664,7 @@ def handle_mcp_configure(args: Namespace) -> int:
             config_data["timeout"] = timeout
         if trust:
             config_data["trust"] = trust
-        if cwd is not None:
+        if cwd is not None and host_type != MCPHostType.MISTRAL_VIBE:
             config_data["cwd"] = cwd
         if http_url is not None:
             config_data["httpUrl"] = http_url
@@ -1636,11 +1696,21 @@ def handle_mcp_configure(args: Namespace) -> int:
             config_data["startup_timeout_sec"] = startup_timeout
         if tool_timeout is not None:
             config_data["tool_timeout_sec"] = tool_timeout
+        if prompt is not None:
+            config_data["prompt"] = prompt
+        if sampling_enabled is not None:
+            config_data["sampling_enabled"] = sampling_enabled
+        if api_key_env is not None:
+            config_data["api_key_env"] = api_key_env
+        if api_key_header is not None:
+            config_data["api_key_header"] = api_key_header
+        if api_key_format is not None:
+            config_data["api_key_format"] = api_key_format
         if enabled is not None:
             config_data["enabled"] = enabled
-        if bearer_token_env_var is not None:
+        if bearer_token_env_var is not None and host_type != MCPHostType.MISTRAL_VIBE:
             config_data["bearer_token_env_var"] = bearer_token_env_var
-        if env_header is not None:
+        if env_header is not None and host_type != MCPHostType.MISTRAL_VIBE:
             env_http_headers = {}
             for header_spec in env_header:
                 if "=" in header_spec:
@@ -1648,6 +1718,19 @@ def handle_mcp_configure(args: Namespace) -> int:
                     env_http_headers[key] = env_var_name
             if env_http_headers:
                 config_data["env_http_headers"] = env_http_headers
+
+        if host_type == MCPHostType.MISTRAL_VIBE:
+            config_data = _apply_mistral_vibe_cli_mappings(
+                config_data,
+                command=command,
+                url=url,
+                http_url=http_url,
+                bearer_token_env_var=bearer_token_env_var,
+                env_header=env_header,
+                api_key_env=api_key_env,
+                api_key_header=api_key_header,
+                api_key_format=api_key_format,
+            )
 
         # Partial update merge logic
         if is_update:
@@ -1661,6 +1744,7 @@ def handle_mcp_configure(args: Namespace) -> int:
                 existing_data.pop("command", None)
                 existing_data.pop("args", None)
                 existing_data.pop("type", None)
+                existing_data.pop("transport", None)
 
             if command is not None and (
                 existing_config.url is not None
@@ -1670,6 +1754,10 @@ def handle_mcp_configure(args: Namespace) -> int:
                 existing_data.pop("httpUrl", None)
                 existing_data.pop("headers", None)
                 existing_data.pop("type", None)
+                existing_data.pop("transport", None)
+                existing_data.pop("api_key_env", None)
+                existing_data.pop("api_key_header", None)
+                existing_data.pop("api_key_format", None)
 
             merged_data = {**existing_data, **config_data}
             config_data = merged_data

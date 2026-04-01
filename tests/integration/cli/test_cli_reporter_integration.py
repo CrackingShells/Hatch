@@ -30,6 +30,46 @@ def _handler_uses_result_reporter(handler_module_source: str) -> bool:
 class TestMCPConfigureHandlerIntegration:
     """Integration tests for handle_mcp_configure → ResultReporter flow."""
 
+    @staticmethod
+    def _base_configure_args(**overrides):
+        """Create a baseline Namespace for handle_mcp_configure tests."""
+        data = dict(
+            host="claude-desktop",
+            server_name="test-server",
+            server_command="python",
+            args=["server.py"],
+            env_var=None,
+            url=None,
+            header=None,
+            timeout=None,
+            trust=False,
+            cwd=None,
+            env_file=None,
+            http_url=None,
+            include_tools=None,
+            exclude_tools=None,
+            input=None,
+            disabled=None,
+            auto_approve_tools=None,
+            disable_tools=None,
+            env_vars=None,
+            startup_timeout=None,
+            tool_timeout=None,
+            enabled=None,
+            prompt=None,
+            sampling_enabled=None,
+            api_key_env=None,
+            api_key_header=None,
+            api_key_format=None,
+            bearer_token_env_var=None,
+            env_header=None,
+            no_backup=True,
+            dry_run=False,
+            auto_approve=True,
+        )
+        data.update(overrides)
+        return Namespace(**data)
+
     def test_handler_imports_result_reporter(self):
         """Handler module should import ResultReporter from cli_utils.
 
@@ -60,35 +100,7 @@ class TestMCPConfigureHandlerIntegration:
         from hatch.cli.cli_mcp import handle_mcp_configure
 
         # Create mock args for a simple configure operation
-        args = Namespace(
-            host="claude-desktop",
-            server_name="test-server",
-            server_command="python",
-            args=["server.py"],
-            env_var=None,
-            url=None,
-            header=None,
-            timeout=None,
-            trust=False,
-            cwd=None,
-            env_file=None,
-            http_url=None,
-            include_tools=None,
-            exclude_tools=None,
-            input=None,
-            disabled=None,
-            auto_approve_tools=None,
-            disable_tools=None,
-            env_vars=None,
-            startup_timeout=None,
-            tool_timeout=None,
-            enabled=None,
-            bearer_token_env_var=None,
-            env_header=None,
-            no_backup=True,
-            dry_run=False,
-            auto_approve=True,  # Skip confirmation
-        )
+        args = self._base_configure_args(auto_approve=True)
 
         # Mock the MCPHostConfigurationManager
         with patch(
@@ -123,35 +135,7 @@ class TestMCPConfigureHandlerIntegration:
         """
         from hatch.cli.cli_mcp import handle_mcp_configure
 
-        args = Namespace(
-            host="claude-desktop",
-            server_name="test-server",
-            server_command="python",
-            args=["server.py"],
-            env_var=None,
-            url=None,
-            header=None,
-            timeout=None,
-            trust=False,
-            cwd=None,
-            env_file=None,
-            http_url=None,
-            include_tools=None,
-            exclude_tools=None,
-            input=None,
-            disabled=None,
-            auto_approve_tools=None,
-            disable_tools=None,
-            env_vars=None,
-            startup_timeout=None,
-            tool_timeout=None,
-            enabled=None,
-            bearer_token_env_var=None,
-            env_header=None,
-            no_backup=True,
-            dry_run=True,  # Dry-run enabled
-            auto_approve=True,
-        )
+        args = self._base_configure_args(dry_run=True, auto_approve=True)
 
         with patch(
             "hatch.cli.cli_mcp.MCPHostConfigurationManager"
@@ -185,35 +169,7 @@ class TestMCPConfigureHandlerIntegration:
         """
         from hatch.cli.cli_mcp import handle_mcp_configure
 
-        args = Namespace(
-            host="claude-desktop",
-            server_name="test-server",
-            server_command="python",
-            args=["server.py"],
-            env_var=None,
-            url=None,
-            header=None,
-            timeout=None,
-            trust=False,
-            cwd=None,
-            env_file=None,
-            http_url=None,
-            include_tools=None,
-            exclude_tools=None,
-            input=None,
-            disabled=None,
-            auto_approve_tools=None,
-            disable_tools=None,
-            env_vars=None,
-            startup_timeout=None,
-            tool_timeout=None,
-            enabled=None,
-            bearer_token_env_var=None,
-            env_header=None,
-            no_backup=True,
-            dry_run=False,
-            auto_approve=False,  # Will prompt for confirmation
-        )
+        args = self._base_configure_args(auto_approve=False)
 
         with patch(
             "hatch.cli.cli_mcp.MCPHostConfigurationManager"
@@ -239,6 +195,112 @@ class TestMCPConfigureHandlerIntegration:
             assert (
                 "hatch mcp configure" in output or "[CONFIGURE]" in output
             ), "Handler should show consequence preview before confirmation"
+
+    def test_mistral_vibe_maps_http_and_api_key_flags(self):
+        """Mistral Vibe should map reusable CLI flags to host-native fields."""
+        from hatch.cli.cli_mcp import handle_mcp_configure
+
+        args = self._base_configure_args(
+            host="mistral-vibe",
+            server_command=None,
+            args=None,
+            http_url="https://example.com/mcp",
+            startup_timeout=15,
+            tool_timeout=90,
+            bearer_token_env_var="MISTRAL_API_KEY",
+            prompt="Be concise.",
+            sampling_enabled=True,
+            auto_approve=True,
+        )
+
+        with patch(
+            "hatch.cli.cli_mcp.MCPHostConfigurationManager"
+        ) as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager.get_server_config.return_value = None
+            mock_result = MagicMock(success=True, backup_path=None)
+            mock_manager.configure_server.return_value = mock_result
+            mock_manager_class.return_value = mock_manager
+
+            result = handle_mcp_configure(args)
+
+        assert result == EXIT_SUCCESS
+
+        passed_config = mock_manager.configure_server.call_args.kwargs["server_config"]
+        assert passed_config.url == "https://example.com/mcp"
+        assert passed_config.transport == "http"
+        assert passed_config.httpUrl is None
+        assert passed_config.startup_timeout_sec == 15
+        assert passed_config.tool_timeout_sec == 90
+        assert passed_config.prompt == "Be concise."
+        assert passed_config.sampling_enabled is True
+        assert passed_config.api_key_env == "MISTRAL_API_KEY"
+        assert passed_config.api_key_header == "Authorization"
+        assert passed_config.api_key_format == "Bearer {api_key}"
+        assert passed_config.cwd is None
+
+    def test_mistral_vibe_maps_env_header_to_api_key_fields(self):
+        """Single --env-header should map to Mistral Vibe api_key_* fields."""
+        from hatch.cli.cli_mcp import handle_mcp_configure
+
+        args = self._base_configure_args(
+            host="mistral-vibe",
+            server_command=None,
+            args=None,
+            url="https://example.com/mcp",
+            env_header=["X-API-Key=MISTRAL_TOKEN"],
+            api_key_format="Token {api_key}",
+            auto_approve=True,
+        )
+
+        with patch(
+            "hatch.cli.cli_mcp.MCPHostConfigurationManager"
+        ) as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager.get_server_config.return_value = None
+            mock_result = MagicMock(success=True, backup_path=None)
+            mock_manager.configure_server.return_value = mock_result
+            mock_manager_class.return_value = mock_manager
+
+            result = handle_mcp_configure(args)
+
+        assert result == EXIT_SUCCESS
+
+        passed_config = mock_manager.configure_server.call_args.kwargs["server_config"]
+        assert passed_config.url == "https://example.com/mcp"
+        assert passed_config.transport == "streamable-http"
+        assert passed_config.api_key_env == "MISTRAL_TOKEN"
+        assert passed_config.api_key_header == "X-API-Key"
+        assert passed_config.api_key_format == "Token {api_key}"
+
+    def test_mistral_vibe_does_not_forward_cwd(self):
+        """Mistral Vibe should ignore --cwd because the host config has no cwd field."""
+        from hatch.cli.cli_mcp import handle_mcp_configure
+
+        args = self._base_configure_args(
+            host="mistral-vibe",
+            server_command="python",
+            args=["server.py"],
+            cwd="/tmp/mistral",
+            auto_approve=True,
+        )
+
+        with patch(
+            "hatch.cli.cli_mcp.MCPHostConfigurationManager"
+        ) as mock_manager_class:
+            mock_manager = MagicMock()
+            mock_manager.get_server_config.return_value = None
+            mock_result = MagicMock(success=True, backup_path=None)
+            mock_manager.configure_server.return_value = mock_result
+            mock_manager_class.return_value = mock_manager
+
+            result = handle_mcp_configure(args)
+
+        assert result == EXIT_SUCCESS
+        passed_config = mock_manager.configure_server.call_args.kwargs["server_config"]
+        assert passed_config.command == "python"
+        assert passed_config.transport == "stdio"
+        assert passed_config.cwd is None
 
 
 class TestMCPSyncHandlerIntegration:

@@ -6,10 +6,21 @@ supporting both online and simulation modes with caching at file system and in-m
 
 import json
 import logging
+import sys
 import requests
 import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+
+def _print_registry_status(msg: str) -> None:
+    if sys.stderr.isatty():
+        print(f"\033[2m{msg}\033[0m", end="\r", file=sys.stderr, flush=True)
+
+
+def _clear_registry_status() -> None:
+    if sys.stderr.isatty():
+        print(" " * 60, end="\r", file=sys.stderr, flush=True)
 
 
 class RegistryRetriever:
@@ -37,7 +48,6 @@ class RegistryRetriever:
             local_registry_cache_path (Path, optional): Path to local registry file. Defaults to None.
         """
         self.logger = logging.getLogger("hatch.registry_retriever")
-        self.logger.setLevel(logging.INFO)
 
         self.cache_ttl = cache_ttl
         self.simulation_mode = simulation_mode
@@ -59,7 +69,7 @@ class RegistryRetriever:
 
             # Use file:// URL format for local files
             self.registry_url = f"file://{str(self.registry_cache_path.absolute())}"
-            self.logger.info(
+            self.logger.debug(
                 f"Operating in simulation mode with registry at: {self.registry_cache_path}"
             )
         else:
@@ -69,7 +79,7 @@ class RegistryRetriever:
 
             # We'll set the initial URL to today, but might fall back to yesterday
             self.registry_url = f"https://github.com/CrackingShells/Hatch-Registry/releases/download/{self.today_str}/hatch_packages_registry.json"
-            self.logger.info(
+            self.logger.debug(
                 f"Operating in online mode with registry at: {self.registry_url}"
             )
 
@@ -180,7 +190,7 @@ class RegistryRetriever:
         """
         if self.simulation_mode:
             try:
-                self.logger.info(f"Fetching registry from {self.registry_url}")
+                self.logger.debug(f"Fetching registry from {self.registry_url}")
                 with open(self.registry_cache_path, "r") as f:
                     return json.load(f)
             except Exception as e:
@@ -193,7 +203,7 @@ class RegistryRetriever:
             self.registry_url = f"https://github.com/CrackingShells/Hatch-Registry/releases/download/{date}/hatch_packages_registry.json"
             self.is_delayed = False  # Reset delayed flag for today's registry
         else:
-            self.logger.info(
+            self.logger.warning(
                 f"Today's registry ({date}) not found, falling back to yesterday's"
             )
             # Fall back to yesterday's registry
@@ -211,7 +221,7 @@ class RegistryRetriever:
             self.is_delayed = True  # Set delayed flag for yesterday's registry
 
         try:
-            self.logger.info(f"Fetching registry from {self.registry_url}")
+            self.logger.debug(f"Fetching registry from {self.registry_url}")
             response = requests.get(self.registry_url, timeout=30)
             response.raise_for_status()
             return response.json()
@@ -298,8 +308,9 @@ class RegistryRetriever:
                 # In simulation mode, we must have a local registry file
                 registry_data = self._read_local_cache()
             else:
-                # In online mode, fetch from remote URL
+                _print_registry_status("  Refreshing registry cache...")
                 registry_data = self._fetch_remote_registry()
+                _clear_registry_status()
 
             # Update local cache
             # Note that in case of simulation mode AND default cache path,

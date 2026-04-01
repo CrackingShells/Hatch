@@ -37,6 +37,18 @@ class TestMCPServerConfig(unittest.TestCase):
         # httpUrl is considered remote
         self.assertTrue(config.is_remote_server)
 
+    def test_UM03b_valid_streamable_http_transport(self):
+        """UM-03b: Valid remote config with native transport field."""
+        config = MCPServerConfig(
+            name="test",
+            url="https://example.com/mcp",
+            transport="streamable-http",
+        )
+
+        self.assertEqual(config.transport, "streamable-http")
+        self.assertEqual(config.get_transport_type(), "streamable-http")
+        self.assertTrue(config.is_remote_server)
+
     def test_UM04_allows_command_and_url(self):
         """UM-04: Unified model allows both command and url (adapters validate)."""
         # The unified model is permissive - adapters enforce host-specific rules

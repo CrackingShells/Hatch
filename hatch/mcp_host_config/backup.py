@@ -48,6 +48,9 @@ class BackupInfo(BaseModel):
             "gemini",
             "kiro",
             "codex",
+            "mistral-vibe",
+            "opencode",
+            "augment",
         }
         if v not in supported_hosts:
             raise ValueError(f"Unsupported hostname: {v}. Supported: {supported_hosts}")

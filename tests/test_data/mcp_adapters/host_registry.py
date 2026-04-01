@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, List, Optional, Set, Tuple
 
+from hatch.mcp_host_config.adapters.augment import AugmentAdapter
 from hatch.mcp_host_config.adapters.base import BaseAdapter
 from hatch.mcp_host_config.adapters.claude import ClaudeAdapter
 from hatch.mcp_host_config.adapters.codex import CodexAdapter
@@ -26,8 +27,11 @@ from hatch.mcp_host_config.adapters.cursor import CursorAdapter
 from hatch.mcp_host_config.adapters.gemini import GeminiAdapter
 from hatch.mcp_host_config.adapters.kiro import KiroAdapter
 from hatch.mcp_host_config.adapters.lmstudio import LMStudioAdapter
+from hatch.mcp_host_config.adapters.mistral_vibe import MistralVibeAdapter
+from hatch.mcp_host_config.adapters.opencode import OpenCodeAdapter
 from hatch.mcp_host_config.adapters.vscode import VSCodeAdapter
 from hatch.mcp_host_config.fields import (
+    AUGMENT_FIELDS,
     CLAUDE_FIELDS,
     CODEX_FIELD_MAPPINGS,
     CODEX_FIELDS,
@@ -36,6 +40,8 @@ from hatch.mcp_host_config.fields import (
     GEMINI_FIELDS,
     KIRO_FIELDS,
     LMSTUDIO_FIELDS,
+    MISTRAL_VIBE_FIELDS,
+    OPENCODE_FIELDS,
     TYPE_SUPPORTING_HOSTS,
     VSCODE_FIELDS,
 )
@@ -55,6 +61,9 @@ FIELD_SETS: Dict[str, FrozenSet[str]] = {
     "gemini": GEMINI_FIELDS,
     "kiro": KIRO_FIELDS,
     "codex": CODEX_FIELDS,
+    "mistral-vibe": MISTRAL_VIBE_FIELDS,
+    "opencode": OPENCODE_FIELDS,
+    "augment": AUGMENT_FIELDS,
 }
 
 # Reverse mappings for Codex (host-native name → universal name)
@@ -93,6 +102,9 @@ class HostSpec:
             "gemini": GeminiAdapter,
             "kiro": KiroAdapter,
             "codex": CodexAdapter,
+            "mistral-vibe": MistralVibeAdapter,
+            "opencode": OpenCodeAdapter,
+            "augment": AugmentAdapter,
         }
         factory = adapter_map[self.host_name]
         return factory()
@@ -350,6 +362,9 @@ def generate_unsupported_field_test_cases(
         | GEMINI_FIELDS
         | KIRO_FIELDS
         | CODEX_FIELDS
+        | MISTRAL_VIBE_FIELDS
+        | OPENCODE_FIELDS
+        | AUGMENT_FIELDS
     )
 
     cases: List[FilterTestCase] = []

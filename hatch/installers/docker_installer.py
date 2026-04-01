@@ -20,7 +20,6 @@ from .installation_context import InstallationStatus
 from .registry import installer_registry
 
 logger = logging.getLogger("hatch.installers.docker_installer")
-logger.setLevel(logging.INFO)
 
 # Handle docker-py import with graceful fallback
 DOCKER_AVAILABLE = False

@@ -6,6 +6,7 @@ The registry maps host names to adapter instances and provides factory methods.
 
 from typing import Dict, List, Optional
 
+from hatch.mcp_host_config.adapters.augment import AugmentAdapter
 from hatch.mcp_host_config.adapters.base import BaseAdapter
 from hatch.mcp_host_config.adapters.claude import ClaudeAdapter
 from hatch.mcp_host_config.adapters.codex import CodexAdapter
@@ -13,6 +14,8 @@ from hatch.mcp_host_config.adapters.cursor import CursorAdapter
 from hatch.mcp_host_config.adapters.gemini import GeminiAdapter
 from hatch.mcp_host_config.adapters.kiro import KiroAdapter
 from hatch.mcp_host_config.adapters.lmstudio import LMStudioAdapter
+from hatch.mcp_host_config.adapters.mistral_vibe import MistralVibeAdapter
+from hatch.mcp_host_config.adapters.opencode import OpenCodeAdapter
 from hatch.mcp_host_config.adapters.vscode import VSCodeAdapter
 
 
@@ -32,7 +35,7 @@ class AdapterRegistry:
         'claude-desktop'
 
         >>> registry.get_supported_hosts()
-        ['claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'lmstudio', 'vscode']
+        ['augment', 'claude-code', 'claude-desktop', 'codex', 'cursor', 'gemini', 'kiro', 'lmstudio', 'mistral-vibe', 'opencode', 'vscode']
     """
 
     def __init__(self):
@@ -53,6 +56,9 @@ class AdapterRegistry:
         self.register(GeminiAdapter())
         self.register(KiroAdapter())
         self.register(CodexAdapter())
+        self.register(MistralVibeAdapter())
+        self.register(OpenCodeAdapter())
+        self.register(AugmentAdapter())
 
     def register(self, adapter: BaseAdapter) -> None:
         """Register an adapter instance.

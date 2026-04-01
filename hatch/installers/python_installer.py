@@ -31,7 +31,6 @@ class PythonInstaller(DependencyInstaller):
     def __init__(self):
         """Initialize the PythonInstaller."""
         self.logger = logging.getLogger("hatch.installers.python_installer")
-        self.logger.setLevel(logging.INFO)
 
     @property
     def installer_type(self) -> str:

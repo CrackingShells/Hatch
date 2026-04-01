@@ -1,21 +1,26 @@
 # Hatch Documentation
 
-Welcome to the documentation for Hatch, the official package manager for the Hatch! ecosystem.
-
 ## Overview
 
-Hatch provides powerful tools for managing MCP server packages, environments, and interacting with the Hatch registry. It serves as the package management foundation for [Hatchling](https://github.com/CrackingShells/Hatchling) and other projects in the ecosystem.
+Hatch is a CLI tool for configuring MCP servers across AI host platforms. Instead of editing JSON config files for each tool separately, you register servers from the command line — once, on as many hosts as you need.
 
-Hatch also supports MCP host configuration across popular platforms including Claude Desktop/Code, VS Code, Cursor, Kiro, Codex, LM Studio, and Gemini.
+```bash
+hatch mcp configure context7 --host claude-desktop,cursor,vscode \
+  --command npx --args "-y @upstash/context7-mcp"
+```
+
+Hatch also has a package system for installing MCP servers with dependency isolation (Python, system packages, Docker). That part is still being developed and will eventually integrate with MCP registries.
+
+Supported hosts: Claude Desktop, Claude Code, VS Code, Cursor, Kiro, Codex, LM Studio, Google Gemini CLI, Mistral Vibe, OpenCode, Augment Code (Auggie CLI and Intent).
 
 ## Documentation Sections
 
 ### For Users
 
-- **[Getting Started](./articles/users/GettingStarted.md)** - Quick start guide for using Hatch
-- **[Command Reference](./articles/users/CLIReference.md)** - Complete CLI command documentation
-- **[MCP Host Configuration](./articles/users/MCPHostConfiguration.md)** - Configure MCP servers across different host platforms
-- **[Tutorials Start](./articles/users/tutorials/01-getting-started/01-installation.md)** - Step-by-step guides for your journey from installation to authoring Hatch packages for MCP server easy sharing.
+- **[Getting Started](./articles/users/GettingStarted.md)** - Installation and first steps
+- **[MCP Host Configuration](./articles/users/MCPHostConfiguration.md)** - Configure MCP servers across host platforms
+- **[Command Reference](./articles/users/CLIReference.md)** - Complete CLI reference
+- **[Tutorials](./articles/users/tutorials/01-getting-started/01-installation.md)** - Step-by-step guides, including package authoring
 
 ### For Developers
 

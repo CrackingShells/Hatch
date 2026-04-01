@@ -1,0 +1,118 @@
+{
+  "remote_http": [
+    {
+      "case": "input_type_omitted",
+      "host": "claude-desktop",
+      "config": {
+        "name": "remote-server",
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        }
+      },
+      "expected": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        },
+        "type": "http"
+      }
+    },
+    {
+      "case": "input_type_omitted",
+      "host": "claude-code",
+      "config": {
+        "name": "remote-server",
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        }
+      },
+      "expected": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        },
+        "type": "http"
+      }
+    },
+    {
+      "case": "input_type_sse",
+      "host": "claude-desktop",
+      "config": {
+        "name": "remote-server",
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        },
+        "type": "sse"
+      },
+      "expected": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        },
+        "type": "http"
+      }
+    },
+    {
+      "case": "input_type_sse",
+      "host": "claude-code",
+      "config": {
+        "name": "remote-server",
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        },
+        "type": "sse"
+      },
+      "expected": {
+        "url": "https://api.example.com/mcp",
+        "headers": {
+          "Authorization": "Bearer token"
+        },
+        "type": "http"
+      }
+    }
+  ],
+  "stdio_without_type": [
+    {
+      "case": "input_type_omitted",
+      "host": "claude-desktop",
+      "config": {
+        "name": "stdio-server",
+        "command": "python",
+        "args": ["-m", "mcp_server"],
+        "env": {
+          "API_KEY": "secret"
+        }
+      },
+      "expected": {
+        "command": "python",
+        "args": ["-m", "mcp_server"],
+        "env": {
+          "API_KEY": "secret"
+        }
+      }
+    },
+    {
+      "case": "input_type_omitted",
+      "host": "claude-code",
+      "config": {
+        "name": "stdio-server",
+        "command": "python",
+        "args": ["-m", "mcp_server"],
+        "env": {
+          "API_KEY": "secret"
+        }
+      },
+      "expected": {
+        "command": "python",
+        "args": ["-m", "mcp_server"],
+        "env": {
+          "API_KEY": "secret"
+        }
+      }
+    }
+  ]
+}

@@ -9,28 +9,35 @@ import unittest
 from hatch.mcp_host_config.models import MCPServerConfig, MCPHostType
 from hatch.mcp_host_config.adapters import (
     get_adapter,
+    AugmentAdapter,
     ClaudeAdapter,
     CodexAdapter,
     CursorAdapter,
     GeminiAdapter,
     KiroAdapter,
     LMStudioAdapter,
+    MistralVibeAdapter,
     VSCodeAdapter,
 )
+from hatch.mcp_host_config.adapters.opencode import OpenCodeAdapter
 
 # All adapter classes to test
 ALL_ADAPTERS = [
+    AugmentAdapter,
     ClaudeAdapter,
     CodexAdapter,
     CursorAdapter,
     GeminiAdapter,
     KiroAdapter,
     LMStudioAdapter,
+    MistralVibeAdapter,
+    OpenCodeAdapter,
     VSCodeAdapter,
 ]
 
 # Map host types to their expected adapter classes
 HOST_ADAPTER_MAP = {
+    MCPHostType.AUGMENT: AugmentAdapter,
     MCPHostType.CLAUDE_DESKTOP: ClaudeAdapter,
     MCPHostType.CLAUDE_CODE: ClaudeAdapter,
     MCPHostType.CODEX: CodexAdapter,
@@ -38,6 +45,8 @@ HOST_ADAPTER_MAP = {
     MCPHostType.GEMINI: GeminiAdapter,
     MCPHostType.KIRO: KiroAdapter,
     MCPHostType.LMSTUDIO: LMStudioAdapter,
+    MCPHostType.MISTRAL_VIBE: MistralVibeAdapter,
+    MCPHostType.OPENCODE: OpenCodeAdapter,
     MCPHostType.VSCODE: VSCodeAdapter,
 }
 

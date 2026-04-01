@@ -17,6 +17,7 @@ from hatch.mcp_host_config.adapters import (
     GeminiAdapter,
     KiroAdapter,
     LMStudioAdapter,
+    MistralVibeAdapter,
     VSCodeAdapter,
 )
 
@@ -31,6 +32,7 @@ class TestAdapterRegistry(unittest.TestCase):
     def test_AR01_registry_has_all_default_hosts(self):
         """AR-01: Registry initializes with all default host adapters."""
         expected_hosts = {
+            "augment",
             "claude-desktop",
             "claude-code",
             "codex",
@@ -38,6 +40,8 @@ class TestAdapterRegistry(unittest.TestCase):
             "gemini",
             "kiro",
             "lmstudio",
+            "mistral-vibe",
+            "opencode",
             "vscode",
         }
 
@@ -55,6 +59,7 @@ class TestAdapterRegistry(unittest.TestCase):
             ("gemini", GeminiAdapter),
             ("kiro", KiroAdapter),
             ("lmstudio", LMStudioAdapter),
+            ("mistral-vibe", MistralVibeAdapter),
             ("vscode", VSCodeAdapter),
         ]
 
