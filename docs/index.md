@@ -5,8 +5,12 @@
 Hatch is a CLI tool for configuring MCP servers across AI host platforms. Instead of editing JSON config files for each tool separately, you register servers from the command line — once, on as many hosts as you need.
 
 ```bash
-hatch mcp configure context7 --host claude-desktop,cursor,vscode \
+# Configure on the primary host
+hatch mcp configure context7 --host claude-desktop \
   --command npx --args "-y @upstash/context7-mcp"
+
+# Then sync to other hosts
+hatch mcp sync --from-host claude-desktop --to-host cursor,vscode
 ```
 
 Hatch also has a package system for installing MCP servers with dependency isolation (Python, system packages, Docker). That part is still being developed and will eventually integrate with MCP registries.

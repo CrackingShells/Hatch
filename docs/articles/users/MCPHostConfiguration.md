@@ -67,8 +67,8 @@ hatch mcp list hosts
 # List configured servers from current environment
 hatch mcp list servers
 
-# List servers from specific environment
-hatch mcp list servers --env-var production
+# List servers from specific host
+hatch mcp list servers --host claude-desktop
 ```
 
 ### Viewing Host Configurations
@@ -182,35 +182,35 @@ hatch mcp configure authenticated-api \
 
 ### Configure Across Multiple Hosts
 
-Set up the same server on multiple host platforms:
+Set up the same server on multiple host platforms using the `sync` command:
 
 ```bash
-# Configure on multiple hosts at once
+# Configure on the primary host first
 hatch mcp configure weather_server \
-  --hosts claude-desktop,cursor,vscode \
+  --host claude-desktop \
   --command python \
   --args weather_server.py
 
-# Configure on all available hosts
-hatch mcp configure weather_server \
-  --hosts all \
-  --command python \
-  --args weather_server.py
+# Then sync to other hosts
+hatch mcp sync --from-host claude-desktop --to-host cursor,vscode
+
+# Or sync from an environment to multiple hosts
+hatch mcp sync --from-env default --to-host all
 ```
 
 #### Quick Examples
 
 ```bash
-# Sync environment to hosts
+# Sync environment to specific hosts
 hatch mcp sync --from-env production --to-host claude-desktop,cursor
 
 # Copy configuration between hosts
 hatch mcp sync --from-host claude-desktop --to-host cursor
 
-# Sync with filtering
+# Sync with filtering (only servers matching pattern)
 hatch mcp sync --from-env dev --to-host all --pattern ".*api.*"
 
-# Preview changes
+# Preview changes without applying them
 hatch mcp sync --from-env prod --to-host all --dry-run
 ```
 

@@ -426,12 +426,22 @@ def _setup_mcp_commands(subparsers):
         "hosts", help="Discover available MCP host platforms"
     )
     mcp_discover_hosts_parser.add_argument(
+        "filter_name",
+        nargs="?",
+        help="Filter by host name",
+    )
+    mcp_discover_hosts_parser.add_argument(
         "--json", action="store_true", help="Output in JSON format"
     )
 
     # Discover servers command
     mcp_discover_servers_parser = mcp_discover_subparsers.add_parser(
         "servers", help="Discover configured MCP servers"
+    )
+    mcp_discover_servers_parser.add_argument(
+        "filter_name",
+        nargs="?",
+        help="Filter by server name",
     )
     mcp_discover_servers_parser.add_argument(
         "--env",
@@ -450,6 +460,11 @@ def _setup_mcp_commands(subparsers):
         "hosts", help="List host/server pairs from host configuration files"
     )
     mcp_list_hosts_parser.add_argument(
+        "filter_name",
+        nargs="?",
+        help="Filter by host name",
+    )
+    mcp_list_hosts_parser.add_argument(
         "--server",
         help="Filter by server name using regex pattern",
     )
@@ -460,6 +475,11 @@ def _setup_mcp_commands(subparsers):
     # List servers command - per R10 §3.2 (--pattern removed, use mcp list hosts --server instead)
     mcp_list_servers_parser = mcp_list_subparsers.add_parser(
         "servers", help="List server/host pairs from host configuration files"
+    )
+    mcp_list_servers_parser.add_argument(
+        "filter_name",
+        nargs="?",
+        help="Filter by server name",
     )
     mcp_list_servers_parser.add_argument(
         "--host",
@@ -479,6 +499,11 @@ def _setup_mcp_commands(subparsers):
         "hosts", help="Show detailed host configurations"
     )
     mcp_show_hosts_parser.add_argument(
+        "filter_name",
+        nargs="?",
+        help="Filter by host name",
+    )
+    mcp_show_hosts_parser.add_argument(
         "--server",
         help="Filter by server name using regex pattern",
     )
@@ -489,6 +514,11 @@ def _setup_mcp_commands(subparsers):
     # Show servers command - server-centric detailed view per R11 §2.2
     mcp_show_servers_parser = mcp_show_subparsers.add_parser(
         "servers", help="Show detailed server configurations across hosts"
+    )
+    mcp_show_servers_parser.add_argument(
+        "filter_name",
+        nargs="?",
+        help="Filter by server name",
     )
     mcp_show_servers_parser.add_argument(
         "--host",

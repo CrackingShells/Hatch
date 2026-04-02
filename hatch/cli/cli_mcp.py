@@ -11,9 +11,11 @@ Supported Hosts:
     - vscode: Visual Studio Code with Copilot
     - kiro: Kiro IDE
     - codex: OpenAI Codex
-    - lm-studio: LM Studio
+    - lmstudio: LM Studio
     - gemini: Google Gemini
-    - mistral-vibe: Mistral Vibe CLI
+    - mistral-vibe: Mistral Vibe CLI coding agent
+    - opencode: OpenCode AI coding assistant
+    - augment: Augment Code AI assistant
 
 Command Groups:
     Discovery:
@@ -24,16 +26,21 @@ Command Groups:
         - hatch mcp list hosts: Show configured hosts in environment
         - hatch mcp list servers: Show configured servers
 
+    Show:
+        - hatch mcp show hosts: Detailed hierarchical view of host configurations
+        - hatch mcp show servers: Detailed hierarchical view of server configurations
+
     Backup:
         - hatch mcp backup restore: Restore configuration from backup
         - hatch mcp backup list: List available backups
         - hatch mcp backup clean: Clean old backups
 
     Configuration:
-        - hatch mcp configure: Add or update MCP server configuration
-        - hatch mcp remove: Remove server from specific host
-        - hatch mcp remove-server: Remove server from multiple hosts
-        - hatch mcp remove-host: Remove all servers from a host
+        - hatch mcp configure: Add or update MCP server configuration on a host
+
+    Removal:
+        - hatch mcp remove server: Remove MCP server from hosts
+        - hatch mcp remove host: Remove entire host configuration
 
     Synchronization:
         - hatch mcp sync: Sync package servers to hosts
@@ -44,7 +51,7 @@ Handler Signature:
 
 Example:
     $ hatch mcp discover hosts
-    $ hatch mcp configure claude-desktop my-server --command python --args server.py
+    $ hatch mcp configure my-server --host claude-desktop --command python --args server.py
     $ hatch mcp backup list claude-desktop --detailed
 """
 
@@ -145,6 +152,7 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
 
     Args:
         args: Parsed command-line arguments containing:
+            - filter_name: Optional positional argument to filter by host name
             - json: Optional flag for JSON output
 
     Returns:
@@ -152,16 +160,38 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
     """
     try:
         import json as json_module
+        import re
 
         # Import strategies to trigger registration
 
+        filter_name: Optional[str] = getattr(args, "filter_name", None)
         json_output: bool = getattr(args, "json", False)
+
+        # Compile host filter pattern if provided
+        filter_re = None
+        if filter_name:
+            try:
+                filter_re = re.compile(filter_name)
+            except re.error as e:
+                format_validation_error(
+                    ValidationError(
+                        f"Invalid regex pattern '{filter_name}': {e}",
+                        field="filter_name",
+                        suggestion="Use a valid Python regex pattern",
+                    )
+                )
+                return EXIT_ERROR
+
         available_hosts = MCPHostRegistry.detect_available_hosts()
 
         if json_output:
             # JSON output
             hosts_data = []
             for host_type in MCPHostType:
+                # Apply host filter if specified
+                if filter_re and not filter_re.search(host_type.value):
+                    continue
+
                 try:
                     strategy = MCPHostRegistry.get_strategy(host_type)
                     config_path = strategy.get_config_path()
@@ -194,6 +224,10 @@ def handle_mcp_discover_hosts(args: Namespace) -> int:
         formatter = TableFormatter(columns)
 
         for host_type in MCPHostType:
+            # Apply host filter if specified
+            if filter_re and not filter_re.search(host_type.value):
+                continue
+
             try:
                 strategy = MCPHostRegistry.get_strategy(host_type)
                 config_path = strategy.get_config_path()
@@ -225,11 +259,13 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
             - env: Optional environment name (uses current if not specified)
+            - filter_name: Optional positional argument to filter by server name
 
     Returns:
         int: EXIT_SUCCESS (0) on success, EXIT_ERROR (1) on failure
     """
     import sys
+    import re
 
     # Emit deprecation warning to stderr
     print(
@@ -241,6 +277,7 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
     try:
         env_manager: HatchEnvironmentManager = args.env_manager
         env_name: Optional[str] = getattr(args, "env", None)
+        filter_name: Optional[str] = getattr(args, "filter_name", None)
 
         env_name = env_name or env_manager.get_current_environment()
 
@@ -254,6 +291,21 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
             )
             return EXIT_ERROR
 
+        # Compile server filter pattern if provided
+        filter_re = None
+        if filter_name:
+            try:
+                filter_re = re.compile(filter_name)
+            except re.error as e:
+                format_validation_error(
+                    ValidationError(
+                        f"Invalid regex pattern '{filter_name}': {e}",
+                        field="filter_name",
+                        suggestion="Use a valid Python regex pattern",
+                    )
+                )
+                return EXIT_ERROR
+
         packages = env_manager.list_packages(env_name)
         mcp_packages = []
 
@@ -263,6 +315,11 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
                 server_config = get_package_mcp_server_config(
                     env_manager, env_name, package["name"]
                 )
+
+                # Apply server filter if specified
+                if filter_re and not filter_re.search(server_config.name):
+                    continue
+
                 mcp_packages.append(
                     {"package": package, "server_config": server_config}
                 )
@@ -271,7 +328,12 @@ def handle_mcp_discover_servers(args: Namespace) -> int:
                 continue
 
         if not mcp_packages:
-            print(f"No MCP servers found in environment '{env_name}'")
+            if filter_name:
+                print(
+                    f"No MCP servers matching '{filter_name}' found in environment '{env_name}'"
+                )
+            else:
+                print(f"No MCP servers found in environment '{env_name}'")
             return EXIT_SUCCESS
 
         print(f"MCP servers in environment '{env_name}':")
@@ -306,6 +368,7 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
             - server: Optional regex pattern to filter by server name
+            - filter_name: Optional positional argument to filter by host name
             - json: Optional flag for JSON output
 
     Returns:
@@ -321,6 +384,7 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
 
         env_manager: HatchEnvironmentManager = args.env_manager
         server_pattern: Optional[str] = getattr(args, "server", None)
+        filter_name: Optional[str] = getattr(args, "filter_name", None)
         json_output: bool = getattr(args, "json", False)
 
         # Compile regex pattern if provided
@@ -333,6 +397,21 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
                     ValidationError(
                         f"Invalid regex pattern '{server_pattern}': {e}",
                         field="--server",
+                        suggestion="Use a valid Python regex pattern",
+                    )
+                )
+                return EXIT_ERROR
+
+        # Compile host filter pattern if provided
+        filter_re = None
+        if filter_name:
+            try:
+                filter_re = re.compile(filter_name)
+            except re.error as e:
+                format_validation_error(
+                    ValidationError(
+                        f"Invalid regex pattern '{filter_name}': {e}",
+                        field="filter_name",
                         suggestion="Use a valid Python regex pattern",
                     )
                 )
@@ -387,6 +466,10 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
                 host_config = strategy.read_configuration()
                 host_name = host_type.value
 
+                # Apply host filter if specified
+                if filter_re and not filter_re.search(host_name):
+                    continue
+
                 for server_name, server_config in host_config.servers.items():
                     # Apply server pattern filter if specified
                     if pattern_re and not pattern_re.search(server_name):
@@ -429,8 +512,14 @@ def handle_mcp_list_hosts(args: Namespace) -> int:
 
         # Display results
         if not host_rows:
+            filters = []
+            if filter_name:
+                filters.append(f"host '{filter_name}'")
             if server_pattern:
-                print(f"No MCP servers matching '{server_pattern}' on any host")
+                filters.append(f"server '{server_pattern}'")
+
+            if filters:
+                print(f"No MCP servers found matching {' and '.join(filters)}")
             else:
                 print("No MCP servers found on any available hosts")
             return EXIT_SUCCESS
@@ -469,6 +558,7 @@ def handle_mcp_list_servers(args: Namespace) -> int:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
             - host: Optional regex pattern to filter by host name
+            - filter_name: Optional positional argument to filter by server name
             - json: Optional flag for JSON output
 
     Returns:
@@ -484,6 +574,7 @@ def handle_mcp_list_servers(args: Namespace) -> int:
 
         env_manager: HatchEnvironmentManager = args.env_manager
         host_pattern: Optional[str] = getattr(args, "host", None)
+        filter_name: Optional[str] = getattr(args, "filter_name", None)
         json_output: bool = getattr(args, "json", False)
 
         # Compile host regex pattern if provided
@@ -496,6 +587,21 @@ def handle_mcp_list_servers(args: Namespace) -> int:
                     ValidationError(
                         f"Invalid regex pattern '{host_pattern}': {e}",
                         field="--host",
+                        suggestion="Use a valid Python regex pattern",
+                    )
+                )
+                return EXIT_ERROR
+
+        # Compile server filter pattern if provided
+        filter_re = None
+        if filter_name:
+            try:
+                filter_re = re.compile(filter_name)
+            except re.error as e:
+                format_validation_error(
+                    ValidationError(
+                        f"Invalid regex pattern '{filter_name}': {e}",
+                        field="filter_name",
                         suggestion="Use a valid Python regex pattern",
                     )
                 )
@@ -560,6 +666,10 @@ def handle_mcp_list_servers(args: Namespace) -> int:
                     continue
 
                 for server_name, server_config in host_config.servers.items():
+                    # Apply server filter if specified
+                    if filter_re and not filter_re.search(server_name):
+                        continue
+
                     # Check if Hatch-managed
                     is_hatch_managed = False
                     env_name = "-"
@@ -597,8 +707,14 @@ def handle_mcp_list_servers(args: Namespace) -> int:
             return EXIT_SUCCESS
 
         if not server_rows:
+            filters = []
+            if filter_name:
+                filters.append(f"server '{filter_name}'")
             if host_pattern:
-                print(f"No MCP servers on hosts matching '{host_pattern}'")
+                filters.append(f"host '{host_pattern}'")
+
+            if filters:
+                print(f"No MCP servers found matching {' and '.join(filters)}")
             else:
                 print("No MCP servers found on any available hosts")
             return EXIT_SUCCESS
@@ -637,6 +753,7 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
             - server: Optional regex pattern to filter by server name
+            - filter_name: Optional positional argument to filter by host name
             - json: Optional flag for JSON output
 
     Returns:
@@ -656,6 +773,7 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
 
         env_manager: HatchEnvironmentManager = args.env_manager
         server_pattern: Optional[str] = getattr(args, "server", None)
+        filter_name: Optional[str] = getattr(args, "filter_name", None)
         json_output: bool = getattr(args, "json", False)
 
         # Compile regex pattern if provided
@@ -668,6 +786,21 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
                     ValidationError(
                         f"Invalid regex pattern '{server_pattern}': {e}",
                         field="--server",
+                        suggestion="Use a valid Python regex pattern",
+                    )
+                )
+                return EXIT_ERROR
+
+        # Compile host filter pattern if provided
+        filter_re = None
+        if filter_name:
+            try:
+                filter_re = re.compile(filter_name)
+            except re.error as e:
+                format_validation_error(
+                    ValidationError(
+                        f"Invalid regex pattern '{filter_name}': {e}",
+                        field="filter_name",
                         suggestion="Use a valid Python regex pattern",
                     )
                 )
@@ -737,6 +870,11 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
                 strategy = MCPHostRegistry.get_strategy(host_type)
                 host_config = strategy.read_configuration()
                 host_name = host_type.value
+
+                # Apply host filter if specified
+                if filter_re and not filter_re.search(host_name):
+                    continue
+
                 config_path = strategy.get_config_path()
 
                 # Filter servers by pattern if specified
@@ -825,8 +963,14 @@ def handle_mcp_show_hosts(args: Namespace) -> int:
 
         # Human-readable output
         if not hosts_data:
+            filters = []
+            if filter_name:
+                filters.append(f"host '{filter_name}'")
             if server_pattern:
-                print(f"No hosts with servers matching '{server_pattern}'")
+                filters.append(f"server '{server_pattern}'")
+
+            if filters:
+                print(f"No MCP hosts found matching {' and '.join(filters)}")
             else:
                 print("No MCP hosts found")
             return EXIT_SUCCESS
@@ -903,6 +1047,7 @@ def handle_mcp_show_servers(args: Namespace) -> int:
         args: Parsed command-line arguments containing:
             - env_manager: HatchEnvironmentManager instance
             - host: Optional regex pattern to filter by host name
+            - filter_name: Optional positional argument to filter by server name
             - json: Optional flag for JSON output
 
     Returns:
@@ -919,6 +1064,7 @@ def handle_mcp_show_servers(args: Namespace) -> int:
 
         env_manager: HatchEnvironmentManager = args.env_manager
         host_pattern: Optional[str] = getattr(args, "host", None)
+        filter_name: Optional[str] = getattr(args, "filter_name", None)
         json_output: bool = getattr(args, "json", False)
 
         # Compile regex pattern if provided
@@ -931,6 +1077,21 @@ def handle_mcp_show_servers(args: Namespace) -> int:
                     ValidationError(
                         f"Invalid regex pattern '{host_pattern}': {e}",
                         field="--host",
+                        suggestion="Use a valid Python regex pattern",
+                    )
+                )
+                return EXIT_ERROR
+
+        # Compile server filter pattern if provided
+        filter_re = None
+        if filter_name:
+            try:
+                filter_re = re.compile(filter_name)
+            except re.error as e:
+                format_validation_error(
+                    ValidationError(
+                        f"Invalid regex pattern '{filter_name}': {e}",
+                        field="filter_name",
                         suggestion="Use a valid Python regex pattern",
                     )
                 )
@@ -1005,6 +1166,10 @@ def handle_mcp_show_servers(args: Namespace) -> int:
                 host_config = strategy.read_configuration()
 
                 for server_name, server_config in host_config.servers.items():
+                    # Apply server filter if specified
+                    if filter_re and not filter_re.search(server_name):
+                        continue
+
                     if server_name not in server_hosts_map:
                         server_hosts_map[server_name] = []
 
@@ -1094,8 +1259,14 @@ def handle_mcp_show_servers(args: Namespace) -> int:
 
         # Human-readable output
         if not servers_data:
+            filters = []
+            if filter_name:
+                filters.append(f"server '{filter_name}'")
             if host_pattern:
-                print(f"No servers on hosts matching '{host_pattern}'")
+                filters.append(f"host '{host_pattern}'")
+
+            if filters:
+                print(f"No MCP servers found matching {' and '.join(filters)}")
             else:
                 print("No MCP servers found")
             return EXIT_SUCCESS

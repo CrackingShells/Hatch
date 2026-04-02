@@ -174,16 +174,36 @@ Hatch provides multiple commands for viewing your environments, packages, and ho
 
 - `hatch mcp discover hosts`: Detect available MCP host platforms
 
-**Filtering**: All list and show commands support regex filtering:
+**Filtering**: All list and show commands support regex filtering using positional arguments and flags:
+
+**Positional Filter (by position - simple syntax)**:
 ```bash
-# Filter by server name
+# Filter by host name (positional)
+hatch mcp list hosts claude-desktop
+
+# Filter by server name (positional)
+hatch mcp list servers weather-server
+
+# Filter discovery results
+hatch mcp discover hosts claude
+```
+
+**Flag-Based Filtering (regex patterns)**:
+```bash
+# Filter by server name using regex
 hatch mcp list hosts --server "weather.*"
 
-# Filter by host name
+# Filter by host name using regex
 hatch mcp show servers --host "claude.*"
+```
 
-# Filter by environment
-hatch env list hosts --env "my-project"
+**Compound Filtering (positional + flags together)**:
+```bash
+# Positional filter + server flag
+hatch mcp list servers weather --host ".*desktop"
+
+# Positional filter + multiple conditions
+hatch mcp show hosts claude --server "api.*"
 ```
 
 ## Understanding Hatch Concepts

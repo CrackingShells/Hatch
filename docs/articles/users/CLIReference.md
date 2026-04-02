@@ -518,25 +518,29 @@ Discover available MCP host platforms on the system.
 
 Syntax:
 
-`hatch mcp discover hosts [--json]`
+`hatch mcp discover hosts [filter_name] [--json]`
 
 
-| Flag | Type | Description | Default |
+| Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
+| `filter_name` | string (positional, optional) | Filter by host name using regex pattern | none |
 | `--json` | flag | Output in JSON format | false |
 
 
-**Example Output**:
+**Usage Examples**:
 
 ```bash
+# Show all available host platforms
 $ hatch mcp discover hosts
-Available MCP Host Platforms:
-  Host                Status           Config Path
-  ─────────────────────────────────────────────────────────────────
-  claude-desktop      ✓ Available      /Users/user/.config/claude/...
-  cursor              ✓ Available      /Users/user/.cursor/mcp.json
-  vscode              ✗ Not Found      -
-  mistral-vibe        ✓ Available      /Users/user/.config/mistral/mcp.toml
+
+# Filter to only Claude Desktop
+$ hatch mcp discover hosts claude-desktop
+
+# Filter with regex pattern (case-sensitive)
+$ hatch mcp discover hosts "^cursor|^vscode"
+
+# JSON output with filter
+$ hatch mcp discover hosts cursor --json
 ```
 
 **Key Details**:
@@ -544,6 +548,7 @@ Available MCP Host Platforms:
 - Columns: Host (width 18), Status (width 15), Config Path (width "auto")
 - Status: `"✓ Available"` or `"✗ Not Found"`
 - Shows ALL host types (MCPHostType enum), not just available ones
+- `filter_name` accepts Python regex patterns for flexible matching
 
 ---
 
@@ -555,12 +560,34 @@ Discover MCP servers in Hatch environments.
 
 Syntax:
 
-`hatch mcp discover servers [--env ENV]`
+`hatch mcp discover servers [filter_name] [--env ENV]`
 
 
-| Flag | Type | Description | Default |
+| Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
+| `filter_name` | string (positional, optional) | Filter by server name using regex pattern | none |
 | `--env` | string | Specific environment to discover servers in | current environment |
+
+**Usage Examples**:
+
+```bash
+# List all MCP servers in current environment
+$ hatch mcp discover servers
+
+# Filter to specific server by name
+$ hatch mcp discover servers my-server
+
+# Filter with regex pattern
+$ hatch mcp discover servers "^my-.*server$"
+
+# Discover servers in specific environment
+$ hatch mcp discover servers --env test-env
+
+# Combined: filter + specific environment
+$ hatch mcp discover servers hatch-mcp-server --env prod-env
+```
+
+**Note**: This command is deprecated. Use `hatch mcp list servers` instead for more detailed information.
 
 ---
 
@@ -575,14 +602,37 @@ List host/server pairs from host configuration files.
 
 Syntax:
 
-`hatch mcp list hosts [--server PATTERN] [--json]`
+`hatch mcp list hosts [filter_name] [--server PATTERN] [--json]`
 
 
-| Flag | Type | Description | Default |
+| Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
+| `filter_name` | string (positional, optional) | Filter by host name using regex pattern | none |
 | `--server` | string | Filter by server name using regex pattern | none |
 | `--json` | flag | Output in JSON format | false |
 
+
+**Usage Examples**:
+
+```bash
+# List all hosts and their servers
+$ hatch mcp list hosts
+
+# Filter by specific host
+$ hatch mcp list hosts claude-desktop
+
+# Filter hosts by regex pattern
+$ hatch mcp list hosts "^claude"
+
+# Filter by server (works with or without host filter)
+$ hatch mcp list hosts --server weather
+
+# Combine host and server filters
+$ hatch mcp list hosts claude-desktop --server weather
+
+# JSON output
+$ hatch mcp list hosts cursor --json
+```
 
 **Example Output**:
 
@@ -601,6 +651,7 @@ MCP Hosts:
 - Columns: Host (width 18), Server (width 18), Hatch (width 8), Environment (width 15)
 - Hatch column: `"✅"` for Hatch-managed, `"❌"` for third-party
 - Shows ALL servers on hosts (both Hatch-managed and third-party)
+- `filter_name` is positional and filters hosts; `--server` filters servers separately
 - Environment column: environment name if Hatch-managed, `"-"` otherwise
 - Sorted by: host (alphabetically), then server
 
@@ -615,13 +666,36 @@ List server/host pairs from host configuration files.
 
 Syntax:
 
-`hatch mcp list servers [--host PATTERN] [--json]`
+`hatch mcp list servers [filter_name] [--host PATTERN] [--json]`
 
 
-| Flag | Type | Description | Default |
+| Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
+| `filter_name` | string (positional, optional) | Filter by server name using regex pattern | none |
 | `--host` | string | Filter by host name using regex pattern | none |
 | `--json` | flag | Output in JSON format | false |
+
+**Usage Examples**:
+
+```bash
+# List all servers and their hosts
+$ hatch mcp list servers
+
+# Filter by specific server
+$ hatch mcp list servers weather-server
+
+# Filter servers by regex pattern
+$ hatch mcp list servers "^weather"
+
+# Filter by host (works with or without server filter)
+$ hatch mcp list servers --host claude-desktop
+
+# Combine server and host filters
+$ hatch mcp list servers weather --host cursor
+
+# JSON output
+$ hatch mcp list servers hatch-mcp --json
+```
 
 **Example Output**:
 
@@ -654,13 +728,36 @@ Show detailed hierarchical view of all MCP host configurations.
 
 Syntax:
 
-`hatch mcp show hosts [--server PATTERN] [--json]`
+`hatch mcp show hosts [filter_name] [--server PATTERN] [--json]`
 
 
-| Flag | Type | Description | Default |
+| Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
+| `filter_name` | string (positional, optional) | Filter by host name using regex pattern | none |
 | `--server` | string | Filter by server name using regex pattern | none |
 | `--json` | flag | Output in JSON format | false |
+
+**Usage Examples**:
+
+```bash
+# Show detailed configuration for all hosts
+$ hatch mcp show hosts
+
+# Show configuration for specific host
+$ hatch mcp show hosts claude-desktop
+
+# Show hosts matching regex pattern
+$ hatch mcp show hosts "^cursor|^vscode"
+
+# Filter by server name
+$ hatch mcp show hosts --server weather
+
+# Combine host and server filters
+$ hatch mcp show hosts claude --server weather-server
+
+# JSON output with filter
+$ hatch mcp show hosts cursor --json
+```
 
 **Example Output**:
 
@@ -719,13 +816,36 @@ Show detailed hierarchical view of all MCP server configurations across hosts.
 
 Syntax:
 
-`hatch mcp show servers [--host PATTERN] [--json]`
+`hatch mcp show servers [filter_name] [--host PATTERN] [--json]`
 
 
-| Flag | Type | Description | Default |
+| Argument / Flag | Type | Description | Default |
 |---:|---|---|---|
+| `filter_name` | string (positional, optional) | Filter by server name using regex pattern | none |
 | `--host` | string | Filter by host name using regex pattern | none |
 | `--json` | flag | Output in JSON format | false |
+
+**Usage Examples**:
+
+```bash
+# Show detailed configuration for all servers
+$ hatch mcp show servers
+
+# Show configuration for specific server
+$ hatch mcp show servers weather-server
+
+# Show servers matching regex pattern
+$ hatch mcp show servers "^hatch-.*"
+
+# Filter by host name
+$ hatch mcp show servers --host claude-desktop
+
+# Combine server and host filters
+$ hatch mcp show servers weather --host cursor
+
+# JSON output with filter
+$ hatch mcp show servers "^my-" --json
+```
 
 **Example Output**:
 
