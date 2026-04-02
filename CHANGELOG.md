@@ -1,3 +1,9 @@
+## <small>0.8.2 (2026-04-02)</small>
+
+* Merge pull request #52 from LittleCoinCoin/dev ([f29393b](https://github.com/CrackingShells/Hatch/commit/f29393b)), closes [#52](https://github.com/CrackingShells/Hatch/issues/52)
+* docs: update to match new positional argument ([893082f](https://github.com/CrackingShells/Hatch/commit/893082f))
+* feat(cli): add filter_name positional argument to MCP discovery and list ([847665e](https://github.com/CrackingShells/Hatch/commit/847665e))
+
 ## <small>0.8.1 (2026-04-01)</small>
 
 * Merge branch 'feat/augment-mcp-host-support' into dev ([67bb767](https://github.com/CrackingShells/Hatch/commit/67bb767))
