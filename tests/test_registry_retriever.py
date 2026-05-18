@@ -284,6 +284,61 @@ class RegistryRetrieverTests(unittest.TestCase):
             "Missing timestamp file should be treated as no timestamp",
         )
 
+    @regression_test
+    def test_offline_no_cache_returns_unavailable_sentinel(self):
+        """Offline with no local cache must return REGISTRY_UNAVAILABLE, not crash."""
+        from unittest.mock import patch
+        from hatch.registry_retriever import REGISTRY_UNAVAILABLE
+
+        retriever = RegistryRetriever(
+            local_cache_dir=self.cache_dir, simulation_mode=False
+        )
+        # Simulate network down: _registry_exists always returns False
+        with patch.object(retriever, "_registry_exists", return_value=False):
+            result = retriever.get_registry()
+
+        self.assertEqual(result, REGISTRY_UNAVAILABLE)
+        self.assertEqual(result.get("status"), "unavailable")
+        self.assertEqual(result.get("repositories"), [])
+        # Critical invariant: sentinel must never be persisted to disk
+        self.assertFalse(
+            retriever.registry_cache_path.exists(),
+            "REGISTRY_UNAVAILABLE sentinel must not be written to the local cache file",
+        )
+
+    @regression_test
+    def test_offline_stale_cache_returns_stale_data_not_sentinel(self):
+        """Offline with a stale local cache returns stale data, not the unavailable sentinel."""
+        import json
+        from unittest.mock import patch
+
+        # Pre-populate a stale cache file
+        cache_registry_dir = self.cache_dir / "registry"
+        cache_registry_dir.mkdir(parents=True, exist_ok=True)
+        stale_data = {
+            "repositories": [{"name": "test-repo", "packages": []}],
+            "last_updated": "2020-01-01",
+        }
+        cache_file = cache_registry_dir / "hatch_packages_registry.json"
+        cache_file.write_text(json.dumps(stale_data))
+
+        retriever = RegistryRetriever(
+            local_cache_dir=self.cache_dir, simulation_mode=False
+        )
+        # Simulate network down + cache considered outdated (stale from yesterday)
+        with patch.object(
+            retriever, "_registry_exists", return_value=False
+        ), patch.object(retriever, "is_cache_outdated", return_value=True):
+            result = retriever.get_registry()
+
+        # Must return stale real data, not the unavailable sentinel
+        self.assertNotEqual(
+            result.get("status"),
+            "unavailable",
+            "Stale cache should be returned, not the unavailable sentinel",
+        )
+        self.assertEqual(result.get("repositories"), stale_data["repositories"])
+
 
 if __name__ == "__main__":
     unittest.main()
