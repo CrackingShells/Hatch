@@ -23,6 +23,12 @@ def _clear_registry_status() -> None:
         print(" " * 60, end="\r", file=sys.stderr, flush=True)
 
 
+# Sentinel returned when the registry is unreachable and no local cache exists.
+# IMPORTANT: this object must NEVER be written to disk — callers that receive it
+# must check ``registry_data.get("status") == "unavailable"`` before persisting.
+REGISTRY_UNAVAILABLE: Dict[str, Any] = {"status": "unavailable", "repositories": []}
+
+
 class RegistryRetriever:
     """Manages the retrieval and caching of the Hatch package registry.
 
@@ -211,8 +217,9 @@ class RegistryRetriever:
             date = yesterday.strftime("%Y-%m-%d")
 
             if not self._registry_exists(date):
-                self.logger.error(
-                    f"Yesterday's registry ({date}) also not found, cannot proceed"
+                self.logger.warning(
+                    f"Registry unavailable for {self.today_str} and {date} "
+                    "(network may be offline or releases not yet published)."
                 )
                 raise Exception("No valid registry found for today or yesterday")
 
@@ -253,6 +260,10 @@ class RegistryRetriever:
         except Exception:
             return False
 
+        except Exception as e:
+            self.logger.error(f"Failed to fetch registry: {e}")
+            raise e
+
     def get_registry(self, force_refresh: bool = False) -> Dict[str, Any]:
         """Fetch the registry file.
 
@@ -260,6 +271,7 @@ class RegistryRetriever:
         1. First checks the in-memory cache
         2. Then checks the local file cache
         3. Finally fetches from the source (local file or remote URL)
+        4. Falls back to local cache if remote fetch fails
 
         The fetched data is stored in both the in-memory and file caches.
 
@@ -267,10 +279,10 @@ class RegistryRetriever:
             force_refresh (bool, optional): Force refresh the registry even if cache is valid. Defaults to False.
 
         Returns:
-            Dict[str, Any]: Registry data.
+            Dict[str, Any]: Registry data or an unavailable status object if all sources fail.
 
         Raises:
-            Exception: If fetching the registry fails.
+            Exception: If fetching from both remote and local cache fails.
         """
         current_time = datetime.datetime.now(datetime.timezone.utc).timestamp()
 
@@ -308,9 +320,29 @@ class RegistryRetriever:
                 # In simulation mode, we must have a local registry file
                 registry_data = self._read_local_cache()
             else:
-                _print_registry_status("  Refreshing registry cache...")
-                registry_data = self._fetch_remote_registry()
-                _clear_registry_status()
+                try:
+                    _print_registry_status("  Refreshing registry cache...")
+                    registry_data = self._fetch_remote_registry()
+                    _clear_registry_status()
+                except Exception:
+                    _clear_registry_status()
+                    if self.registry_cache_path.exists():
+                        self.logger.warning(
+                            "Registry unreachable (offline?) — falling back to "
+                            "cached registry (may be stale)."
+                        )
+                        registry_data = self._read_local_cache()
+                    else:
+                        self.logger.warning(
+                            "Registry unavailable and no local cache found. "
+                            "Hatch is running offline with an empty registry. "
+                            "Commands that install or search packages will not work. "
+                            "Run any hatch command while online to populate the local cache."
+                        )
+                        # Early return — bypasses _write_local_cache, _registry_cache
+                        # update, and _save_last_fetch_time so the sentinel is never
+                        # persisted anywhere.
+                        return REGISTRY_UNAVAILABLE
 
             # Update local cache
             # Note that in case of simulation mode AND default cache path,

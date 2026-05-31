@@ -285,7 +285,12 @@ class DependencyInstallerOrchestrator:
             self._resolved_package_location = str(path.resolve())
 
         else:
-            # Remote package
+            # Remote package — requires a live or cached registry
+            if self.registry_data.get("status") == "unavailable":
+                raise DependencyInstallationError(
+                    f"Cannot install '{package_path_or_name}': registry is unavailable. "
+                    "Connect to the internet and retry, or use a local package path."
+                )
             if not self.registry_service.package_exists(package_path_or_name):
                 raise DependencyInstallationError(
                     f"Package {package_path_or_name} does not exist in registry"
