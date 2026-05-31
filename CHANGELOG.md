@@ -1,3 +1,10 @@
+## <small>0.8.3 (2026-05-31)</small>
+
+* Merge pull request #54 from LittleCoinCoin/hotfix/offline-registry ([c641597](https://github.com/CrackingShells/Hatch/commit/c641597)), closes [#54](https://github.com/CrackingShells/Hatch/issues/54)
+* fix(installer): guard remote install against unavailable registry ([49a1c4f](https://github.com/CrackingShells/Hatch/commit/49a1c4f))
+* fix(registry): return REGISTRY_UNAVAILABLE sentinel when offline ([180c77d](https://github.com/CrackingShells/Hatch/commit/180c77d))
+* test(registry): add offline no-cache and stale-cache regression tests ([e787108](https://github.com/CrackingShells/Hatch/commit/e787108))
+
 ## <small>0.8.2 (2026-04-02)</small>
 
 * Merge pull request #52 from LittleCoinCoin/dev ([f29393b](https://github.com/CrackingShells/Hatch/commit/f29393b)), closes [#52](https://github.com/CrackingShells/Hatch/issues/52)
